@@ -34,10 +34,19 @@ bOrigin      = 14
 bResRequired = 0
 bAckRequired = 1
 
-bounds :: Integral a => Int -> a -> Put
+bounds :: (Integral a, Bits a) => Int -> a -> Put
 bounds name bits val =
   when (val >= limit) $ fail (name ++ ": " ++ show val ++ " >= " ++ show bound)
   where limit = fromIntegral 1 `shiftL` bits
+
+-- FIXME: bit
+bitBool :: (Integral a, Bits a) => Int -> Bool -> a
+bitBool _ False = fromIntegral 0
+bitBool n True = fromIntegral 1 `shiftL` n
+
+-- FIXME: testBit
+boolBit :: (Integral a, Bits a) => a -> Int -> Bool
+boolBit x n = (x .&. (1 `shiftL` n)) /= 0
 
 instance Binary Header where
   put h = do
@@ -86,3 +95,17 @@ instance Binary Header where
     hhhhhh <- hhhhh <$> getWord16le -- hdrType
     getWord16 -- Reserved16
     return hhhhhh
+
+data StateService
+  = StateService
+    { ssService :: !Word8
+    , ssPort    :: !Word32
+    }
+
+instance Binary StateService where
+  put x = do
+    putWord8 $ ssService x
+    putWord32le $ ssPort x
+
+  get = do
+    StateService <$> getWord8 <*> getWord32le
