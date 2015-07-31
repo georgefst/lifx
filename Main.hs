@@ -34,19 +34,20 @@ bOrigin      = 14
 bResRequired = 0
 bAckRequired = 1
 
-bounds :: (Integral a, Bits a) => Int -> a -> Put
-bounds name bits val =
-  when (val >= limit) $ fail (name ++ ": " ++ show val ++ " >= " ++ show bound)
-  where limit = fromIntegral 1 `shiftL` bits
+bounds :: (Integral a, Bits a) => String -> Int -> a -> Put
+bounds name n val =
+  when (val >= limit) $ fail (name ++ ": " ++ show val ++ " >= " ++ show limit)
+  where limit = bit n
 
--- FIXME: bit
 bitBool :: (Integral a, Bits a) => Int -> Bool -> a
 bitBool _ False = fromIntegral 0
-bitBool n True = fromIntegral 1 `shiftL` n
+bitBool n True = bit n
 
--- FIXME: testBit
-boolBit :: (Integral a, Bits a) => a -> Int -> Bool
-boolBit x n = (x .&. (1 `shiftL` n)) /= 0
+extract :: (Integral a, Bits a, Integral b) => a -> Int -> Int -> b
+extract x n w = fromIntegral field
+  where field = (x `shiftR` n) .&. mask
+        mask = (one `shiftL` w) - 1
+        one = fromIntegral 1
 
 instance Binary Header where
   put h = do
@@ -81,15 +82,15 @@ instance Binary Header where
     h <- Header <$> getWord16le -- hdrSize
     otap <- getWord16le
     let hh = h (extract otap bOrigin 2)
-               (boolBit otap bTagged)
-               (boolBit otap bAddressable)
+               (testBit otap bTagged)
+               (testBit otap bAddressable)
                (extract otap bProtocol 12)
     hhh <- hh <$> getWord16le -- hdrSource
               <*> getWord64le -- hdrTarget
     getWord32le -- Reserved48
     getWord16le
     ar <- getWord8
-    let hhhh = hhh (boolBit ar bAckRequired) (boolBit ar bResRequired)
+    let hhhh = hhh (testBit ar bAckRequired) (testBit ar bResRequired)
     hhhhh <- hhhh <$> getWord8 -- hdrSequence
     getWord64 -- Reserved64
     hhhhhh <- hhhhh <$> getWord16le -- hdrType
