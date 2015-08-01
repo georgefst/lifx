@@ -2,8 +2,11 @@ import Data.Binary
 import Data.Binary.Put
 import Data.Binary.Get
 import Data.Bits
+import Data.ByteString.Lazy
 import Data.Int
 import Data.Word
+import Network.Socket hiding (send, sendTo, recv, recvFrom)
+import Network.Socket.ByteString
 
 {- This is a combination of the parts called "Frame", "Frame Address",
    and "Protocol header" in the documentation:
@@ -26,6 +29,20 @@ data Header
     , hdrType        :: !Word16
     -- , hdrReserved16  :: !Word16
     }
+
+dfltHdr = dh { hdrSize = fromIntegral $ length $ encode dh }
+  where dh = Header { hdrSize = 0
+                    , hdrOrigin = 0
+                    , hdrTagged = False
+                    , hdrAddressable = True
+                    , hdrProtocol = 1024
+                    , hdrSource = 91376
+                    , hdrTarget = 0
+                    , hdrAckRequired = False
+                    , hdrResRequired = False
+                    , hdrSequence = 0
+                    , hdrType = undefined
+                    }
 
 bProtocol    = 0
 bAddressable = 12
@@ -111,3 +128,27 @@ instance Binary StateService where
 
   get = do
     StateService <$> getWord8 <*> getWord32le
+
+mGetService = 2
+mStateService = 3
+
+discovery = encode hdr
+  where hdr = dfltHdr { hdrTagged = True
+                      , hdrType = mGetService
+                      }
+
+ethMtu = 1500
+
+main = do
+  sock <- socket AF_INET Datagram defaultProtocol
+  bind sock $ SockAddrInet aNY_PORT iNADDR_ANY
+  when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
+  let flags = [ AI_NUMERICHOST , AI_NUMERICSERV ]
+      myHints = defaultHints { addrFlags = flags }
+  (ai:_ ) <- getAddrInfo myHints "192.168.11.255" "56700"
+  let bcast = addrAddress ai
+  sendManyTo sock (toChunks discovery) bcast
+  (bs, sa) <- recvFrom sock ethMtu
+  putStrLn $ "bytestring = " ++ show bs
+  putStrLn $ "from = " ++ show sa
+  close sock
