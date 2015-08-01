@@ -1,8 +1,11 @@
+import Control.Applicative
+import Control.Monad
 import Data.Binary
 import Data.Binary.Put
 import Data.Binary.Get
 import Data.Bits
-import Data.ByteString.Lazy
+import Data.ByteString.Lazy hiding (length, putStrLn)
+import qualified Data.ByteString.Lazy as L (length)
 import Data.Int
 import Data.Word
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
@@ -30,7 +33,7 @@ data Header
     -- , hdrReserved16  :: !Word16
     }
 
-dfltHdr = dh { hdrSize = fromIntegral $ length $ encode dh }
+dfltHdr = dh { hdrSize = fromIntegral $ L.length $ encode dh }
   where dh = Header { hdrSize = 0
                     , hdrOrigin = 0
                     , hdrTagged = False
@@ -52,26 +55,25 @@ bOrigin      = 14
 bResRequired = 0
 bAckRequired = 1
 
-bounds :: (Integral a, Bits a) => String -> Int -> a -> Put
+bounds :: (Integral a, Bits a, Show a) => String -> Int -> a -> Put
 bounds name n val =
   when (val >= limit) $ fail (name ++ ": " ++ show val ++ " >= " ++ show limit)
   where limit = bit n
 
-bitBool :: (Integral a, Bits a) => Int -> Bool -> a
-bitBool _ False = fromIntegral 0
+bitBool :: Bits a => Int -> Bool -> a
+bitBool _ False = zeroBits
 bitBool n True = bit n
 
 extract :: (Integral a, Bits a, Integral b) => a -> Int -> Int -> b
 extract x n w = fromIntegral field
   where field = (x `shiftR` n) .&. mask
-        mask = (one `shiftL` w) - 1
-        one = fromIntegral 1
+        mask = (bit w) - 1
 
 instance Binary Header where
   put h = do
     -- "Frame"
     putWord16le $ hdrSize h
-    let hOrg = hdrOrigin h
+    let hOrg = fromIntegral $ hdrOrigin h
         hTag = hdrTagged h
         hAdd = hdrAddressable h
         hPro = hdrProtocol h
@@ -103,16 +105,16 @@ instance Binary Header where
                (testBit otap bTagged)
                (testBit otap bAddressable)
                (extract otap bProtocol 12)
-    hhh <- hh <$> getWord16le -- hdrSource
+    hhh <- hh <$> getWord32le -- hdrSource
               <*> getWord64le -- hdrTarget
     getWord32le -- Reserved48
     getWord16le
     ar <- getWord8
     let hhhh = hhh (testBit ar bAckRequired) (testBit ar bResRequired)
     hhhhh <- hhhh <$> getWord8 -- hdrSequence
-    getWord64 -- Reserved64
+    getWord64le -- Reserved64
     hhhhhh <- hhhhh <$> getWord16le -- hdrType
-    getWord16 -- Reserved16
+    getWord16le -- Reserved16
     return hhhhhh
 
 data StateService
@@ -145,7 +147,7 @@ main = do
   when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
   let flags = [ AI_NUMERICHOST , AI_NUMERICSERV ]
       myHints = defaultHints { addrFlags = flags }
-  (ai:_ ) <- getAddrInfo myHints "192.168.11.255" "56700"
+  (ai:_ ) <- getAddrInfo (Just myHints) (Just "192.168.11.255") (Just "56700")
   let bcast = addrAddress ai
   sendManyTo sock (toChunks discovery) bcast
   (bs, sa) <- recvFrom sock ethMtu
