@@ -31,7 +31,7 @@ data Header
     -- , hdrReserved64  :: !Word64
     , hdrType        :: !Word16
     -- , hdrReserved16  :: !Word16
-    }
+    } deriving Show
 
 dfltHdr = dh { hdrSize = fromIntegral $ L.length $ encode dh }
   where dh = Header { hdrSize = 0
@@ -44,7 +44,7 @@ dfltHdr = dh { hdrSize = fromIntegral $ L.length $ encode dh }
                     , hdrAckRequired = False
                     , hdrResRequired = False
                     , hdrSequence = 0
-                    , hdrType = undefined
+                    , hdrType = 0
                     }
 
 bProtocol    = 0
@@ -151,6 +151,8 @@ main = do
   let bcast = addrAddress ai
   sendManyTo sock (toChunks discovery) bcast
   (bs, sa) <- recvFrom sock ethMtu
-  putStrLn $ "bytestring = " ++ show bs
+  case decodeOrFail (fromStrict bs) of
+   Left (_, _, msg) -> putStrLn $ "error = " ++ msg
+   Right (_, _, hdr) -> putStrLn $ "header = " ++ show (hdr :: Header)
   putStrLn $ "from = " ++ show sa
   close sock
