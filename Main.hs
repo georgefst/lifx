@@ -121,7 +121,7 @@ data StateService
   = StateService
     { ssService :: !Word8
     , ssPort    :: !Word32
-    }
+    } deriving Show
 
 instance Binary StateService where
   put x = do
@@ -153,6 +153,8 @@ main = do
   (bs, sa) <- recvFrom sock ethMtu
   case decodeOrFail (fromStrict bs) of
    Left (_, _, msg) -> putStrLn $ "error = " ++ msg
-   Right (_, _, hdr) -> putStrLn $ "header = " ++ show (hdr :: Header)
+   Right (un, _, hdr) -> do
+                         putStrLn $ "header = " ++ show (hdr :: Header)
+                         putStrLn $ "msg = " ++ show ((decode un) :: StateService)
   putStrLn $ "from = " ++ show sa
   close sock
