@@ -1,6 +1,7 @@
 import Data.Binary
 import Data.Binary.Put
 import Data.Binary.Get
+import Data.Bits
 import Data.Int
 import Data.Word
 
