@@ -161,19 +161,19 @@ data InternalState
     , stSource :: !Word32
     }
 
+dfltState = InternalState { stSeq = 0 , stSource = 37619 }
+
 newHdr :: InternalState -> (InternalState, Header)
 newHdr st = (newSt, hdr)
   where seq = stSeq st
         newSt = st { stSeq = seq + 1 }
         hdr = dfltHdr { hdrSource = stSource st , hdrSequence = seq }
 
-mGetService = 2
-mStateService = 3
-
-discovery = encode hdr
-  where hdr = dfltHdr { hdrTagged = True
-                      , hdrType = mGetService
-                      }
+discovery :: InternalState -> (InternalState, ByteString)
+discovery st = (st', bs)
+  where (st', hdr) = newHdr st
+        hdr' = hdr { hdrTagged = True }
+        bs = serializeMsg hdr' GetService
 
 ethMtu = 1500
 
@@ -185,7 +185,8 @@ main = do
       myHints = defaultHints { addrFlags = flags }
   (ai:_ ) <- getAddrInfo (Just myHints) (Just "192.168.11.255") (Just "56700")
   let bcast = addrAddress ai
-  sendManyTo sock (toChunks discovery) bcast
+      (_, pkt) = discovery dfltState
+  sendManyTo sock (toChunks pkt) bcast
   (bs, sa) <- recvFrom sock ethMtu
   case decodeOrFail (fromStrict bs) of
    Left (_, _, msg) -> putStrLn $ "error = " ++ msg
