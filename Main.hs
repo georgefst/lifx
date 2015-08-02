@@ -47,6 +47,8 @@ dfltHdr = dh { hdrSize = fromIntegral $ L.length $ encode dh }
                     , hdrType = 0
                     }
 
+dfltHdrSize = L.length $ encode dfltHdr
+
 bProtocol    = 0
 bAddressable = 12
 bTagged      = 13
@@ -117,11 +119,26 @@ instance Binary Header where
     getWord16le -- Reserved16
     return hhhhhh
 
+class MessageType t where
+  msgType :: t -> Word16
+
+data GetService = GetService
+
+instance MessageType GetService where
+  msgType _ = 2
+
+instance Binary GetService where
+  put _ = return ()
+  get = return GetService
+
 data StateService
   = StateService
     { ssService :: !Word8
     , ssPort    :: !Word32
     } deriving Show
+
+instance MessageType StateService where
+  msgType _ = 3
 
 instance Binary StateService where
   put x = do
@@ -130,6 +147,25 @@ instance Binary StateService where
 
   get = do
     StateService <$> getWord8 <*> getWord32le
+
+serializeMsg :: (MessageType a, Binary a) => Header -> a -> ByteString
+serializeMsg hdr payload = hdrBs `append` payloadBS
+  where payloadBS = encode payload
+        hsize = dfltHdrSize + L.length payloadBS
+        hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
+        hdrBs = encode hdr'
+
+data InternalState
+  = InternalState
+    { stSeq :: !Word8
+    , stSource :: !Word32
+    }
+
+newHdr :: InternalState -> (InternalState, Header)
+newHdr st = (newSt, hdr)
+  where seq = stSeq st
+        newSt = st { stSeq = seq + 1 }
+        hdr = dfltHdr { hdrSource = stSource st , hdrSequence = seq }
 
 mGetService = 2
 mStateService = 3
