@@ -147,7 +147,7 @@ instance Binary StateService where
     putWord8 $ ssService x
     putWord32le $ ssPort x
 
-  get = do
+  get =
     StateService <$> getWord8 <*> getWord32le
 
 data GetHostInfo = GetHostInfo
@@ -177,7 +177,7 @@ instance Binary StateHostInfo where
     putWord32le $ shiRX x
     putWord16le $ shiMcuTemperature x
 
-  get = do
+  get =
     StateHostInfo <$> getWord32le <*> getWord32le <*> getWord32le <*> getWord16le
 
 serializeMsg :: (MessageType a, Binary a) => Header -> a -> ByteString
@@ -187,7 +187,7 @@ serializeMsg hdr payload = hdrBs `append` payloadBS
         hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
         hdrBs = encode hdr'
 
-type Callback = InternalState -> Header -> ByteString -> IO ()
+type Callback = InternalState -> SockAddr -> Header -> ByteString -> IO ()
 
 data InternalState
   = InternalState
@@ -223,7 +223,7 @@ contortedDecode bs =
    Right ( lftovr , _ , payload ) -> ( payload , Right (L.length lftovr) )
 
 wrapCallback :: (MessageType a, Binary a) => (Header -> a -> IO ()) -> Callback
-wrapCallback cb st hdr bs =
+wrapCallback cb st _ hdr bs =
   let (payload, decodeResult) = contortedDecode bs
       typ = hdrType hdr
       expected = msgType payload
@@ -249,8 +249,8 @@ newHdrAndCallback st cb = (st'', hdr)
   where (st', hdr) = newHdr st
         st'' = wrapAndRegister st' hdr cb
 
-runCallback :: InternalState -> ByteString -> IO ()
-runCallback st bs =
+runCallback :: InternalState -> SockAddr -> ByteString -> IO ()
+runCallback st sa bs =
   case decodeOrFail bs of
    Left (_, _, msg) -> stLog st msg
    Right (bs', _, hdr) ->
@@ -260,12 +260,12 @@ runCallback st bs =
          ssrc = stSource st
          seq = fromIntegral (hdrSequence hdr)
          cbacks = stCallbacks st
-         nuthin' _ _ _ = return ()
+         nuthin' _ _ _ _ = return ()
      in if hsz /= len
         then stLog st $ "length mismatch: " ++ show hsz ++ " /= " ++ show len
         else if hsrc /= ssrc
              then stLog st $ "source mismatch: " ++ show hsrc ++ " /= " ++ show ssrc
-             else findWithDefault nuthin' seq cbacks st hdr bs'
+             else findWithDefault nuthin' seq cbacks st sa hdr bs'
 
 discovery :: InternalState -> (InternalState, ByteString)
 discovery st = (st', bs)
@@ -290,5 +290,5 @@ main = do
   sendManyTo sock (toChunks pkt) bcast
   (bs, sa) <- recvFrom sock ethMtu
   putStrLn $ "from = " ++ show sa
-  runCallback st $ fromStrict bs
+  runCallback st sa $ fromStrict bs
   close sock
