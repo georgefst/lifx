@@ -4,9 +4,11 @@ import Data.Binary
 import Data.Binary.Put
 import Data.Binary.Get
 import Data.Bits
-import Data.ByteString.Lazy hiding (length, putStrLn)
+import Data.ByteString.Lazy hiding (length, putStrLn, empty)
 import qualified Data.ByteString.Lazy as L (length)
 import Data.Int
+import Data.IntMap.Strict hiding (empty)
+import qualified Data.IntMap.Strict as IM (empty)
 import Data.Word
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Network.Socket.ByteString
@@ -155,13 +157,21 @@ serializeMsg hdr payload = hdrBs `append` payloadBS
         hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
         hdrBs = encode hdr'
 
+type Callback = InternalState -> Header -> ByteString -> IO ()
+
 data InternalState
   = InternalState
     { stSeq :: !Word8
     , stSource :: !Word32
+    , stCallbacks :: IntMap Callback
+    , stLog :: String -> IO ()
     }
 
-dfltState = InternalState { stSeq = 0 , stSource = 37619 }
+dfltState = InternalState { stSeq = 0
+                          , stSource = 37619
+                          , stCallbacks = IM.empty
+                          , stLog = putStrLn
+                          }
 
 newHdr :: InternalState -> (InternalState, Header)
 newHdr st = (newSt, hdr)
@@ -169,11 +179,65 @@ newHdr st = (newSt, hdr)
         newSt = st { stSeq = seq + 1 }
         hdr = dfltHdr { hdrSource = stSource st , hdrSequence = seq }
 
+registerCallback :: InternalState -> Header -> Callback -> InternalState
+registerCallback st hdr cb = st { stCallbacks = cbacks' }
+  where cbacks = stCallbacks st
+        seq = fromIntegral $ hdrSequence hdr
+        cbacks' = insert seq cb cbacks
+
+wrapCallback :: (MessageType a, Binary a) => (Header -> a -> IO ()) -> Callback
+wrapCallback cb st hdr bs = do
+  let typ = hdrType hdr
+      undMsg = undefined
+      expected = msgType undMsg
+  if typ /= expected
+    then stLog st $ "expected type " ++ show expected ++ " but got " ++ show typ
+    else case decodeOrFail bs of
+          Left (_, _, msg) -> stLog st msg
+          Right (lftovr, _, payload)
+            | L.length lftovr /= 0 -> stLog st $ show (L.length lftovr) ++ " bytes left over"
+            | otherwise -> cb hdr (payload `asTypeOf` undMsg)
+
+wrapAndRegister :: (MessageType a, Binary a)
+                   => InternalState -> Header
+                   -> (Header -> a -> IO ())
+                   -> InternalState
+wrapAndRegister st hdr cb = registerCallback st hdr $ wrapCallback cb
+
+newHdrAndCallback :: (MessageType a, Binary a)
+                     => InternalState
+                     -> (Header -> a -> IO ())
+                     -> (InternalState, Header)
+newHdrAndCallback st cb = (st'', hdr)
+  where (st', hdr) = newHdr st
+        st'' = wrapAndRegister st' hdr cb
+
+runCallback :: InternalState -> ByteString -> IO ()
+runCallback st bs =
+  case decodeOrFail bs of
+   Left (_, _, msg) -> stLog st msg
+   Right (bs', _, hdr) -> do
+     let hsz = fromIntegral (hdrSize hdr)
+         len = L.length bs
+         hsrc = hdrSource hdr
+         ssrc = stSource st
+         seq = fromIntegral (hdrSequence hdr)
+         cbacks = stCallbacks st
+         nuthin' _ _ _ = return ()
+     if hsz /= len
+       then stLog st $ "length mismatch: " ++ show hsz ++ " /= " ++ show len
+       else if hsrc /= ssrc
+            then stLog st $ "source mismatch: " ++ show hsrc ++ " /= " ++ show ssrc
+            else findWithDefault nuthin' seq cbacks st hdr bs'
+
 discovery :: InternalState -> (InternalState, ByteString)
 discovery st = (st', bs)
-  where (st', hdr) = newHdr st
+  where (st', hdr) = newHdrAndCallback st' cb
         hdr' = hdr { hdrTagged = True }
         bs = serializeMsg hdr' GetService
+        cb replyHdr reply = do
+          putStrLn $ "header = " ++ show replyHdr
+          putStrLn $ "msg = " ++ show (reply :: StateService)
 
 ethMtu = 1500
 
@@ -185,13 +249,9 @@ main = do
       myHints = defaultHints { addrFlags = flags }
   (ai:_ ) <- getAddrInfo (Just myHints) (Just "192.168.11.255") (Just "56700")
   let bcast = addrAddress ai
-      (_, pkt) = discovery dfltState
+      (st, pkt) = discovery dfltState
   sendManyTo sock (toChunks pkt) bcast
   (bs, sa) <- recvFrom sock ethMtu
-  case decodeOrFail (fromStrict bs) of
-   Left (_, _, msg) -> putStrLn $ "error = " ++ msg
-   Right (un, _, hdr) -> do
-                         putStrLn $ "header = " ++ show (hdr :: Header)
-                         putStrLn $ "msg = " ++ show ((decode un) :: StateService)
   putStrLn $ "from = " ++ show sa
+  runCallback st $ fromStrict bs
   close sock
