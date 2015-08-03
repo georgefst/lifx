@@ -239,7 +239,7 @@ runCallback st bs =
 
 discovery :: InternalState -> (InternalState, ByteString)
 discovery st = (st', bs)
-  where (st', hdr) = newHdrAndCallback st' cb
+  where (st', hdr) = newHdrAndCallback st cb
         hdr' = hdr { hdrTagged = True }
         bs = serializeMsg hdr' GetService
         cb replyHdr reply = do
