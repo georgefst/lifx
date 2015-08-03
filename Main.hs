@@ -185,18 +185,25 @@ registerCallback st hdr cb = st { stCallbacks = cbacks' }
         seq = fromIntegral $ hdrSequence hdr
         cbacks' = insert seq cb cbacks
 
+-- resorted to this weird thing to fix type errors
+contortedDecode :: Binary a => ByteString -> (a, Either String Int64)
+contortedDecode bs =
+  case decodeOrFail bs of
+   Left ( _ , _ , msg ) -> ( undefined , Left msg )
+   Right ( lftovr , _ , payload ) -> ( payload , Right (L.length lftovr) )
+
 wrapCallback :: (MessageType a, Binary a) => (Header -> a -> IO ()) -> Callback
 wrapCallback cb st hdr bs = do
-  let typ = hdrType hdr
-      undMsg = undefined
-      expected = msgType undMsg
+  let (payload, decodeResult) = contortedDecode bs
+      typ = hdrType hdr
+      expected = msgType payload
   if typ /= expected
     then stLog st $ "expected type " ++ show expected ++ " but got " ++ show typ
-    else case decodeOrFail bs of
-          Left (_, _, msg) -> stLog st msg
-          Right (lftovr, _, payload)
-            | L.length lftovr /= 0 -> stLog st $ show (L.length lftovr) ++ " bytes left over"
-            | otherwise -> cb hdr (payload `asTypeOf` undMsg)
+    else case decodeResult of
+          Left msg -> stLog st msg
+          Right lftovr
+            | lftovr /= 0 -> stLog st $ show lftovr ++ " bytes left over"
+            | otherwise -> cb hdr payload
 
 wrapAndRegister :: (MessageType a, Binary a)
                    => InternalState -> Header
