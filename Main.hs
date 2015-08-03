@@ -193,17 +193,17 @@ contortedDecode bs =
    Right ( lftovr , _ , payload ) -> ( payload , Right (L.length lftovr) )
 
 wrapCallback :: (MessageType a, Binary a) => (Header -> a -> IO ()) -> Callback
-wrapCallback cb st hdr bs = do
+wrapCallback cb st hdr bs =
   let (payload, decodeResult) = contortedDecode bs
       typ = hdrType hdr
       expected = msgType payload
-  if typ /= expected
-    then stLog st $ "expected type " ++ show expected ++ " but got " ++ show typ
-    else case decodeResult of
-          Left msg -> stLog st msg
-          Right lftovr
-            | lftovr /= 0 -> stLog st $ show lftovr ++ " bytes left over"
-            | otherwise -> cb hdr payload
+  in if typ /= expected
+     then stLog st $ "expected type " ++ show expected ++ " but got " ++ show typ
+     else case decodeResult of
+           Left msg -> stLog st msg
+           Right lftovr
+             | lftovr /= 0 -> stLog st $ show lftovr ++ " bytes left over"
+             | otherwise -> cb hdr payload
 
 wrapAndRegister :: (MessageType a, Binary a)
                    => InternalState -> Header
@@ -223,7 +223,7 @@ runCallback :: InternalState -> ByteString -> IO ()
 runCallback st bs =
   case decodeOrFail bs of
    Left (_, _, msg) -> stLog st msg
-   Right (bs', _, hdr) -> do
+   Right (bs', _, hdr) ->
      let hsz = fromIntegral (hdrSize hdr)
          len = L.length bs
          hsrc = hdrSource hdr
@@ -231,11 +231,11 @@ runCallback st bs =
          seq = fromIntegral (hdrSequence hdr)
          cbacks = stCallbacks st
          nuthin' _ _ _ = return ()
-     if hsz /= len
-       then stLog st $ "length mismatch: " ++ show hsz ++ " /= " ++ show len
-       else if hsrc /= ssrc
-            then stLog st $ "source mismatch: " ++ show hsrc ++ " /= " ++ show ssrc
-            else findWithDefault nuthin' seq cbacks st hdr bs'
+     in if hsz /= len
+        then stLog st $ "length mismatch: " ++ show hsz ++ " /= " ++ show len
+        else if hsrc /= ssrc
+             then stLog st $ "source mismatch: " ++ show hsrc ++ " /= " ++ show ssrc
+             else findWithDefault nuthin' seq cbacks st hdr bs'
 
 discovery :: InternalState -> (InternalState, ByteString)
 discovery st = (st', bs)
