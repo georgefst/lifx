@@ -10,6 +10,7 @@ import Data.Int
 import Data.IntMap.Strict hiding (empty)
 import qualified Data.IntMap.Strict as IM (empty)
 import Data.Word
+import Debug.Trace
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Network.Socket.ByteString
 
@@ -180,20 +181,21 @@ newHdr st = (newSt, hdr)
         hdr = dfltHdr { hdrSource = stSource st , hdrSequence = seq }
 
 registerCallback :: InternalState -> Header -> Callback -> InternalState
-registerCallback st hdr cb = st { stCallbacks = cbacks' }
+registerCallback st hdr cb = trace "stuff" $ st { stCallbacks = cbacks' }
   where cbacks = stCallbacks st
         seq = fromIntegral $ hdrSequence hdr
-        cbacks' = insert seq cb cbacks
+        cbacks' = trace "things" $ insert seq cb cbacks
 
 -- resorted to this weird thing to fix type errors
 contortedDecode :: Binary a => ByteString -> (a, Either String Int64)
-contortedDecode bs =
+contortedDecode bs = trace "well" $
   case decodeOrFail bs of
    Left ( _ , _ , msg ) -> ( undefined , Left msg )
    Right ( lftovr , _ , payload ) -> ( payload , Right (L.length lftovr) )
 
 wrapCallback :: (MessageType a, Binary a) => (Header -> a -> IO ()) -> Callback
-wrapCallback cb st hdr bs = do
+wrapCallback cb st hdr bs = trace "perhaps" $ do
+  putStrLn "aha!"
   let (payload, decodeResult) = contortedDecode bs
       typ = hdrType hdr
       expected = msgType payload
@@ -209,14 +211,14 @@ wrapAndRegister :: (MessageType a, Binary a)
                    => InternalState -> Header
                    -> (Header -> a -> IO ())
                    -> InternalState
-wrapAndRegister st hdr cb = registerCallback st hdr $ wrapCallback cb
+wrapAndRegister st hdr cb = trace "ugh" $ registerCallback st hdr $ wrapCallback cb
 
 newHdrAndCallback :: (MessageType a, Binary a)
                      => InternalState
                      -> (Header -> a -> IO ())
                      -> (InternalState, Header)
 newHdrAndCallback st cb = (st'', hdr)
-  where (st', hdr) = newHdr st
+  where (st', hdr) = trace "bar" $ newHdr st
         st'' = wrapAndRegister st' hdr cb
 
 runCallback :: InternalState -> ByteString -> IO ()
@@ -239,7 +241,7 @@ runCallback st bs =
 
 discovery :: InternalState -> (InternalState, ByteString)
 discovery st = (st', bs)
-  where (st', hdr) = newHdrAndCallback st' cb
+  where (st', hdr) = trace "foo" $ newHdrAndCallback st cb
         hdr' = hdr { hdrTagged = True }
         bs = serializeMsg hdr' GetService
         cb replyHdr reply = do
