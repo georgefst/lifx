@@ -150,6 +150,36 @@ instance Binary StateService where
   get = do
     StateService <$> getWord8 <*> getWord32le
 
+data GetHostInfo = GetHostInfo
+
+instance MessageType GetHostInfo where
+  msgType _ = 12
+
+instance Binary GetHostInfo where
+  put _ = return ()
+  get = return GetHostInfo
+
+data StateHostInfo
+  = StateHostInfo
+    { shiSignal :: !Word32 -- Float; use reinterpret-cast package
+    , shiTX :: !Word32
+    , shiRX :: !Word32
+    , shiMcuTemperature :: !Word16 -- Int16; use unsafe-coerce
+    } deriving Show
+
+instance MessageType StateHostInfo where
+  msgType _ = 13
+
+instance Binary StateHostInfo where
+  put x = do
+    putWord32le $ shiSignal x
+    putWord32le $ shiTX x
+    putWord32le $ shiRX x
+    putWord16le $ shiMcuTemperature x
+
+  get = do
+    StateHostInfo <$> getWord32le <*> getWord32le <*> getWord32le <*> getWord16le
+
 serializeMsg :: (MessageType a, Binary a) => Header -> a -> ByteString
 serializeMsg hdr payload = hdrBs `append` payloadBS
   where payloadBS = encode payload
