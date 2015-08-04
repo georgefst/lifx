@@ -238,9 +238,26 @@ checkHeaderFields hdr bs =
              | otherwise -> Right payload
 
 wrapCallback :: (MessageType a, Binary a) => (Header -> a -> IO ()) -> Callback
-wrapCallback cb st _ hdr bs = f $ checkHeaderFields hdr bs
-  where f (Left msg) = stLog st msg
+wrapCallback cb st sa hdr bs = f $ checkHeaderFields hdr bs
+  where f (Left msg) = stLog st $ msg ++ " (from " ++ show sa ++ ")"
         f (Right payload) = cb hdr payload
+
+serviceUDP = 1
+
+data Bulb = Bulb SockAddr Word64
+
+wrapStateService :: (Bulb -> IO ()) -> Callback
+wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
+  where f (Left msg) = stLog st (msg ++ frm)
+        f (Right payload) = bulb (ssService payload) (ssPort payload)
+        frm = " (from " ++ show sa ++ ")"
+        bulb serv port
+          | serv /= serviceUDP = stLog st $ "service: expected "
+                                 ++ show serviceUDP ++ " but got "
+                                 ++ show serv ++ frm
+          | otherwise = cb $ Bulb (substPort sa port) (hdrTarget hdr)
+        substPort (SockAddrInet _ ha) port = SockAddrInet (fromIntegral port) ha
+        substPort other _ = other
 
 wrapAndRegister :: (MessageType a, Binary a)
                    => InternalState -> Header
