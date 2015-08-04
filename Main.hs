@@ -244,7 +244,7 @@ wrapCallback cb st sa hdr bs = f $ checkHeaderFields hdr bs
 
 serviceUDP = 1
 
-data Bulb = Bulb SockAddr Word64
+data Bulb = Bulb SockAddr Word64 deriving Show
 
 wrapStateService :: (Bulb -> IO ()) -> Callback
 wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
@@ -273,6 +273,13 @@ newHdrAndCallback st cb = (st'', hdr)
   where (st', hdr) = newHdr st
         st'' = wrapAndRegister st' hdr cb
 
+newHdrAndCbDiscovery :: InternalState
+                        -> (Bulb -> IO ())
+                        -> (InternalState, Header)
+newHdrAndCbDiscovery st cb = (st'', hdr)
+  where (st', hdr) = newHdr st
+        st'' = registerCallback st' hdr $ wrapStateService cb
+
 runCallback :: InternalState -> SockAddr -> ByteString -> IO ()
 runCallback st sa bs =
   case decodeOrFail bs of
@@ -293,12 +300,10 @@ runCallback st sa bs =
 
 discovery :: InternalState -> (InternalState, ByteString)
 discovery st = (st', bs)
-  where (st', hdr) = newHdrAndCallback st cb
+  where (st', hdr) = newHdrAndCbDiscovery st cb
         hdr' = hdr { hdrTagged = True }
         bs = serializeMsg hdr' GetService
-        cb replyHdr reply = do
-          putStrLn $ "header = " ++ show replyHdr
-          putStrLn $ "msg = " ++ show (reply :: StateService)
+        cb bulb = putStrLn (show bulb)
 
 ethMtu = 1500
 
@@ -313,6 +318,5 @@ main = do
       (st, pkt) = discovery dfltState
   sendManyTo sock (toChunks pkt) bcast
   (bs, sa) <- recvFrom sock ethMtu
-  putStrLn $ "from = " ++ show sa
   runCallback st sa $ fromStrict bs
   close sock
