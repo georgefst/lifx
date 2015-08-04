@@ -222,18 +222,25 @@ contortedDecode bs =
    Left ( _ , _ , msg ) -> ( undefined , Left msg )
    Right ( lftovr , _ , payload ) -> ( payload , Right (L.length lftovr) )
 
-wrapCallback :: (MessageType a, Binary a) => (Header -> a -> IO ()) -> Callback
-wrapCallback cb st _ hdr bs =
+checkHeaderFields :: (MessageType a, Binary a)
+                     => Header -> ByteString
+                     -> Either String a
+checkHeaderFields hdr bs =
   let (payload, decodeResult) = contortedDecode bs
       typ = hdrType hdr
       expected = msgType payload
   in if typ /= expected
-     then stLog st $ "expected type " ++ show expected ++ " but got " ++ show typ
+     then Left $ "expected type " ++ show expected ++ " but got " ++ show typ
      else case decodeResult of
-           Left msg -> stLog st msg
+           Left msg -> Left msg
            Right lftovr
-             | lftovr /= 0 -> stLog st $ show lftovr ++ " bytes left over"
-             | otherwise -> cb hdr payload
+             | lftovr /= 0 -> Left $ show lftovr ++ " bytes left over"
+             | otherwise -> Right payload
+
+wrapCallback :: (MessageType a, Binary a) => (Header -> a -> IO ()) -> Callback
+wrapCallback cb st _ hdr bs = f $ checkHeaderFields hdr bs
+  where f (Left msg) = stLog st msg
+        f (Right payload) = cb hdr payload
 
 wrapAndRegister :: (MessageType a, Binary a)
                    => InternalState -> Header
