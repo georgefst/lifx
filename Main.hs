@@ -12,6 +12,7 @@ import qualified Data.IntMap.Strict as IM (empty)
 import Data.Word
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Network.Socket.ByteString
+import Text.Printf
 
 {- This is a combination of the parts called "Frame", "Frame Address",
    and "Protocol header" in the documentation:
@@ -244,7 +245,14 @@ wrapCallback cb st sa hdr bs = f $ checkHeaderFields hdr bs
 
 serviceUDP = 1
 
-data Bulb = Bulb SockAddr Word64 deriving Show
+newtype Target = Target Word64
+
+instance Show Target where
+  show (Target x) = colonize $ printf "%012X" (x .&. 0xffffffffffff)
+    where colonize [c1, c2] = [c1, c2]
+          colonize (c1:c2:rest) = c1 : c2 : ':' : colonize rest
+
+data Bulb = Bulb SockAddr Target deriving Show
 
 wrapStateService :: (Bulb -> IO ()) -> Callback
 wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
@@ -255,7 +263,7 @@ wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
           | serv /= serviceUDP = stLog st $ "service: expected "
                                  ++ show serviceUDP ++ " but got "
                                  ++ show serv ++ frm
-          | otherwise = cb $ Bulb (substPort sa port) (hdrTarget hdr)
+          | otherwise = cb $ Bulb (substPort sa port) (Target $ hdrTarget hdr)
         substPort (SockAddrInet _ ha) port = SockAddrInet (fromIntegral port) ha
         substPort other _ = other
 
