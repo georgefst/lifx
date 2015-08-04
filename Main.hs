@@ -240,9 +240,12 @@ checkHeaderFields hdr bs =
              | lftovr /= 0 -> Left $ show lftovr ++ " bytes left over"
              | otherwise -> Right payload
 
+strFrom :: SockAddr -> String
+strFrom sa = " (from " ++ show sa ++ ")"
+
 wrapCallback :: (MessageType a, Binary a) => (Header -> a -> IO ()) -> Callback
 wrapCallback cb st sa hdr bs = f $ checkHeaderFields hdr bs
-  where f (Left msg) = stLog st $ msg ++ " (from " ++ show sa ++ ")"
+  where f (Left msg) = stLog st $ msg ++ strFrom sa
         f (Right payload) = cb hdr payload
 
 serviceUDP = 1
@@ -260,7 +263,7 @@ wrapStateService :: (Bulb -> IO ()) -> Callback
 wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
   where f (Left msg) = stLog st (msg ++ frm)
         f (Right payload) = bulb (ssService payload) (ssPort payload)
-        frm = " (from " ++ show sa ++ ")"
+        frm = strFrom sa
         bulb serv port
           | serv /= serviceUDP = stLog st $ "service: expected "
                                  ++ show serviceUDP ++ " but got "
@@ -301,12 +304,16 @@ runCallback st sa bs =
          ssrc = stSource st
          seq = fromIntegral (hdrSequence hdr)
          cbacks = stCallbacks st
-         nuthin' _ _ _ _ = return ()
+         frm = strFrom sa
+         notFound _ _ _ _ =
+           stLog st $ "No callback for sequence #" ++ show seq ++ frm
      in if hsz /= len
-        then stLog st $ "length mismatch: " ++ show hsz ++ " /= " ++ show len
+        then stLog st $ "length mismatch: " ++ show hsz
+             ++ " /= " ++ show len ++ frm
         else if hsrc /= ssrc
-             then stLog st $ "source mismatch: " ++ show hsrc ++ " /= " ++ show ssrc
-             else findWithDefault nuthin' seq cbacks st sa hdr bs'
+             then stLog st $ "source mismatch: " ++ show hsrc
+                  ++ " /= " ++ show ssrc ++ frm
+             else findWithDefault notFound seq cbacks st sa hdr bs'
 
 sendMsg :: (MessageType a, Binary a)
            => InternalState -> Bulb -> Header -> a
