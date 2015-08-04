@@ -196,12 +196,14 @@ data InternalState
     , stSource :: !Word32
     , stCallbacks :: IntMap Callback
     , stLog :: String -> IO ()
+    , stSocket :: Socket
     }
 
 dfltState = InternalState { stSeq = 0
                           , stSource = 37619
                           , stCallbacks = IM.empty
                           , stLog = putStrLn
+                          , stSocket = undefined
                           }
 
 newHdr :: InternalState -> (InternalState, Header)
@@ -305,6 +307,14 @@ runCallback st sa bs =
         else if hsrc /= ssrc
              then stLog st $ "source mismatch: " ++ show hsrc ++ " /= " ++ show ssrc
              else findWithDefault nuthin' seq cbacks st sa hdr bs'
+
+sendMsg :: (MessageType a, Binary a)
+           => InternalState -> Bulb -> Header -> a
+           -> IO ()
+sendMsg st (Bulb sa (Target targ)) hdr payload =
+  sendManyTo (stSocket st) (toChunks pkt) sa
+  where hdr' = hdr { hdrTarget = targ }
+        pkt = serializeMsg hdr' payload
 
 discovery :: InternalState -> (InternalState, ByteString)
 discovery st = (st', bs)
