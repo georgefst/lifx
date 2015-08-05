@@ -255,7 +255,8 @@ newtype Target = Target Word64
 instance Show Target where
   show (Target x) = colonize $ printf "%012X" (x .&. 0xffffffffffff)
     where colonize [c1, c2] = [c1, c2]
-          colonize (c1:c2:rest) = c1 : c2 : ':' : colonize rest
+          -- mac address seems to be backwards
+          colonize (c1:c2:rest) = colonize rest ++ [':', c1, c2]
 
 data Bulb = Bulb SockAddr Target deriving Show
 
