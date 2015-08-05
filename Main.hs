@@ -191,18 +191,12 @@ serializeMsg hdr payload = hdrBs `append` payloadBS
 
 type Callback = InternalState -> SockAddr -> Header -> ByteString -> IO ()
 
-data LogState
-  = LogState
-    { lsFunc :: String -> IO ()
-      lsQueue :: TQueue String
-    }
-
 data InternalState
   = InternalState
     { stSeq :: TVar Word8
     , stSource :: !Word32
     , stCallbacks :: TArray Word8 Callback
-    , stLog :: Maybe LogState
+    , stLog :: String -> IO ()
     , stSocket :: Socket
     }
 
@@ -210,29 +204,17 @@ newState :: Word32 -> Socket -> Maybe (String -> IO ()) -> STM InternalState
 newState src sock logFunc = do
   seq <- newTVar 0
   cbacks <- newListArray (0, 255) (map noSeq [0..255])
-  lg <- mkLogState logFunc
+  let lg = mkLogState logFunc
   return $ InternalState { stSeq = seq
                          , stSource = src
                          , stCallbacks = cbacks
                          , stLog = lg
                          , stSocket = sock
                          }
-  where mkLogState Nothing = return Nothing
-        mkLogState (Just f) = do
-          q <- newTQueue
-          return $ LogState f q
+  where mkLogState Nothing = (\_ -> return ())
+        mkLogState (Just f) = f
         noSeq i st sa _ _ =
           logIO $ "No callback for sequence #" ++ show i ++ strFrom sa
-
-log :: InternalState -> String -> STM ()
-log st s = doLog (stLog st)
-  where doLog Nothing = return ()
-        doLog (Just (LogState _ q)) = writeTQueue q s
-
-logIO :: InternalState -> String -> IO ()
-logIO st = doLog (stLog st)
-  where doLog Nothing = (\_ -> return ())
-        doLog (Just lg) = lsFunc lg
 
 newHdr :: InternalState -> STM Header
 newHdr st = do
@@ -293,7 +275,7 @@ wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
         f (Right payload) = bulb (ssService payload) (ssPort payload)
         frm = strFrom sa
         bulb serv port
-          | serv /= serviceUDP = logIO st $ "service: expected "
+          | serv /= serviceUDP = stLog st $ "service: expected "
                                  ++ show serviceUDP ++ " but got "
                                  ++ show serv ++ frm
           | otherwise = cb $ Bulb (substPort sa port) (Target $ hdrTarget hdr)
