@@ -12,6 +12,7 @@ import qualified Data.IntMap.Strict as IM (empty)
 import Data.Word
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Network.Socket.ByteString
+import qualified STMContainers.Map as STMap
 import Text.Printf
 
 {- This is a combination of the parts called "Frame", "Frame Address",
@@ -190,27 +191,59 @@ serializeMsg hdr payload = hdrBs `append` payloadBS
 
 type Callback = InternalState -> SockAddr -> Header -> ByteString -> IO ()
 
+data LogState
+  = LogState
+    { lsFunc :: String -> IO ()
+      lsQueue :: TQueue String
+    }
+
 data InternalState
   = InternalState
-    { stSeq :: !Word8
+    { stSeq :: TVar Word8
     , stSource :: !Word32
-    , stCallbacks :: IntMap Callback
-    , stLog :: String -> IO ()
+    , stCallbacks :: STMap.Map Word8 Callback
+    , stLog :: Maybe LogState
     , stSocket :: Socket
     }
 
-dfltState = InternalState { stSeq = 0
-                          , stSource = 37619
-                          , stCallbacks = IM.empty
-                          , stLog = putStrLn
-                          , stSocket = undefined
-                          }
+newState :: Word32 -> Socket -> Maybe (String -> IO ()) -> STM InternalState
+newState src sock logFunc = do
+  seq <- newTVar 0
+  cbacks <- STMap.new
+  lg <- mkLogState logFunc
+  return $ InternalState { stSeq = seq
+                         , stSource = src
+                         , stCallbacks = cbacks
+                         , stLog = lg
+                         , stSocket = sock
+                         }
+  where mkLogState Nothing = return Nothing
+        mkLogState (Just f) = do
+          q <- newTQueue
+          return $ LogState f q
 
-newHdr :: InternalState -> (InternalState, Header)
-newHdr st = (newSt, hdr)
-  where seq = stSeq st
-        newSt = st { stSeq = seq + 1 }
-        hdr = dfltHdr { hdrSource = stSource st , hdrSequence = seq }
+log :: InternalState -> String -> STM ()
+log st s = doLog (stLog st)
+  where doLog Nothing = return ()
+        doLog (Just (LogState _ q)) = writeTQueue q s
+
+logIO :: InternalState -> String -> IO ()
+logIO st = doLog (stLog st)
+  where doLog Nothing = (\_ -> return ())
+        doLog (Just lg) = lsFunc lg
+
+newHdr :: InternalState -> STM Header
+newHdr st = do
+  let seq = stSeq st
+  n <- readTVar seq
+  writeTVar seq (n + 1)
+  return $ dfltHdr { hdrSource = stSource st , hdrSequence = n }
+
+registerCallback :: InternalState -> Header -> Callback -> STM ()
+registerCallback st hdr cb = do
+  let seq = fromIntegral $ hdrSequence hdr
+  
+
 
 registerCallback :: InternalState -> Header -> Callback -> InternalState
 registerCallback st hdr cb = st { stCallbacks = cbacks' }
