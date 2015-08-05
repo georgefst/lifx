@@ -1,5 +1,6 @@
 import Control.Applicative
 import Control.Monad
+import Data.Array.MArray
 import Data.Binary
 import Data.Binary.Put
 import Data.Binary.Get
@@ -12,7 +13,6 @@ import qualified Data.IntMap.Strict as IM (empty)
 import Data.Word
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Network.Socket.ByteString
-import qualified STMContainers.Map as STMap
 import Text.Printf
 
 {- This is a combination of the parts called "Frame", "Frame Address",
@@ -201,7 +201,7 @@ data InternalState
   = InternalState
     { stSeq :: TVar Word8
     , stSource :: !Word32
-    , stCallbacks :: STMap.Map Word8 Callback
+    , stCallbacks :: TArray Word8 Callback
     , stLog :: Maybe LogState
     , stSocket :: Socket
     }
@@ -209,7 +209,7 @@ data InternalState
 newState :: Word32 -> Socket -> Maybe (String -> IO ()) -> STM InternalState
 newState src sock logFunc = do
   seq <- newTVar 0
-  cbacks <- STMap.new
+  cbacks <- newListArray (0, 255) (map noSeq [0..255])
   lg <- mkLogState logFunc
   return $ InternalState { stSeq = seq
                          , stSource = src
@@ -221,6 +221,8 @@ newState src sock logFunc = do
         mkLogState (Just f) = do
           q <- newTQueue
           return $ LogState f q
+        noSeq i st sa _ _ =
+          logIO $ "No callback for sequence #" ++ show i ++ strFrom sa
 
 log :: InternalState -> String -> STM ()
 log st s = doLog (stLog st)
@@ -240,16 +242,8 @@ newHdr st = do
   return $ dfltHdr { hdrSource = stSource st , hdrSequence = n }
 
 registerCallback :: InternalState -> Header -> Callback -> STM ()
-registerCallback st hdr cb = do
-  let seq = fromIntegral $ hdrSequence hdr
-  
-
-
-registerCallback :: InternalState -> Header -> Callback -> InternalState
-registerCallback st hdr cb = st { stCallbacks = cbacks' }
-  where cbacks = stCallbacks st
-        seq = fromIntegral $ hdrSequence hdr
-        cbacks' = insert seq cb cbacks
+registerCallback st hdr cb =
+  writeArray (stCallbacks st) (hdrSequence hdr) cb
 
 -- resorted to this weird thing to fix type errors
 contortedDecode :: Binary a => ByteString -> (a, Either String Int64)
@@ -278,7 +272,7 @@ strFrom sa = " (from " ++ show sa ++ ")"
 
 wrapCallback :: (MessageType a, Binary a) => (Header -> a -> IO ()) -> Callback
 wrapCallback cb st sa hdr bs = f $ checkHeaderFields hdr bs
-  where f (Left msg) = stLog st $ msg ++ strFrom sa
+  where f (Left msg) = LogIO st $ msg ++ strFrom sa
         f (Right payload) = cb hdr payload
 
 serviceUDP = 1
@@ -299,7 +293,7 @@ wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
         f (Right payload) = bulb (ssService payload) (ssPort payload)
         frm = strFrom sa
         bulb serv port
-          | serv /= serviceUDP = stLog st $ "service: expected "
+          | serv /= serviceUDP = logIO st $ "service: expected "
                                  ++ show serviceUDP ++ " but got "
                                  ++ show serv ++ frm
           | otherwise = cb $ Bulb (substPort sa port) (Target $ hdrTarget hdr)
@@ -309,23 +303,23 @@ wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
 wrapAndRegister :: (MessageType a, Binary a)
                    => InternalState -> Header
                    -> (Header -> a -> IO ())
-                   -> InternalState
+                   -> STM ()
 wrapAndRegister st hdr cb = registerCallback st hdr $ wrapCallback cb
 
 newHdrAndCallback :: (MessageType a, Binary a)
                      => InternalState
                      -> (Header -> a -> IO ())
-                     -> (InternalState, Header)
-newHdrAndCallback st cb = (st'', hdr)
-  where (st', hdr) = newHdr st
-        st'' = wrapAndRegister st' hdr cb
+                     -> STM Header
+newHdrAndCallback st cb = do
+  hdr <- newHdr st
+  wrapAndRegister st hdr cb
 
 newHdrAndCbDiscovery :: InternalState
                         -> (Bulb -> IO ())
-                        -> (InternalState, Header)
-newHdrAndCbDiscovery st cb = (st'', hdr)
-  where (st', hdr) = newHdr st
-        st'' = registerCallback st' hdr $ wrapStateService cb
+                        -> STM Header
+newHdrAndCbDiscovery st cb = do
+  hdr <- newHdr st
+  registerCallback st hdr $ wrapStateService cb
 
 runCallback :: InternalState -> SockAddr -> ByteString -> IO ()
 runCallback st sa bs =
@@ -336,18 +330,19 @@ runCallback st sa bs =
          len = L.length bs
          hsrc = hdrSource hdr
          ssrc = stSource st
-         seq = fromIntegral (hdrSequence hdr)
+         seq = hdrSequence hdr
          cbacks = stCallbacks st
          frm = strFrom sa
-         notFound _ _ _ _ =
-           stLog st $ "No callback for sequence #" ++ show seq ++ frm
      in if hsz /= len
         then stLog st $ "length mismatch: " ++ show hsz
              ++ " /= " ++ show len ++ frm
         else if hsrc /= ssrc
              then stLog st $ "source mismatch: " ++ show hsrc
                   ++ " /= " ++ show ssrc ++ frm
-             else findWithDefault notFound seq cbacks st sa hdr bs'
+             else runIt seq cbacks st sa hdr bs'
+  where runIt seq cbacks hdr bs' = do
+          cb <- atomically $ readArray seq cbacks
+          cb st sa hdr bs'
 
 sendMsg :: (MessageType a, Binary a)
            => InternalState -> Bulb -> Header -> a
@@ -357,12 +352,12 @@ sendMsg st (Bulb sa (Target targ)) hdr payload =
   where hdr' = hdr { hdrTarget = targ }
         pkt = serializeMsg hdr' payload
 
-discovery :: InternalState -> (InternalState, ByteString)
-discovery st = (st', bs)
-  where (st', hdr) = newHdrAndCbDiscovery st cb
-        hdr' = hdr { hdrTagged = True }
-        bs = serializeMsg hdr' GetService
-        cb bulb = putStrLn (show bulb)
+discovery :: InternalState -> STM ByteString
+discovery st = do
+  let cb bulb = putStrLn (show bulb)
+  hdr <- newHdrAndCbDiscovery st cb
+  let hdr' = hdr { hdrTagged = True }
+  return $ serializeMsg hdr' GetService
 
 ethMtu = 1500
 
