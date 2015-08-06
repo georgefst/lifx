@@ -320,13 +320,13 @@ runCallback st sa bs =
          frm = strFrom sa
      in if hsz /= len
         then stLog st $ "length mismatch: " ++ show hsz
-             ++ " /= " ++ show len ++ frm
+             ++ " ≠ " ++ show len ++ frm
         else if hsrc /= ssrc
              then stLog st $ "source mismatch: " ++ show hsrc
-                  ++ " /= " ++ show ssrc ++ frm
+                  ++ " ≠ " ++ show ssrc ++ frm
              else runIt seq cbacks hdr bs'
   where runIt seq cbacks hdr bs' = do
-          cb <- atomically $ readArray seq cbacks
+          cb <- atomically $ readArray cbacks seq
           cb st sa hdr bs'
 
 sendMsg :: (MessageType a, Binary a)
