@@ -201,6 +201,9 @@ data InternalState
     , stSocket :: Socket
     }
 
+instance Show InternalState where
+  show _ = "(InternalState)"
+
 newState :: Word32 -> Socket -> Maybe (String -> IO ()) -> STM InternalState
 newState src sock logFunc = do
   seq <- newTVar 0
@@ -268,7 +271,7 @@ instance Show Target where
           -- mac address seems to be backwards
           colonize (c1:c2:rest) = colonize rest ++ [':', c1, c2]
 
-data Bulb = Bulb SockAddr Target deriving Show
+data Bulb = Bulb InternalState SockAddr Target deriving Show
 
 wrapStateService :: (Bulb -> IO ()) -> Callback
 wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
@@ -279,7 +282,7 @@ wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
           | serv /= serviceUDP = stLog st $ "service: expected "
                                  ++ show serviceUDP ++ " but got "
                                  ++ show serv ++ frm
-          | otherwise = cb $ Bulb (substPort sa port) (Target $ hdrTarget hdr)
+          | otherwise = cb $ Bulb st (substPort sa port) (Target $ hdrTarget hdr)
         substPort (SockAddrInet _ ha) port = SockAddrInet (fromIntegral port) ha
         substPort other _ = other
 
@@ -330,17 +333,27 @@ runCallback st sa bs =
           cb st sa hdr bs'
 
 sendMsg :: (MessageType a, Binary a)
-           => InternalState -> Bulb -> Header -> a
+           => Bulb -> Header -> a
            -> IO ()
-sendMsg st (Bulb sa (Target targ)) hdr payload =
+sendMsg (Bulb st sa (Target targ)) hdr payload =
   sendManyTo (stSocket st) (toChunks pkt) sa
   where hdr' = hdr { hdrTarget = targ }
         pkt = serializeMsg hdr' payload
 
+doGetHostInfo :: Bulb -> (StateHostInfo -> IO ()) -> IO ()
+doGetHostInfo bulb@(Bulb st _ _) cb = do
+  hdr <- atomically $ newHdrAndCallback st (const cb)
+  sendMsg bulb hdr GetHostInfo
+
+myCb :: Bulb -> IO ()
+myCb bulb = do
+  putStrLn (show bulb)
+  doGetHostInfo bulb $ \shi -> do
+    putStrLn (show shi)
+
 discovery :: InternalState -> STM ByteString
 discovery st = do
-  let cb bulb = putStrLn (show bulb)
-  hdr <- newHdrAndCbDiscovery st cb
+  hdr <- newHdrAndCbDiscovery st myCb
   let hdr' = hdr { hdrTagged = True }
   return $ serializeMsg hdr' GetService
 
@@ -357,6 +370,7 @@ main = do
   st <- atomically $ newState 37619 sock (Just putStrLn)
   pkt <- atomically $ discovery st
   sendManyTo sock (toChunks pkt) bcast
-  (bs, sa) <- recvFrom sock ethMtu
-  runCallback st sa $ fromStrict bs
-  close sock
+  forever $ do
+    (bs, sa) <- recvFrom sock ethMtu
+    runCallback st sa $ fromStrict bs
+  -- close sock
