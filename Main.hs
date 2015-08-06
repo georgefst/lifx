@@ -156,7 +156,7 @@ instance Binary StateService where
 data GetHostInfo = GetHostInfo
 
 instance MessageType GetHostInfo where
-  msgType _ = 12
+  msgType _ = 16 -- 12
 
 instance Binary GetHostInfo where
   put _ = return ()
@@ -171,7 +171,7 @@ data StateHostInfo
     } deriving Show
 
 instance MessageType StateHostInfo where
-  msgType _ = 13
+  msgType _ = 17 -- 13
 
 instance Binary StateHostInfo where
   put x = do
@@ -182,6 +182,25 @@ instance Binary StateHostInfo where
 
   get =
     StateHostInfo <$> getWord32le <*> getWord32le <*> getWord32le <*> getWord16le
+
+data SetPower = SetPower { spLevel :: !Word16 }
+
+instance MessageType SetPower where
+  msgType _ = 21
+
+instance Binary SetPower where
+  put x = putWord16le $ spLevel x
+
+  get = SetPower <$> getWord16le
+
+data Acknowledgement = Acknowledgement
+
+instance MessageType Acknowledgement where
+  msgType _ = 45
+
+instance Binary Acknowledgement where
+  put _ = return ()
+  get = return Acknowledgement
 
 serializeMsg :: (MessageType a, Binary a) => Header -> a -> ByteString
 serializeMsg hdr payload = hdrBs `append` payloadBS
@@ -345,11 +364,26 @@ doGetHostInfo bulb@(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetHostInfo
 
+needAck :: Header -> Header
+needAck hdr = hdr { hdrAckRequired = True }
+
+ackCb :: IO () -> Header -> Acknowledgement -> IO ()
+ackCb cb hdr ack = cb
+
+doSetPower :: Bulb -> Bool -> IO () -> IO ()
+doSetPower bulb@(Bulb st _ _) pwr cb = do
+  hdr <- atomically $ newHdrAndCallback st (ackCb cb)
+  sendMsg bulb (needAck hdr) (SetPower $ f pwr)
+  where f True = 0xffff
+        f False = 0
+
 myCb :: Bulb -> IO ()
 myCb bulb = do
   putStrLn (show bulb)
   doGetHostInfo bulb $ \shi -> do
     putStrLn (show shi)
+    doSetPower bulb True $ do
+      putStrLn "done!"
 
 discovery :: InternalState -> STM ByteString
 discovery st = do
