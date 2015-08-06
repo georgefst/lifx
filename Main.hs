@@ -1,14 +1,15 @@
 import Control.Applicative
+import Control.Concurrent.STM
 import Control.Monad
 import Data.Array.MArray
 import Data.Binary
 import Data.Binary.Put
 import Data.Binary.Get
 import Data.Bits
-import Data.ByteString.Lazy hiding (length, putStrLn, empty)
+import Data.ByteString.Lazy hiding (length, putStrLn, empty, map)
 import qualified Data.ByteString.Lazy as L (length)
 import Data.Int
-import Data.IntMap.Strict hiding (empty)
+-- import Data.IntMap.Strict hiding (empty)
 import qualified Data.IntMap.Strict as IM (empty)
 import Data.Word
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
@@ -214,7 +215,7 @@ newState src sock logFunc = do
   where mkLogState Nothing = (\_ -> return ())
         mkLogState (Just f) = f
         noSeq i st sa _ _ =
-          logIO $ "No callback for sequence #" ++ show i ++ strFrom sa
+          stLog st $ "No callback for sequence #" ++ show i ++ strFrom sa
 
 newHdr :: InternalState -> STM Header
 newHdr st = do
@@ -254,7 +255,7 @@ strFrom sa = " (from " ++ show sa ++ ")"
 
 wrapCallback :: (MessageType a, Binary a) => (Header -> a -> IO ()) -> Callback
 wrapCallback cb st sa hdr bs = f $ checkHeaderFields hdr bs
-  where f (Left msg) = LogIO st $ msg ++ strFrom sa
+  where f (Left msg) = stLog st $ msg ++ strFrom sa
         f (Right payload) = cb hdr payload
 
 serviceUDP = 1
@@ -295,6 +296,7 @@ newHdrAndCallback :: (MessageType a, Binary a)
 newHdrAndCallback st cb = do
   hdr <- newHdr st
   wrapAndRegister st hdr cb
+  return hdr
 
 newHdrAndCbDiscovery :: InternalState
                         -> (Bulb -> IO ())
@@ -302,6 +304,7 @@ newHdrAndCbDiscovery :: InternalState
 newHdrAndCbDiscovery st cb = do
   hdr <- newHdr st
   registerCallback st hdr $ wrapStateService cb
+  return hdr
 
 runCallback :: InternalState -> SockAddr -> ByteString -> IO ()
 runCallback st sa bs =
@@ -321,7 +324,7 @@ runCallback st sa bs =
         else if hsrc /= ssrc
              then stLog st $ "source mismatch: " ++ show hsrc
                   ++ " /= " ++ show ssrc ++ frm
-             else runIt seq cbacks st sa hdr bs'
+             else runIt seq cbacks hdr bs'
   where runIt seq cbacks hdr bs' = do
           cb <- atomically $ readArray seq cbacks
           cb st sa hdr bs'
@@ -351,7 +354,8 @@ main = do
       myHints = defaultHints { addrFlags = flags }
   (ai:_ ) <- getAddrInfo (Just myHints) (Just "192.168.11.255") (Just "56700")
   let bcast = addrAddress ai
-      (st, pkt) = discovery dfltState
+  st <- atomically $ newState 37619 sock (Just putStrLn)
+  pkt <- atomically $ discovery st
   sendManyTo sock (toChunks pkt) bcast
   (bs, sa) <- recvFrom sock ethMtu
   runCallback st sa $ fromStrict bs
