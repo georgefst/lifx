@@ -267,6 +267,26 @@ instance Binary StateLight where
     skip 8 -- Reserved64 (tags)
     return $ StateLight color power label
 
+data SetColor =
+  SetColor
+  { -- Reserved8 (stream)
+    scColor :: HSBK
+  , scDuration :: !Word32
+  }
+
+instance MessageType SetColor where
+  msgType _ = 102
+
+instance Binary SetColor where
+  put x = do
+    putWord8 0 -- Reserved8 (stream)
+    put $ scColor x
+    putWord32le $ scDuration x
+
+  get = do
+    skip 1 -- Reserved8 (stream)
+    SetColor <$> get <*> getWord32le
+
 serializeMsg :: (MessageType a, Binary a) => Header -> a -> ByteString
 serializeMsg hdr payload = hdrBs `append` payloadBS
   where payloadBS = encode payload
@@ -447,6 +467,11 @@ doSetPower bulb@(Bulb st _ _) pwr cb = do
   where f True = 0xffff
         f False = 0
 
+doSetColor :: Bulb -> HSBK -> Word32 -> IO () -> IO ()
+doSetColor bulb@(Bulb st _ _) color duration cb = do
+  hdr <- atomically $ newHdrAndCallback st (ackCb cb)
+  sendMsg bulb (needAck hdr) (SetColor color duration)
+
 myCb :: Bulb -> IO ()
 myCb bulb = do
   putStrLn (show bulb)
@@ -455,7 +480,8 @@ myCb bulb = do
     doGetLight bulb $ \sl -> do
       putStrLn (show sl)
       doSetPower bulb True $ do
-        putStrLn "done!"
+        doSetColor bulb (HSBK 0 65535 65535 9000) 10000 $ do
+          putStrLn "done!"
 
 discovery :: InternalState -> STM ByteString
 discovery st = do
