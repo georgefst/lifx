@@ -6,8 +6,9 @@ import Data.Binary
 import Data.Binary.Put
 import Data.Binary.Get
 import Data.Bits
-import Data.ByteString.Lazy hiding (length, putStrLn, empty, map)
-import qualified Data.ByteString.Lazy as L (length)
+import Data.ByteString.Lazy hiding (length, putStrLn, empty, map, take, replicate)
+import qualified Data.ByteString.Lazy as L (length, take, replicate)
+import Data.Char
 import Data.Int
 -- import Data.IntMap.Strict hiding (empty)
 import qualified Data.IntMap.Strict as IM (empty)
@@ -156,7 +157,7 @@ instance Binary StateService where
 data GetHostInfo = GetHostInfo
 
 instance MessageType GetHostInfo where
-  msgType _ = 16 -- 12
+  msgType _ = 12
 
 instance Binary GetHostInfo where
   put _ = return ()
@@ -171,7 +172,7 @@ data StateHostInfo
     } deriving Show
 
 instance MessageType StateHostInfo where
-  msgType _ = 17 -- 13
+  msgType _ = 13
 
 instance Binary StateHostInfo where
   put x = do
@@ -201,6 +202,70 @@ instance MessageType Acknowledgement where
 instance Binary Acknowledgement where
   put _ = return ()
   get = return Acknowledgement
+
+data GetLight = GetLight
+
+instance MessageType GetLight where
+  msgType _ = 101
+
+instance Binary GetLight where
+  put _ = return ()
+  get = return GetLight
+
+data HSBK =
+  HSBK
+  { hue :: !Word16
+  , saturation :: !Word16
+  , brightness :: !Word16
+  , kelvin :: !Word16
+  } deriving Show
+
+instance Binary HSBK where
+  put x = do
+    putWord16le $ hue x
+    putWord16le $ saturation x
+    putWord16le $ brightness x
+    putWord16le $ kelvin x
+
+  get = HSBK <$> getWord16le <*> getWord16le <*> getWord16le <*> getWord16le
+
+labelSize = 32
+
+padByteString :: Int64 -> ByteString -> ByteString
+padByteString goal bs = f (l `compare` goal)
+  where l = L.length bs
+        f LT = bs `append` pad
+        f EQ = bs
+        f GT = L.take goal bs
+        pad = L.replicate (goal - l) (fromIntegral $ ord ' ')
+
+data StateLight =
+  StateLight
+  { slColor :: HSBK
+    -- Reserved16 (dim)
+  , slPower :: !Word16
+  , slLabel :: ByteString -- 32 bytes (aka labelSize)
+    -- Reserved64 (tags)
+  } deriving Show
+
+instance MessageType StateLight where
+  msgType _ = 107
+
+instance Binary StateLight where
+  put x = do
+    put $ slColor x
+    putWord16le 0 -- Reserved16 (dim)
+    putWord16le $ slPower x
+    putLazyByteString $ padByteString labelSize $ slLabel x
+    putWord64le 0 -- Reserved64 (tags)
+
+  get = do
+    color <- get
+    skip 2 -- Reserved16 (dim)
+    power <- getWord16le
+    label <- getLazyByteString labelSize
+    skip 8 -- Reserved64 (tags)
+    return $ StateLight color power label
 
 serializeMsg :: (MessageType a, Binary a) => Header -> a -> ByteString
 serializeMsg hdr payload = hdrBs `append` payloadBS
@@ -364,6 +429,11 @@ doGetHostInfo bulb@(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetHostInfo
 
+doGetLight :: Bulb -> (StateLight -> IO ()) -> IO ()
+doGetLight bulb @(Bulb st _ _) cb = do
+  hdr <- atomically $ newHdrAndCallback st (const cb)
+  sendMsg bulb hdr GetLight
+
 needAck :: Header -> Header
 needAck hdr = hdr { hdrAckRequired = True }
 
@@ -382,8 +452,10 @@ myCb bulb = do
   putStrLn (show bulb)
   doGetHostInfo bulb $ \shi -> do
     putStrLn (show shi)
-    doSetPower bulb True $ do
-      putStrLn "done!"
+    doGetLight bulb $ \sl -> do
+      putStrLn (show sl)
+      doSetPower bulb True $ do
+        putStrLn "done!"
 
 discovery :: InternalState -> STM ByteString
 discovery st = do
@@ -394,6 +466,7 @@ discovery st = do
 ethMtu = 1500
 
 main = do
+  putStrLn "Hello!"
   sock <- socket AF_INET Datagram defaultProtocol
   bind sock $ SockAddrInet aNY_PORT iNADDR_ANY
   when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
