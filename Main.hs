@@ -158,7 +158,7 @@ instance Binary StateService where
 data GetHostInfo = GetHostInfo
 
 instance MessageType GetHostInfo where
-  msgType _ = 12
+  msgType _ = 16 -- 12
 
 instance Binary GetHostInfo where
   put _ = return ()
@@ -179,7 +179,7 @@ data StateHostInfo
     } deriving Show
 
 instance MessageType StateHostInfo where
-  msgType _ = 13
+  msgType _ = 17 -- 13
 
 instance Binary StateHostInfo where
   put x = do
@@ -294,16 +294,40 @@ instance Binary SetColor where
     skip 1 -- Reserved8 (stream)
     SetColor <$> get <*> getWord32le
 
+data Waveform = Saw | Sine | HalfSine | Triangle | Pulse deriving (Show, Enum)
+
 data SetWaveform =
   SetWaveform
   { -- Reserved8 (stream)
     swTransient :: !Bool
   , swColor :: HSBK
   , swPeriod :: !Word32
-  , swCycles :: !Word32 -- really Float32
+  , swCycles :: !Float
   , swSkewRatio :: !Word16
-  , swWaveform :: !Word8
+  , swWaveform :: Waveform
   } deriving Show
+
+instance MessageType SetWaveform where
+  msgType _ = 103
+
+instance Binary SetWaveform where
+  put x = do
+    putWord8 0 -- Reserved8 (stream)
+    putWord8 (if swTransient x then 1 else 0)
+    put $ swColor x
+    putWord32le $ swPeriod x
+    putFloat32le $ swCycles x
+    putWord16le $ swSkewRatio x
+    putWord8 $ fromIntegral $ fromEnum $ swWaveform x
+
+  get = do
+    skip 1 -- Reserved8 (stream)
+    t <- getWord8
+    let trans = (t /= 0)
+    x <- (SetWaveform trans) <$> get <*> getWord32le
+         <*> getFloat32le <*> getWord16le
+    w <- getWord8
+    return (x $ toEnum $ fromIntegral w)
 
 serializeMsg :: (MessageType a, Binary a) => Header -> a -> ByteString
 serializeMsg hdr payload = hdrBs `append` payloadBS
@@ -490,6 +514,11 @@ doSetColor bulb@(Bulb st _ _) color duration cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
   sendMsg bulb (needAck hdr) (SetColor color duration)
 
+doSetWaveform :: Bulb -> SetWaveform -> IO () -> IO ()
+doSetWaveform bulb@(Bulb st _ _) swf cb = do
+  hdr <- atomically $ newHdrAndCallback st (ackCb cb)
+  sendMsg bulb (needAck hdr) swf
+
 myCb :: Bulb -> IO ()
 myCb bulb = do
   putStrLn (show bulb)
@@ -499,6 +528,8 @@ myCb bulb = do
       putStrLn (show sl)
       doSetPower bulb True $ do
         -- doSetColor bulb (HSBK 0 65535 65535 9000) 10000 $ do
+        let swf = SetWaveform True (HSBK 0 65535 65535 9000) 1000 10 32637 Sine
+        doSetWaveform bulb swf $ do
           putStrLn "done!"
 
 discovery :: InternalState -> STM ByteString
