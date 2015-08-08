@@ -527,10 +527,10 @@ myCb bulb = do
     doGetLight bulb $ \sl -> do
       putStrLn (show sl)
       doSetPower bulb True $ do
-        -- doSetColor bulb (HSBK 0 65535 65535 9000) 10000 $ do
-        let swf = SetWaveform True (HSBK 0 65535 65535 9000) 1000 10 32637 Sine
-        doSetWaveform bulb swf $ do
-          putStrLn "done!"
+        doSetColor bulb (HSBK 32768 65535 65535 3000) 0 $ do
+          let swf = SetWaveform True (HSBK 0 65535 65535 3000) 2000 10 0 Pulse
+          doSetWaveform bulb swf $ do
+            putStrLn "done!"
 
 discovery :: InternalState -> STM ByteString
 discovery st = do
