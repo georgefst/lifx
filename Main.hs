@@ -11,7 +11,8 @@ import qualified Data.ByteString.Lazy as L (length, take, replicate)
 import Data.Char
 import Data.Int
 -- import Data.IntMap.Strict hiding (empty)
-import qualified Data.IntMap.Strict as IM (empty)
+-- import qualified Data.IntMap.Strict as IM (empty)
+import Data.ReinterpretCast
 import Data.Word
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Network.Socket.ByteString
@@ -163,12 +164,18 @@ instance Binary GetHostInfo where
   put _ = return ()
   get = return GetHostInfo
 
+putFloat32le :: Float -> Put
+putFloat32le f = putWord32le $ floatToWord f
+
+getFloat32le :: Get Float
+getFloat32le = wordToFloat <$> getWord32le
+
 data StateHostInfo
   = StateHostInfo
-    { shiSignal :: !Word32 -- Float; use reinterpret-cast package
+    { shiSignal :: !Float
     , shiTX :: !Word32
     , shiRX :: !Word32
-    , shiMcuTemperature :: !Word16 -- Int16; use unsafe-coerce
+    , shiMcuTemperature :: !Word16 -- Int16; use fromIntegral
     } deriving Show
 
 instance MessageType StateHostInfo where
@@ -176,13 +183,13 @@ instance MessageType StateHostInfo where
 
 instance Binary StateHostInfo where
   put x = do
-    putWord32le $ shiSignal x
+    putFloat32le $ shiSignal x
     putWord32le $ shiTX x
     putWord32le $ shiRX x
     putWord16le $ shiMcuTemperature x
 
   get =
-    StateHostInfo <$> getWord32le <*> getWord32le <*> getWord32le <*> getWord16le
+    StateHostInfo <$> getFloat32le <*> getWord32le <*> getWord32le <*> getWord16le
 
 data SetPower = SetPower { spLevel :: !Word16 }
 
