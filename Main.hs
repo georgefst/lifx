@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 import Control.Applicative
 import Control.Concurrent.STM
 import Control.Monad
@@ -10,8 +12,6 @@ import Data.ByteString.Lazy hiding (length, putStrLn, empty, map, take, replicat
 import qualified Data.ByteString.Lazy as L (length, take, replicate)
 import Data.Char
 import Data.Int
--- import Data.IntMap.Strict hiding (empty)
--- import qualified Data.IntMap.Strict as IM (empty)
 import Data.ReinterpretCast
 import Data.Word
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
@@ -170,12 +170,18 @@ putFloat32le f = putWord32le $ floatToWord f
 getFloat32le :: Get Float
 getFloat32le = wordToFloat <$> getWord32le
 
+putInt16le :: Int16 -> Put
+putInt16le i = putWord16le $ fromIntegral i
+
+getInt16le :: Get Int16
+getInt16le = fromIntegral <$> getWord16le
+
 data StateHostInfo
   = StateHostInfo
     { shiSignal :: !Float
     , shiTX :: !Word32
     , shiRX :: !Word32
-    , shiMcuTemperature :: !Word16 -- Int16; use fromIntegral
+    , shiMcuTemperature :: !Int16
     } deriving Show
 
 instance MessageType StateHostInfo where
@@ -186,10 +192,10 @@ instance Binary StateHostInfo where
     putFloat32le $ shiSignal x
     putWord32le $ shiTX x
     putWord32le $ shiRX x
-    putWord16le $ shiMcuTemperature x
+    putInt16le $ shiMcuTemperature x
 
   get =
-    StateHostInfo <$> getFloat32le <*> getWord32le <*> getWord32le <*> getWord16le
+    StateHostInfo <$> getFloat32le <*> getWord32le <*> getWord32le <*> getInt16le
 
 data SetPower = SetPower { spLevel :: !Word16 }
 
@@ -528,7 +534,8 @@ myCb bulb = do
       putStrLn (show sl)
       doSetPower bulb True $ do
         doSetColor bulb (HSBK 32768 65535 65535 3000) 0 $ do
-          let swf = SetWaveform True (HSBK 0 65535 65535 3000) 2000 10 0 Pulse
+          -- positive numbers mean more time spent on original color
+          let swf = SetWaveform False (HSBK 0 0 65535 9000) 1000 10 0 Pulse
           doSetWaveform bulb swf $ do
             putStrLn "done!"
 
