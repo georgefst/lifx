@@ -287,6 +287,17 @@ instance Binary SetColor where
     skip 1 -- Reserved8 (stream)
     SetColor <$> get <*> getWord32le
 
+data SetWaveform =
+  SetWaveform
+  { -- Reserved8 (stream)
+    swTransient :: !Bool
+  , swColor :: HSBK
+  , swPeriod :: !Word32
+  , swCycles :: !Word32 -- really Float32
+  , swSkewRatio :: !Word16
+  , swWaveform :: !Word8
+  } deriving Show
+
 serializeMsg :: (MessageType a, Binary a) => Header -> a -> ByteString
 serializeMsg hdr payload = hdrBs `append` payloadBS
   where payloadBS = encode payload
@@ -480,7 +491,7 @@ myCb bulb = do
     doGetLight bulb $ \sl -> do
       putStrLn (show sl)
       doSetPower bulb True $ do
-        doSetColor bulb (HSBK 0 65535 65535 9000) 10000 $ do
+        -- doSetColor bulb (HSBK 0 65535 65535 9000) 10000 $ do
           putStrLn "done!"
 
 discovery :: InternalState -> STM ByteString
