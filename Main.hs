@@ -309,7 +309,7 @@ data SetWaveform =
   , swColor :: HSBK
   , swPeriod :: !Word32
   , swCycles :: !Float
-  , swSkewRatio :: !Word16
+  , swDutyCycle :: !Int16
   , swWaveform :: Waveform
   } deriving Show
 
@@ -323,7 +323,7 @@ instance Binary SetWaveform where
     put $ swColor x
     putWord32le $ swPeriod x
     putFloat32le $ swCycles x
-    putWord16le $ swSkewRatio x
+    putInt16le $ swDutyCycle x
     putWord8 $ fromIntegral $ fromEnum $ swWaveform x
 
   get = do
@@ -331,7 +331,7 @@ instance Binary SetWaveform where
     t <- getWord8
     let trans = (t /= 0)
     x <- (SetWaveform trans) <$> get <*> getWord32le
-         <*> getFloat32le <*> getWord16le
+         <*> getFloat32le <*> getInt16le
     w <- getWord8
     return (x $ toEnum $ fromIntegral w)
 
@@ -535,7 +535,7 @@ myCb bulb = do
       doSetPower bulb True $ do
         doSetColor bulb (HSBK 32768 65535 65535 3000) 0 $ do
           -- positive numbers mean more time spent on original color
-          let swf = SetWaveform False (HSBK 0 0 65535 9000) 1000 10 0 Pulse
+          let swf = SetWaveform False (HSBK 0 0 65535 9000) 1000 10 (-20000) Pulse
           doSetWaveform bulb swf $ do
             putStrLn "done!"
 
