@@ -9,12 +9,19 @@ import Data.Bits
 import Data.ByteString.Lazy hiding (length, putStrLn, empty, map, take, replicate)
 import qualified Data.ByteString.Lazy as L (length, take, replicate)
 import Data.Char
+import Data.Hourglass
 import Data.Int
 import Data.ReinterpretCast
 import Data.Word
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Network.Socket.ByteString
 import Text.Printf
+
+myTime :: Word64 -> String
+myTime nanos =
+  let (q, r) = quotRem nanos 1000000000
+      elapp = ElapsedP (fromIntegral q) (fromIntegral r)
+  in timePrint ISO8601_DateAndTime elapp
 
 {- This is a combination of the parts called "Frame", "Frame Address",
    and "Protocol header" in the documentation:
@@ -575,6 +582,8 @@ myCb bulb = do
           doSetWaveform bulb swf $ do
             doGetHostFirmware bulb $ \shf -> do
               putStrLn (show shf)
+              let vHex = printf "%x" (shfVersion shf)
+              putStrLn $ "build " ++ (myTime $ shfBuild shf) ++ ", version " ++ vHex
               putStrLn "done!"
 
 discovery :: InternalState -> STM ByteString
