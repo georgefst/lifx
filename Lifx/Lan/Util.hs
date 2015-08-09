@@ -1,23 +1,16 @@
 module Lifx.Lan.Util where
 
-import Control.Applicative
-import Control.Concurrent.STM
-import Control.Monad
-import Data.Array.MArray
-import Data.Binary
-import Data.Binary.Put
-import Data.Binary.Get
-import Data.Bits
-import Data.ByteString.Lazy hiding (length, putStrLn, empty, map, take, replicate)
-import qualified Data.ByteString.Lazy as L (length, take, replicate)
-import Data.Char
-import Data.Hourglass
-import Data.Int
-import Data.ReinterpretCast
-import Data.Word
-import Network.Socket hiding (send, sendTo, recv, recvFrom)
-import Network.Socket.ByteString
-import Text.Printf
+import Control.Applicative ( (<$>) )
+import Control.Monad ( when )
+import Data.Binary ( Put, Get )
+import Data.Binary.Put ( putWord32le, putWord16le )
+import Data.Binary.Get ( getWord32le, getWord16le )
+import Data.Bits ( Bits((.&.), bit, shiftR, zeroBits) )
+import Data.ByteString.Lazy ( ByteString, append )
+import qualified Data.ByteString.Lazy as L
+    ( length, take, replicate )
+import Data.Int ( Int16, Int64 )
+import Data.ReinterpretCast ( wordToFloat, floatToWord )
 
 bounds :: (Integral a, Bits a, Show a) => String -> Int -> a -> Put
 bounds name n val =

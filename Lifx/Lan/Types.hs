@@ -1,23 +1,16 @@
 module Lifx.Lan.Types where
 
-import Control.Applicative
-import Control.Concurrent.STM
-import Control.Monad
-import Data.Array.MArray
+import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Data.Binary
-import Data.Binary.Put
-import Data.Binary.Get
-import Data.Bits
-import Data.ByteString.Lazy hiding (length, putStrLn, empty, map, take, replicate)
-import qualified Data.ByteString.Lazy as L (length, take, replicate)
-import Data.Char
-import Data.Hourglass
-import Data.Int
-import Data.ReinterpretCast
-import Data.Word
-import Network.Socket hiding (send, sendTo, recv, recvFrom)
-import Network.Socket.ByteString
-import Text.Printf
+    ( Binary(..),
+      putWord8,
+      getWord8,
+      encode )
+import Data.Binary.Put ( putWord64le, putWord32le, putWord16le )
+import Data.Binary.Get ( getWord64le, getWord32le, getWord16le )
+import Data.Bits ( Bits(shiftL, testBit) )
+import qualified Data.ByteString.Lazy as L ( length )
+import Data.Word ( Word8, Word16, Word32, Word64 )
 
 import Lifx.Lan.Util
 

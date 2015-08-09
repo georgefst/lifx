@@ -1,21 +1,29 @@
-import Control.Applicative
-import Control.Concurrent.STM
-import Control.Monad
-import Data.Array.MArray
-import Data.Binary
-import Data.Binary.Put
-import Data.Binary.Get
-import Data.Bits
-import Data.ByteString.Lazy hiding (length, putStrLn, empty, map, take, replicate)
-import qualified Data.ByteString.Lazy as L (length, take, replicate)
-import Data.Char
+import Control.Concurrent.STM ( STM, atomically )
+import Control.Monad ( when, forever )
+import Data.ByteString.Lazy ( ByteString, toChunks, fromStrict )
 import Data.Hourglass
-import Data.Int
-import Data.ReinterpretCast
-import Data.Word
-import Network.Socket hiding (send, sendTo, recv, recvFrom)
-import Network.Socket.ByteString
-import Text.Printf
+    ( ElapsedP(ElapsedP),
+      ISO8601_DateAndTime(ISO8601_DateAndTime),
+      timePrint )
+import Data.Word ( Word64 )
+import Network.Socket
+    ( SocketType(Datagram),
+      SockAddr(SockAddrInet),
+      Family(AF_INET),
+      SocketOption(Broadcast),
+      AddrInfoFlag(AI_NUMERICHOST, AI_NUMERICSERV),
+      AddrInfo(addrAddress, addrFlags),
+      socket,
+      setSocketOption,
+      isSupportedSocketOption,
+      iNADDR_ANY,
+      getAddrInfo,
+      defaultProtocol,
+      defaultHints,
+      bind,
+      aNY_PORT )
+import Network.Socket.ByteString ( sendManyTo, recvFrom )
+import Text.Printf ( printf )
 
 import Lifx.Lan.Util
 import Lifx.Lan.Types

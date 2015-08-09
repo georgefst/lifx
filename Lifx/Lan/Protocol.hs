@@ -1,23 +1,25 @@
 module Lifx.Lan.Protocol where
 
-import Control.Applicative
+import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Concurrent.STM
-import Control.Monad
-import Data.Array.MArray
+    ( STM, TArray, TVar, writeTVar, readTVar, newTVar, atomically )
+import Data.Array.MArray ( writeArray, readArray, newListArray )
 import Data.Binary
-import Data.Binary.Put
-import Data.Binary.Get
-import Data.Bits
-import Data.ByteString.Lazy hiding (length, putStrLn, empty, map, take, replicate)
-import qualified Data.ByteString.Lazy as L (length, take, replicate)
-import Data.Char
-import Data.Hourglass
-import Data.Int
-import Data.ReinterpretCast
-import Data.Word
-import Network.Socket hiding (send, sendTo, recv, recvFrom)
-import Network.Socket.ByteString
-import Text.Printf
+    ( Binary(..),
+      putWord8,
+      getWord8,
+      encode,
+      decodeOrFail )
+import Data.Binary.Put ( putWord32le )
+import Data.Binary.Get ( getWord32le )
+import Data.Bits ( Bits((.&.)) )
+import Data.ByteString.Lazy ( ByteString, toChunks, append )
+import qualified Data.ByteString.Lazy as L ( length )
+import Data.Int ( Int64 )
+import Data.Word ( Word8, Word32, Word64 )
+import Network.Socket ( Socket, SockAddr(SockAddrInet) )
+import Network.Socket.ByteString ( sendManyTo )
+import Text.Printf ( printf )
 
 import Lifx.Lan.Util
 import Lifx.Lan.Types

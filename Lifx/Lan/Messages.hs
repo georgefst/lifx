@@ -1,23 +1,16 @@
 module Lifx.Lan.Messages where
 
-import Control.Applicative
-import Control.Concurrent.STM
-import Control.Monad
-import Data.Array.MArray
+import Control.Applicative ( Applicative((<*>)), (<$>) )
+import Control.Concurrent.STM ( atomically )
 import Data.Binary
+    ( Binary(..), putWord8, getWord8 )
 import Data.Binary.Put
+    ( putWord64le, putWord32le, putWord16le, putLazyByteString )
 import Data.Binary.Get
-import Data.Bits
-import Data.ByteString.Lazy hiding (length, putStrLn, empty, map, take, replicate)
-import qualified Data.ByteString.Lazy as L (length, take, replicate)
-import Data.Char
-import Data.Hourglass
-import Data.Int
-import Data.ReinterpretCast
-import Data.Word
-import Network.Socket hiding (send, sendTo, recv, recvFrom)
-import Network.Socket.ByteString
-import Text.Printf
+    ( skip, getWord64le, getWord32le, getWord16le, getLazyByteString )
+import Data.ByteString.Lazy ( ByteString )
+import Data.Int ( Int16 )
+import Data.Word ( Word16, Word32, Word64 )
 
 import Lifx.Lan.Util
 import Lifx.Lan.Types
