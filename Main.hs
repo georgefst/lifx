@@ -235,6 +235,40 @@ instance Binary StateHostFirmware where
     version <- getWord32le
     return $ StateHostFirmware build version
 
+
+data GetWifiFirmware = GetWifiFirmware
+
+instance MessageType GetWifiFirmware where
+  msgType _ = 18
+
+instance Binary GetWifiFirmware where
+  put _ = return ()
+  get = return GetWifiFirmware
+
+
+data StateWifiFirmware
+  = StateWifiFirmware
+    { swfBuild :: !Word64
+      -- Reserved64
+    , swfVersion :: !Word32
+    } deriving Show
+
+instance MessageType StateWifiFirmware where
+  msgType _ = 19
+
+instance Binary StateWifiFirmware where
+  put x = do
+    putWord64le $ swfBuild x
+    putWord64le 0 -- Reserved64
+    putWord32le $ swfVersion x
+
+  get = do
+    build <- getWord64le
+    skip 8 -- Reserved64
+    version <- getWord32le
+    return $ StateWifiFirmware build version
+
+
 data SetPower = SetPower { spLevel :: !Word16 }
 
 instance MessageType SetPower where
@@ -540,6 +574,11 @@ doGetHostFirmware bulb@(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetHostFirmware
 
+doGetWifiFirmware :: Bulb -> (StateWifiFirmware -> IO ()) -> IO ()
+doGetWifiFirmware bulb@(Bulb st _ _) cb = do
+  hdr <- atomically $ newHdrAndCallback st (const cb)
+  sendMsg bulb hdr GetWifiFirmware
+
 doGetLight :: Bulb -> (StateLight -> IO ()) -> IO ()
 doGetLight bulb @(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
@@ -584,7 +623,11 @@ myCb bulb = do
               putStrLn (show shf)
               let vHex = printf "%x" (shfVersion shf)
               putStrLn $ "build " ++ (myTime $ shfBuild shf) ++ ", version " ++ vHex
-              putStrLn "done!"
+              doGetWifiFirmware bulb $ \swf -> do
+                putStrLn (show swf)
+                let vHex' = printf "%x" (swfVersion swf)
+                putStrLn $ "build " ++ (myTime $ swfBuild swf) ++ ", version " ++ vHex'
+                putStrLn "done!"
 
 discovery :: InternalState -> STM ByteString
 discovery st = do
