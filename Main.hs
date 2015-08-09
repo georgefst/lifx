@@ -279,6 +279,36 @@ instance Binary SetPower where
 
   get = SetPower <$> getWord16le
 
+
+data GetVersion = GetVersion
+
+instance MessageType GetVersion where
+  msgType _ = 32
+
+instance Binary GetVersion where
+  put _ = return ()
+  get = return GetVersion
+
+
+data StateVersion =
+  StateVersion
+  { svVendor :: !Word32
+  , svProduct :: !Word32
+  , svVersion :: !Word32
+  } deriving Show
+
+instance MessageType StateVersion where
+  msgType _ = 33
+
+instance Binary StateVersion where
+  put x = do
+    putWord32le $ svVendor x
+    putWord32le $ svProduct x
+    putWord32le $ svVersion x
+
+  get = StateVersion <$> getWord32le <*> getWord32le <*> getWord32le
+
+
 data Acknowledgement = Acknowledgement
 
 instance MessageType Acknowledgement where
@@ -287,6 +317,7 @@ instance MessageType Acknowledgement where
 instance Binary Acknowledgement where
   put _ = return ()
   get = return Acknowledgement
+
 
 data GetLight = GetLight
 
@@ -579,6 +610,11 @@ doGetWifiFirmware bulb@(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetWifiFirmware
 
+doGetVersion :: Bulb -> (StateVersion -> IO ()) -> IO ()
+doGetVersion bulb@(Bulb st _ _) cb = do
+  hdr <- atomically $ newHdrAndCallback st (const cb)
+  sendMsg bulb hdr GetVersion
+
 doGetLight :: Bulb -> (StateLight -> IO ()) -> IO ()
 doGetLight bulb @(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
@@ -627,7 +663,10 @@ myCb bulb = do
                 putStrLn (show swf)
                 let vHex' = printf "%x" (swfVersion swf)
                 putStrLn $ "build " ++ (myTime $ swfBuild swf) ++ ", version " ++ vHex'
-                putStrLn "done!"
+                doGetVersion bulb $ \sv -> do
+                  putStrLn (show sv)
+                  printf "%x %x %x\n" (svVendor sv) (svProduct sv) (svVersion sv)
+                  putStrLn "done!"
 
 discovery :: InternalState -> STM ByteString
 discovery st = do
