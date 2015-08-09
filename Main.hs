@@ -309,6 +309,35 @@ instance Binary StateVersion where
   get = StateVersion <$> getWord32le <*> getWord32le <*> getWord32le
 
 
+data GetInfo = GetInfo
+
+instance MessageType GetInfo where
+  msgType _ = 34
+
+instance Binary GetInfo where
+  put _ = return ()
+  get = return GetInfo
+
+
+data StateInfo =
+  StateInfo
+  { siTime :: !Word64
+  , siUptime :: !Word64
+  , siDowntime :: !Word64
+  } deriving Show
+
+instance MessageType StateInfo where
+  msgType _ = 35
+
+instance Binary StateInfo where
+  put x = do
+    putWord64le $ siTime x
+    putWord64le $ siUptime x
+    putWord64le $ siDowntime x
+
+  get = StateInfo <$> getWord64le <*> getWord64le <*> getWord64le
+
+
 data Acknowledgement = Acknowledgement
 
 instance MessageType Acknowledgement where
@@ -615,6 +644,11 @@ doGetVersion bulb@(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetVersion
 
+doGetInfo :: Bulb -> (StateInfo -> IO ()) -> IO ()
+doGetInfo bulb@(Bulb st _ _) cb = do
+  hdr <- atomically $ newHdrAndCallback st (const cb)
+  sendMsg bulb hdr GetInfo
+
 doGetLight :: Bulb -> (StateLight -> IO ()) -> IO ()
 doGetLight bulb @(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
@@ -666,7 +700,10 @@ myCb bulb = do
                 doGetVersion bulb $ \sv -> do
                   putStrLn (show sv)
                   printf "%x %x %x\n" (svVendor sv) (svProduct sv) (svVersion sv)
-                  putStrLn "done!"
+                  doGetInfo bulb $ \si -> do
+                    putStrLn (show si)
+                    putStrLn $ "current time = " ++ (myTime $ siTime si)
+                    putStrLn "done!"
 
 discovery :: InternalState -> STM ByteString
 discovery st = do
