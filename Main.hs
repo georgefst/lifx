@@ -1,5 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 import Control.Applicative
 import Control.Concurrent.STM
 import Control.Monad
@@ -158,7 +156,7 @@ instance Binary StateService where
 data GetHostInfo = GetHostInfo
 
 instance MessageType GetHostInfo where
-  msgType _ = 16 -- 12
+  msgType _ = 12
 
 instance Binary GetHostInfo where
   put _ = return ()
@@ -181,11 +179,11 @@ data StateHostInfo
     { shiSignal :: !Float
     , shiTX :: !Word32
     , shiRX :: !Word32
-    , shiMcuTemperature :: !Int16
+    , shiMcuTemperature :: !Int16 -- in hundredths of a degree Celsius
     } deriving Show
 
 instance MessageType StateHostInfo where
-  msgType _ = 17 -- 13
+  msgType _ = 13
 
 instance Binary StateHostInfo where
   put x = do
@@ -196,6 +194,39 @@ instance Binary StateHostInfo where
 
   get =
     StateHostInfo <$> getFloat32le <*> getWord32le <*> getWord32le <*> getInt16le
+
+
+data GetHostFirmware = GetHostFirmware
+
+instance MessageType GetHostFirmware where
+  msgType _ = 14
+
+instance Binary GetHostFirmware where
+  put _ = return ()
+  get = return GetHostFirmware
+
+
+data StateHostFirmware
+  = StateHostFirmware
+    { shfBuild :: !Word64
+      -- Reserved64
+    , shfVersion :: !Word32
+    } deriving Show
+
+instance MessageType StateHostFirmware where
+  msgType _ = 15
+
+instance Binary StateHostFirmware where
+  put x = do
+    putWord64le $ shfBuild x
+    putWord64le 0 -- Reserved64
+    putWord32le $ shfVersion x
+
+  get = do
+    build <- getWord64le
+    skip 8 -- Reserved64
+    version <- getWord32le
+    return $ StateHostFirmware build version
 
 data SetPower = SetPower { spLevel :: !Word16 }
 
@@ -497,6 +528,11 @@ doGetHostInfo bulb@(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetHostInfo
 
+doGetHostFirmware :: Bulb -> (StateHostFirmware -> IO ()) -> IO ()
+doGetHostFirmware bulb@(Bulb st _ _) cb = do
+  hdr <- atomically $ newHdrAndCallback st (const cb)
+  sendMsg bulb hdr GetHostFirmware
+
 doGetLight :: Bulb -> (StateLight -> IO ()) -> IO ()
 doGetLight bulb @(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
@@ -537,7 +573,9 @@ myCb bulb = do
           -- positive numbers mean more time spent on original color
           let swf = SetWaveform False (HSBK 0 0 65535 9000) 1000 10 (-20000) Pulse
           doSetWaveform bulb swf $ do
-            putStrLn "done!"
+            doGetHostFirmware bulb $ \shf -> do
+              putStrLn (show shf)
+              putStrLn "done!"
 
 discovery :: InternalState -> STM ByteString
 discovery st = do
