@@ -1,10 +1,14 @@
+{-# LANGUAGE StandaloneDeriving #-}
+
 import Control.Concurrent.STM ( STM, atomically )
 import Control.Monad ( when, forever )
 import Data.ByteString.Lazy ( ByteString, toChunks, fromStrict )
 import Data.Hourglass
+{-
     ( ElapsedP(ElapsedP),
       ISO8601_DateAndTime(ISO8601_DateAndTime),
       timePrint )
+-}
 import Data.Word ( Word64 )
 import Network.Socket
     ( SocketType(Datagram),
@@ -63,7 +67,18 @@ myCb bulb = do
                   getInfo bulb $ \si -> do
                     putStrLn (show si)
                     putStrLn $ "current time = " ++ (myTime $ siTime si)
+                    print $ nsToDuration $ fromIntegral $ siUptime si
+                    print $ nsToDuration $ fromIntegral $ siDowntime si
                     putStrLn "done!"
+
+deriving instance Show Duration
+
+nsToDuration :: NanoSeconds -> Duration
+nsToDuration (NanoSeconds ns) =
+  Duration (Hours hours) (Minutes minutes) (Seconds seconds) (NanoSeconds nanos)
+  where (s, nanos) = ns `quotRem` 1000000000
+        (m, seconds) = s `quotRem` 60
+        (hours, minutes) = m `quotRem` 60
 
 discovery :: Lan -> STM ByteString
 discovery st = do
