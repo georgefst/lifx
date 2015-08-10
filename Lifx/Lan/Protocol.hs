@@ -1,5 +1,5 @@
 module Lifx.Lan.Protocol
-    ( InternalState,
+    ( Lan,
       GetService(..),
       serializeMsg,
       newState,
@@ -68,10 +68,10 @@ instance Binary StateService where
 
 ----------------------------------------------------------
 
-type Callback = InternalState -> SockAddr -> Header -> L.ByteString -> IO ()
+type Callback = Lan -> SockAddr -> Header -> L.ByteString -> IO ()
 
-data InternalState
-  = InternalState
+data Lan
+  = Lan
     { stSeq :: TVar Word8
     , stSource :: !Word32
     , stCallbacks :: TArray Word8 Callback
@@ -79,8 +79,8 @@ data InternalState
     , stSocket :: Socket
     }
 
-instance Show InternalState where
-  show _ = "(InternalState)"
+instance Show Lan where
+  show _ = "(Lan)"
 
 newtype Target = Target Word64
 
@@ -90,7 +90,7 @@ instance Show Target where
           -- mac address seems to be backwards
           colonize (c1:c2:rest) = colonize rest ++ [':', c1, c2]
 
-data Bulb = Bulb InternalState SockAddr Target deriving Show
+data Bulb = Bulb Lan SockAddr Target deriving Show
 
 serviceUDP = 1
 
@@ -101,30 +101,30 @@ serializeMsg hdr payload = hdrBs `L.append` payloadBS
         hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
         hdrBs = encode hdr'
 
-newState :: Word32 -> Socket -> Maybe (String -> IO ()) -> STM InternalState
+newState :: Word32 -> Socket -> Maybe (String -> IO ()) -> STM Lan
 newState src sock logFunc = do
   seq <- newTVar 0
   cbacks <- newListArray (0, 255) (map noSeq [0..255])
   let lg = mkLogState logFunc
-  return $ InternalState { stSeq = seq
-                         , stSource = src
-                         , stCallbacks = cbacks
-                         , stLog = lg
-                         , stSocket = sock
-                         }
+  return $ Lan { stSeq = seq
+               , stSource = src
+               , stCallbacks = cbacks
+               , stLog = lg
+               , stSocket = sock
+               }
   where mkLogState Nothing = (\_ -> return ())
         mkLogState (Just f) = f
         noSeq i st sa _ _ =
           stLog st $ "No callback for sequence #" ++ show i ++ strFrom sa
 
-newHdr :: InternalState -> STM Header
+newHdr :: Lan -> STM Header
 newHdr st = do
   let seq = stSeq st
   n <- readTVar seq
   writeTVar seq (n + 1)
   return $ dfltHdr { hdrSource = stSource st , hdrSequence = n }
 
-registerCallback :: InternalState -> Header -> Callback -> STM ()
+registerCallback :: Lan -> Header -> Callback -> STM ()
 registerCallback st hdr cb =
   writeArray (stCallbacks st) (hdrSequence hdr) cb
 
@@ -172,13 +172,13 @@ wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
         substPort other _ = other
 
 wrapAndRegister :: (MessageType a, Binary a)
-                   => InternalState -> Header
+                   => Lan -> Header
                    -> (Header -> a -> IO ())
                    -> STM ()
 wrapAndRegister st hdr cb = registerCallback st hdr $ wrapCallback cb
 
 newHdrAndCallback :: (MessageType a, Binary a)
-                     => InternalState
+                     => Lan
                      -> (Header -> a -> IO ())
                      -> STM Header
 newHdrAndCallback st cb = do
@@ -186,7 +186,7 @@ newHdrAndCallback st cb = do
   wrapAndRegister st hdr cb
   return hdr
 
-newHdrAndCbDiscovery :: InternalState
+newHdrAndCbDiscovery :: Lan
                         -> (Bulb -> IO ())
                         -> STM Header
 newHdrAndCbDiscovery st cb = do
@@ -194,7 +194,7 @@ newHdrAndCbDiscovery st cb = do
   registerCallback st hdr $ wrapStateService cb
   return hdr
 
-runCallback :: InternalState -> SockAddr -> L.ByteString -> IO ()
+runCallback :: Lan -> SockAddr -> L.ByteString -> IO ()
 runCallback st sa bs =
   case decodeOrFail bs of
    Left (_, _, msg) -> stLog st msg

@@ -65,7 +65,7 @@ myCb bulb = do
                     putStrLn $ "current time = " ++ (myTime $ siTime si)
                     putStrLn "done!"
 
-discovery :: InternalState -> STM ByteString
+discovery :: Lan -> STM ByteString
 discovery st = do
   hdr <- newHdrAndCbDiscovery st myCb
   let hdr' = hdr { hdrTagged = True }
