@@ -40,27 +40,27 @@ myTime nanos =
 myCb :: Bulb -> IO ()
 myCb bulb = do
   putStrLn (show bulb)
-  doGetHostInfo bulb $ \shi -> do
+  getHostInfo bulb $ \shi -> do
     putStrLn (show shi)
-    doGetLight bulb $ \sl -> do
+    getLight bulb $ \sl -> do
       putStrLn (show sl)
-      doSetPower bulb True $ do
-        doSetColor bulb (HSBK 32768 65535 65535 3000) 0 $ do
+      setPower bulb True $ do
+        setColor bulb (HSBK 32768 65535 65535 3000) 0 $ do
           -- positive numbers mean more time spent on original color
           let swf = SetWaveform False (HSBK 0 0 65535 9000) 1000 10 (-20000) Pulse
-          doSetWaveform bulb swf $ do
-            doGetHostFirmware bulb $ \shf -> do
+          setWaveform bulb swf $ do
+            getHostFirmware bulb $ \shf -> do
               putStrLn (show shf)
               let vHex = printf "%x" (shfVersion shf)
               putStrLn $ "build " ++ (myTime $ shfBuild shf) ++ ", version " ++ vHex
-              doGetWifiFirmware bulb $ \swf -> do
+              getWifiFirmware bulb $ \swf -> do
                 putStrLn (show swf)
                 let vHex' = printf "%x" (swfVersion swf)
                 putStrLn $ "build " ++ (myTime $ swfBuild swf) ++ ", version " ++ vHex'
-                doGetVersion bulb $ \sv -> do
+                getVersion bulb $ \sv -> do
                   putStrLn (show sv)
                   printf "%x %x %x\n" (svVendor sv) (svProduct sv) (svVersion sv)
-                  doGetInfo bulb $ \si -> do
+                  getInfo bulb $ \si -> do
                     putStrLn (show si)
                     putStrLn $ "current time = " ++ (myTime $ siTime si)
                     putStrLn "done!"

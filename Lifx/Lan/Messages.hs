@@ -4,15 +4,15 @@ module Lifx.Lan.Messages
       StateVersion(..),
       StateWifiFirmware(..),
       StateHostFirmware(..),
-      doGetHostInfo,
-      doGetHostFirmware,
-      doGetWifiFirmware,
-      doSetPower,
-      doGetVersion,
-      doGetInfo,
-      doGetLight,
-      doSetColor,
-      doSetWaveform ) where
+      getHostInfo,
+      getHostFirmware,
+      getWifiFirmware,
+      setPower,
+      getVersion,
+      getInfo,
+      getLight,
+      setColor,
+      setWaveform ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Concurrent.STM ( atomically )
@@ -53,8 +53,8 @@ instance Binary GetHostInfo where
   put _ = return ()
   get = return GetHostInfo
 
-doGetHostInfo :: Bulb -> (StateHostInfo -> IO ()) -> IO ()
-doGetHostInfo bulb@(Bulb st _ _) cb = do
+getHostInfo :: Bulb -> (StateHostInfo -> IO ()) -> IO ()
+getHostInfo bulb@(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetHostInfo
 
@@ -92,8 +92,8 @@ instance Binary GetHostFirmware where
   put _ = return ()
   get = return GetHostFirmware
 
-doGetHostFirmware :: Bulb -> (StateHostFirmware -> IO ()) -> IO ()
-doGetHostFirmware bulb@(Bulb st _ _) cb = do
+getHostFirmware :: Bulb -> (StateHostFirmware -> IO ()) -> IO ()
+getHostFirmware bulb@(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetHostFirmware
 
@@ -132,8 +132,8 @@ instance Binary GetWifiFirmware where
   put _ = return ()
   get = return GetWifiFirmware
 
-doGetWifiFirmware :: Bulb -> (StateWifiFirmware -> IO ()) -> IO ()
-doGetWifiFirmware bulb@(Bulb st _ _) cb = do
+getWifiFirmware :: Bulb -> (StateWifiFirmware -> IO ()) -> IO ()
+getWifiFirmware bulb@(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetWifiFirmware
 
@@ -173,8 +173,8 @@ instance Binary SetPower where
 
   get = SetPower <$> getWord16le
 
-doSetPower :: Bulb -> Bool -> IO () -> IO ()
-doSetPower bulb@(Bulb st _ _) pwr cb = do
+setPower :: Bulb -> Bool -> IO () -> IO ()
+setPower bulb@(Bulb st _ _) pwr cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
   sendMsg bulb (needAck hdr) (SetPower $ f pwr)
   where f True = 0xffff
@@ -191,8 +191,8 @@ instance Binary GetVersion where
   put _ = return ()
   get = return GetVersion
 
-doGetVersion :: Bulb -> (StateVersion -> IO ()) -> IO ()
-doGetVersion bulb@(Bulb st _ _) cb = do
+getVersion :: Bulb -> (StateVersion -> IO ()) -> IO ()
+getVersion bulb@(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetVersion
 
@@ -227,8 +227,8 @@ instance Binary GetInfo where
   put _ = return ()
   get = return GetInfo
 
-doGetInfo :: Bulb -> (StateInfo -> IO ()) -> IO ()
-doGetInfo bulb@(Bulb st _ _) cb = do
+getInfo :: Bulb -> (StateInfo -> IO ()) -> IO ()
+getInfo bulb@(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetInfo
 
@@ -274,8 +274,8 @@ instance Binary GetLight where
   put _ = return ()
   get = return GetLight
 
-doGetLight :: Bulb -> (StateLight -> IO ()) -> IO ()
-doGetLight bulb @(Bulb st _ _) cb = do
+getLight :: Bulb -> (StateLight -> IO ()) -> IO ()
+getLight bulb @(Bulb st _ _) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetLight
 
@@ -331,8 +331,8 @@ instance Binary SetColor where
     skip 1 -- Reserved8 (stream)
     SetColor <$> get <*> getWord32le
 
-doSetColor :: Bulb -> HSBK -> Word32 -> IO () -> IO ()
-doSetColor bulb@(Bulb st _ _) color duration cb = do
+setColor :: Bulb -> HSBK -> Word32 -> IO () -> IO ()
+setColor bulb@(Bulb st _ _) color duration cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
   sendMsg bulb (needAck hdr) (SetColor color duration)
 
@@ -371,7 +371,7 @@ instance Binary SetWaveform where
     w <- getWord8
     return (x $ toEnum $ fromIntegral w)
 
-doSetWaveform :: Bulb -> SetWaveform -> IO () -> IO ()
-doSetWaveform bulb@(Bulb st _ _) swf cb = do
+setWaveform :: Bulb -> SetWaveform -> IO () -> IO ()
+setWaveform bulb@(Bulb st _ _) swf cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
   sendMsg bulb (needAck hdr) swf
