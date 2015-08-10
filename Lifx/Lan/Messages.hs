@@ -8,7 +8,7 @@ import Data.Binary.Put
     ( putWord64le, putWord32le, putWord16le, putLazyByteString )
 import Data.Binary.Get
     ( skip, getWord64le, getWord32le, getWord16le, getLazyByteString )
-import Data.ByteString.Lazy ( ByteString )
+import qualified Data.ByteString.Lazy as L ( ByteString, takeWhile )
 import Data.Int ( Int16 )
 import Data.Word ( Word16, Word32, Word64 )
 
@@ -272,7 +272,7 @@ data StateLight =
   { slColor :: HSBK
     -- Reserved16 (dim)
   , slPower :: !Word16
-  , slLabel :: ByteString -- 32 bytes (aka labelSize)
+  , slLabel :: L.ByteString -- 32 bytes (aka labelSize)
     -- Reserved64 (tags)
   } deriving Show
 
@@ -293,7 +293,7 @@ instance Binary StateLight where
     power <- getWord16le
     label <- getLazyByteString labelSize
     skip 8 -- Reserved64 (tags)
-    return $ StateLight color power label
+    return $ StateLight color power $ L.takeWhile (/= 0) label
 
 ----------------------------------------------------------
 
