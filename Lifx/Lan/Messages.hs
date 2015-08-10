@@ -1,4 +1,18 @@
-module Lifx.Lan.Messages where
+module Lifx.Lan.Messages
+    ( SetWaveform(..),
+      StateInfo(..),
+      StateVersion(..),
+      StateWifiFirmware(..),
+      StateHostFirmware(..),
+      doGetHostInfo,
+      doGetHostFirmware,
+      doGetWifiFirmware,
+      doSetPower,
+      doGetVersion,
+      doGetInfo,
+      doGetLight,
+      doSetColor,
+      doSetWaveform ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Concurrent.STM ( atomically )

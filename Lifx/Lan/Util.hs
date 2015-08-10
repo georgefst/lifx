@@ -1,4 +1,12 @@
-module Lifx.Lan.Util where
+module Lifx.Lan.Util
+    ( putFloat32le,
+      getFloat32le,
+      putInt16le,
+      getInt16le,
+      padByteString,
+      bounds,
+      bitBool,
+      extract ) where
 
 import Control.Applicative ( (<$>) )
 import Control.Monad ( when )

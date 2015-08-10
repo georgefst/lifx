@@ -1,4 +1,13 @@
-module Lifx.Lan.Protocol where
+module Lifx.Lan.Protocol
+    ( InternalState,
+      GetService(..),
+      serializeMsg,
+      newState,
+      newHdrAndCbDiscovery,
+      runCallback,
+      Bulb(..),
+      newHdrAndCallback,
+      sendMsg ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Concurrent.STM

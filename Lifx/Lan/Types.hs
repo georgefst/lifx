@@ -1,4 +1,10 @@
-module Lifx.Lan.Types where
+module Lifx.Lan.Types
+    ( MessageType(..),
+      Header(..),
+      dfltHdr,
+      dfltHdrSize,
+      Waveform(..),
+      HSBK(..) ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Data.Binary
