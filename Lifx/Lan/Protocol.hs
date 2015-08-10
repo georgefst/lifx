@@ -13,8 +13,8 @@ import Data.Binary
 import Data.Binary.Put ( putWord32le )
 import Data.Binary.Get ( getWord32le )
 import Data.Bits ( Bits((.&.)) )
-import Data.ByteString.Lazy ( ByteString, toChunks, append )
-import qualified Data.ByteString.Lazy as L ( length )
+import qualified Data.ByteString.Lazy as L
+  ( ByteString, toChunks, append, length )
 import Data.Int ( Int64 )
 import Data.Word ( Word8, Word32, Word64 )
 import Network.Socket ( Socket, SockAddr(SockAddrInet) )
@@ -59,7 +59,7 @@ instance Binary StateService where
 
 ----------------------------------------------------------
 
-type Callback = InternalState -> SockAddr -> Header -> ByteString -> IO ()
+type Callback = InternalState -> SockAddr -> Header -> L.ByteString -> IO ()
 
 data InternalState
   = InternalState
@@ -85,8 +85,8 @@ data Bulb = Bulb InternalState SockAddr Target deriving Show
 
 serviceUDP = 1
 
-serializeMsg :: (MessageType a, Binary a) => Header -> a -> ByteString
-serializeMsg hdr payload = hdrBs `append` payloadBS
+serializeMsg :: (MessageType a, Binary a) => Header -> a -> L.ByteString
+serializeMsg hdr payload = hdrBs `L.append` payloadBS
   where payloadBS = encode payload
         hsize = dfltHdrSize + L.length payloadBS
         hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
@@ -120,14 +120,14 @@ registerCallback st hdr cb =
   writeArray (stCallbacks st) (hdrSequence hdr) cb
 
 -- resorted to this weird thing to fix type errors
-contortedDecode :: Binary a => ByteString -> (a, Either String Int64)
+contortedDecode :: Binary a => L.ByteString -> (a, Either String Int64)
 contortedDecode bs =
   case decodeOrFail bs of
    Left ( _ , _ , msg ) -> ( undefined , Left msg )
    Right ( lftovr , _ , payload ) -> ( payload , Right (L.length lftovr) )
 
 checkHeaderFields :: (MessageType a, Binary a)
-                     => Header -> ByteString
+                     => Header -> L.ByteString
                      -> Either String a
 checkHeaderFields hdr bs =
   let (payload, decodeResult) = contortedDecode bs
@@ -185,7 +185,7 @@ newHdrAndCbDiscovery st cb = do
   registerCallback st hdr $ wrapStateService cb
   return hdr
 
-runCallback :: InternalState -> SockAddr -> ByteString -> IO ()
+runCallback :: InternalState -> SockAddr -> L.ByteString -> IO ()
 runCallback st sa bs =
   case decodeOrFail bs of
    Left (_, _, msg) -> stLog st msg
@@ -212,6 +212,6 @@ sendMsg :: (MessageType a, Binary a)
            => Bulb -> Header -> a
            -> IO ()
 sendMsg (Bulb st sa (Target targ)) hdr payload =
-  sendManyTo (stSocket st) (toChunks pkt) sa
+  sendManyTo (stSocket st) (L.toChunks pkt) sa
   where hdr' = hdr { hdrTarget = targ }
         pkt = serializeMsg hdr' payload
