@@ -55,6 +55,7 @@ executable lifx
                , Lifx.Lan.Types
                , Lifx.Lan.Messages
                , Lifx.Lan.Protocol
+               , Lifx.Lan.LowLevel
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
