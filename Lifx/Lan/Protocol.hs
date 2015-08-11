@@ -1,10 +1,5 @@
 module Lifx.Lan.Protocol
     ( Lan,
-      GetService(..),
-      serializeMsg,
-      newState,
-      newHdrAndCbDiscovery,
-      runCallback,
       Bulb(..),
       newHdrAndCallback,
       sendMsg,

@@ -13,16 +13,10 @@ module Lifx.Lan.LowLevel
       getLight,
       setColor,
       setWaveform,
-      Header(..), -- FIXME
       Waveform(..),
       HSBK(..),
       Bulb,
       Lan,
-      GetService(..), -- FIXME
-      serializeMsg, -- FIXME
-      newState, -- FIXME
-      newHdrAndCbDiscovery, -- FIXME
-      runCallback, -- FIXME
       openLan,
       discoverBulbs
       ) where
