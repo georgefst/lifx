@@ -128,15 +128,15 @@ newState src sock bcast wthr logFunc = do
   seq <- newTVar 0
   cbacks <- newListArray (0, 255) (map noSeq [0..255])
   let lg = mkLogState logFunc
-  return $ Lan { stSeq = seq
-               , stSource = src
-               , stCallbacks = cbacks
-               , stLog = lg
-               , stSocket = sock
-               , stBcast = bcast
-               , stThread = wthr
-               }
-  where mkLogState Nothing = (\_ -> return ())
+  return Lan { stSeq = seq
+             , stSource = src
+             , stCallbacks = cbacks
+             , stLog = lg
+             , stSocket = sock
+             , stBcast = bcast
+             , stThread = wthr
+             }
+  where mkLogState Nothing = \_ -> return ()
         mkLogState (Just f) = f
         noSeq i st sa _ _ =
           stLog st $ "No callback for sequence #" ++ show i ++ strFrom sa

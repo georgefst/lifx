@@ -22,30 +22,30 @@ myTime nanos =
 
 myCb :: Bulb -> IO ()
 myCb bulb = do
-  putStrLn (show bulb)
+  print bulb
   getHostInfo bulb $ \shi -> do
-    putStrLn (show shi)
+    print shi
     getLight bulb $ \sl -> do
-      putStrLn (show sl)
-      setPower bulb True $ do
+      print sl
+      setPower bulb True $
         setColor bulb (HSBK 32768 65535 65535 3000) 0 $ do
           -- positive numbers mean more time spent on original color
           let swf = SetWaveform False (HSBK 0 0 65535 9000) 1000 10 (-20000) Pulse
-          setWaveform bulb swf $ do
+          setWaveform bulb swf $
             getHostFirmware bulb $ \shf -> do
-              putStrLn (show shf)
+              print shf
               let vHex = printf "%x" (shfVersion shf)
-              putStrLn $ "build " ++ (myTime $ shfBuild shf) ++ ", version " ++ vHex
+              putStrLn $ "build " ++ myTime (shfBuild shf) ++ ", version " ++ vHex
               getWifiFirmware bulb $ \swf -> do
-                putStrLn (show swf)
+                print swf
                 let vHex' = printf "%x" (swfVersion swf)
-                putStrLn $ "build " ++ (myTime $ swfBuild swf) ++ ", version " ++ vHex'
+                putStrLn $ "build " ++ myTime (swfBuild swf) ++ ", version " ++ vHex'
                 getVersion bulb $ \sv -> do
-                  putStrLn (show sv)
+                  print sv
                   printf "%x %x %x\n" (svVendor sv) (svProduct sv) (svVersion sv)
                   getInfo bulb $ \si -> do
-                    putStrLn (show si)
-                    putStrLn $ "current time = " ++ (myTime $ siTime si)
+                    print si
+                    putStrLn $ "current time = " ++ myTime (siTime si)
                     print $ nsToDuration $ fromIntegral $ siUptime si
                     print $ nsToDuration $ fromIntegral $ siDowntime si
                     putStrLn "done!"

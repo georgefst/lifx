@@ -365,8 +365,8 @@ instance Binary SetWaveform where
   get = do
     skip 1 -- Reserved8 (stream)
     t <- getWord8
-    let trans = (t /= 0)
-    x <- (SetWaveform trans) <$> get <*> getWord32le
+    let trans = t /= 0
+    x <- SetWaveform trans <$> get <*> getWord32le
          <*> getFloat32le <*> getInt16le
     w <- getWord8
     return (x $ toEnum $ fromIntegral w)

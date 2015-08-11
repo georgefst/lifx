@@ -31,7 +31,7 @@ bitBool n True = bit n
 extract :: (Integral a, Bits a, Integral b) => a -> Int -> Int -> b
 extract x n w = fromIntegral field
   where field = (x `shiftR` n) .&. mask
-        mask = (bit w) - 1
+        mask = bit w - 1
 
 putFloat32le :: Float -> Put
 putFloat32le f = putWord32le $ floatToWord f
