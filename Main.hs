@@ -29,10 +29,7 @@ import Network.Socket
 import Network.Socket.ByteString ( sendManyTo, recvFrom )
 import Text.Printf ( printf )
 
-import Lifx.Lan.Util
-import Lifx.Lan.Types
-import Lifx.Lan.Messages
-import Lifx.Lan.Protocol
+import Lifx.Lan.LowLevel
 
 myTime :: Word64 -> String
 myTime nanos =
