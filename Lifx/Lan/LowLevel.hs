@@ -22,7 +22,9 @@ module Lifx.Lan.LowLevel
       serializeMsg, -- FIXME
       newState, -- FIXME
       newHdrAndCbDiscovery, -- FIXME
-      runCallback -- FIXME
+      runCallback, -- FIXME
+      openLan,
+      discoverBulbs
       ) where
 
 import Lifx.Lan.Util

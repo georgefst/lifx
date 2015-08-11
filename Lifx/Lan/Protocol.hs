@@ -7,11 +7,18 @@ module Lifx.Lan.Protocol
       runCallback,
       Bulb(..),
       newHdrAndCallback,
-      sendMsg ) where
+      sendMsg,
+      openLan,
+      discoverBulbs
+      ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
+import Control.Concurrent
 import Control.Concurrent.STM
+{-
     ( STM, TArray, TVar, writeTVar, readTVar, newTVar, atomically )
+-}
+import Control.Monad ( when, forever )
 import Data.Array.MArray ( writeArray, readArray, newListArray )
 import Data.Binary
     ( Binary(..),
@@ -23,11 +30,28 @@ import Data.Binary.Put ( putWord32le )
 import Data.Binary.Get ( getWord32le )
 import Data.Bits ( Bits((.&.)) )
 import qualified Data.ByteString.Lazy as L
-  ( ByteString, toChunks, append, length )
+  ( ByteString, toChunks, append, length, fromStrict )
 import Data.Int ( Int64 )
 import Data.Word ( Word8, Word32, Word64 )
-import Network.Socket ( Socket, SockAddr(SockAddrInet) )
-import Network.Socket.ByteString ( sendManyTo )
+import Network.Socket
+    ( Socket,
+      SocketType(Datagram),
+      SockAddr(SockAddrInet),
+      Family(AF_INET),
+      SocketOption(Broadcast),
+      AddrInfoFlag(AI_NUMERICHOST, AI_NUMERICSERV),
+      AddrInfo(addrAddress, addrFlags),
+      socket,
+      setSocketOption,
+      isSupportedSocketOption,
+      iNADDR_ANY,
+      getAddrInfo,
+      defaultProtocol,
+      defaultHints,
+      bind,
+      aNY_PORT )
+import Network.Socket.ByteString ( sendManyTo, recvFrom )
+import System.Mem.Weak
 import Text.Printf ( printf )
 
 import Lifx.Lan.Util
@@ -77,6 +101,8 @@ data Lan
     , stCallbacks :: TArray Word8 Callback
     , stLog :: String -> IO ()
     , stSocket :: Socket
+    , stBcast :: SockAddr
+    , stThread :: Weak ThreadId
     }
 
 instance Show Lan where
@@ -101,8 +127,9 @@ serializeMsg hdr payload = hdrBs `L.append` payloadBS
         hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
         hdrBs = encode hdr'
 
-newState :: Word32 -> Socket -> Maybe (String -> IO ()) -> STM Lan
-newState src sock logFunc = do
+newState :: Word32 -> Socket -> SockAddr -> Weak ThreadId
+            -> Maybe (String -> IO ()) -> STM Lan
+newState src sock bcast wthr logFunc = do
   seq <- newTVar 0
   cbacks <- newListArray (0, 255) (map noSeq [0..255])
   let lg = mkLogState logFunc
@@ -111,6 +138,8 @@ newState src sock logFunc = do
                , stCallbacks = cbacks
                , stLog = lg
                , stSocket = sock
+               , stBcast = bcast
+               , stThread = wthr
                }
   where mkLogState Nothing = (\_ -> return ())
         mkLogState (Just f) = f
@@ -224,3 +253,41 @@ sendMsg (Bulb st sa (Target targ)) hdr payload =
   sendManyTo (stSocket st) (L.toChunks pkt) sa
   where hdr' = hdr { hdrTarget = targ }
         pkt = serializeMsg hdr' payload
+
+discovery :: Lan -> (Bulb -> IO ()) -> STM L.ByteString
+discovery st cb = do
+  hdr <- newHdrAndCbDiscovery st cb
+  let hdr' = hdr { hdrTagged = True }
+  return $ serializeMsg hdr' GetService
+
+discoverBulbs :: Lan -> (Bulb -> IO ()) -> IO ()
+discoverBulbs st cb = do
+  pkt <- atomically $ discovery st cb
+  sendManyTo (stSocket st) (L.toChunks pkt) (stBcast st)
+
+openLan :: IO Lan
+openLan = do
+  sock <- socket AF_INET Datagram defaultProtocol
+  bind sock $ SockAddrInet aNY_PORT iNADDR_ANY
+  when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
+  let flags = [ AI_NUMERICHOST , AI_NUMERICSERV ]
+      myHints = defaultHints { addrFlags = flags }
+  (ai:_ ) <- getAddrInfo (Just myHints) (Just "192.168.11.255") (Just "56700")
+  let bcast = addrAddress ai
+  tmv <- newEmptyTMVarIO
+  thr <- forkIO (dispatcher tmv)
+  wthr <- mkWeakThreadId thr
+  atomically $ do
+    st <- newState 37619 sock bcast wthr (Just putStrLn)
+    putTMVar tmv st
+    return st
+
+ethMtu = 1500
+
+dispatcher :: TMVar Lan -> IO ()
+dispatcher tmv = do
+  st <- atomically $ takeTMVar tmv
+  forever $ do
+    (bs, sa) <- recvFrom (stSocket st) ethMtu
+    runCallback st sa $ L.fromStrict bs
+  -- close sock

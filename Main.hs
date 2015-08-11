@@ -1,8 +1,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
-import Control.Concurrent.STM ( STM, atomically )
+import Control.Concurrent
 import Control.Monad ( when, forever )
-import Data.ByteString.Lazy ( ByteString, toChunks, fromStrict )
 import Data.Hourglass
 {-
     ( ElapsedP(ElapsedP),
@@ -10,23 +9,6 @@ import Data.Hourglass
       timePrint )
 -}
 import Data.Word ( Word64 )
-import Network.Socket
-    ( SocketType(Datagram),
-      SockAddr(SockAddrInet),
-      Family(AF_INET),
-      SocketOption(Broadcast),
-      AddrInfoFlag(AI_NUMERICHOST, AI_NUMERICSERV),
-      AddrInfo(addrAddress, addrFlags),
-      socket,
-      setSocketOption,
-      isSupportedSocketOption,
-      iNADDR_ANY,
-      getAddrInfo,
-      defaultProtocol,
-      defaultHints,
-      bind,
-      aNY_PORT )
-import Network.Socket.ByteString ( sendManyTo, recvFrom )
 import Text.Printf ( printf )
 
 import Lifx.Lan.LowLevel
@@ -77,27 +59,7 @@ nsToDuration (NanoSeconds ns) =
         (m, seconds) = s `quotRem` 60
         (hours, minutes) = m `quotRem` 60
 
-discovery :: Lan -> STM ByteString
-discovery st = do
-  hdr <- newHdrAndCbDiscovery st myCb
-  let hdr' = hdr { hdrTagged = True }
-  return $ serializeMsg hdr' GetService
-
-ethMtu = 1500
-
 main = do
-  putStrLn "Hello!"
-  sock <- socket AF_INET Datagram defaultProtocol
-  bind sock $ SockAddrInet aNY_PORT iNADDR_ANY
-  when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
-  let flags = [ AI_NUMERICHOST , AI_NUMERICSERV ]
-      myHints = defaultHints { addrFlags = flags }
-  (ai:_ ) <- getAddrInfo (Just myHints) (Just "192.168.11.255") (Just "56700")
-  let bcast = addrAddress ai
-  st <- atomically $ newState 37619 sock (Just putStrLn)
-  pkt <- atomically $ discovery st
-  sendManyTo sock (toChunks pkt) bcast
-  forever $ do
-    (bs, sa) <- recvFrom sock ethMtu
-    runCallback st sa $ fromStrict bs
-  -- close sock
+  lan <- openLan
+  discoverBulbs lan myCb
+  forever $ threadDelay maxBound
