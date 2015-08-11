@@ -62,4 +62,4 @@ nsToDuration (NanoSeconds ns) =
 main = do
   lan <- openLan
   discoverBulbs lan myCb
-  forever $ threadDelay maxBound
+  forever $ threadDelay 1000000000
