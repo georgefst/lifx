@@ -262,13 +262,14 @@ discoverBulbs st cb = do
 
 openLan :: IO Lan
 openLan = do
-  sock <- socket AF_INET Datagram defaultProtocol
-  bind sock $ SockAddrInet aNY_PORT iNADDR_ANY
-  when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
   let flags = [ AI_NUMERICHOST , AI_NUMERICSERV ]
       myHints = defaultHints { addrFlags = flags }
-  (ai:_ ) <- getAddrInfo (Just myHints) (Just "192.168.11.255") (Just "56700")
-  let bcast = addrAddress ai
+  (ai:_ ) <- getAddrInfo (Just myHints) (Just "192.168.11.3") Nothing
+  sock <- socket AF_INET Datagram defaultProtocol
+  let (SockAddrInet _ hostAddr) = addrAddress ai
+  bind sock $ SockAddrInet aNY_PORT hostAddr
+  when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
+  let bcast = SockAddrInet (fromIntegral 56700) 0xffffffff -- 255.255.255.255
   tmv <- newEmptyTMVarIO
   thr <- forkIO (dispatcher tmv)
   wthr <- mkWeakThreadId thr
