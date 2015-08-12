@@ -52,12 +52,14 @@ myCb bulb = do
 
 deriving instance Show Duration
 
-nsToDuration :: NanoSeconds -> Duration
+nsToDuration :: NanoSeconds -> (Int, Duration)
 nsToDuration (NanoSeconds ns) =
-  Duration (Hours hours) (Minutes minutes) (Seconds seconds) (NanoSeconds nanos)
+  (fromIntegral days, Duration (Hours hours) (Minutes minutes)
+                      (Seconds seconds) (NanoSeconds nanos))
   where (s, nanos) = ns `quotRem` 1000000000
         (m, seconds) = s `quotRem` 60
-        (hours, minutes) = m `quotRem` 60
+        (h, minutes) = m `quotRem` 60
+        (days, hours) = h `quotRem` 24
 
 main = do
   lan <- openLan
