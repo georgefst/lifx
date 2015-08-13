@@ -273,18 +273,14 @@ openLan ifname = openLan' ifname Nothing Nothing
 
 openLan' :: String -> Maybe Word16 -> Maybe (String -> IO()) -> IO Lan
 openLan' ifname mport mlog = do
-  (addr, mac) <- ifaceAddr ifname
-  let flags = [ AI_NUMERICHOST , AI_NUMERICSERV ]
-      myHints = defaultHints { addrFlags = flags }
-  (ai:_ ) <- getAddrInfo (Just myHints) (Just addr) Nothing
+  (hostAddr, mac) <- ifaceAddr ifname
   sock <- socket AF_INET Datagram defaultProtocol
-  let (SockAddrInet _ hostAddr) = addrAddress ai
   bind sock $ SockAddrInet aNY_PORT hostAddr
   when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
-  myPort <- socketPort sock
+  hostPort <- socketPort sock
   let port = 56700 `fromMaybe` mport
       bcast = SockAddrInet (fromIntegral port) 0xffffffff -- 255.255.255.255
-      source = mkSource mac (fromIntegral myPort)
+      source = mkSource mac (fromIntegral hostPort)
   tmv <- newEmptyTMVarIO
   thr <- forkIO (dispatcher tmv)
   wthr <- mkWeakThreadId thr
@@ -321,7 +317,7 @@ instance Exception LifxException
 -- given an interface name, return the interface's IPv4 address (as a string)
 -- and MAC address (as a Word64), or throw NoSuchInterface with the
 -- attempted interface name, and a list of actual interface names
-ifaceAddr :: String -> IO (String, Word64)
+ifaceAddr :: String -> IO (Word32, Word64)
 ifaceAddr ifname = do
   ifaces <- NI.getNetworkInterfaces
   let miface = find (\x -> ifname == NI.name x) ifaces
@@ -329,7 +325,7 @@ ifaceAddr ifname = do
   iface <- case miface of
     Just x -> return x
     Nothing -> throw $ NoSuchInterface ifname ifnames
-  let addr = show $ NI.ipv4 iface
+  let (NI.IPv4 addr) = NI.ipv4 iface
       (NI.MAC b1 b2 b3 b4 b5 b6) = NI.mac iface
       macBytes = [b1, b2, b3, b4, b5, b6]
       macWord = foldl' (\a b -> fromIntegral b .|. (a `shiftL` 8)) 0 macBytes
