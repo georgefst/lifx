@@ -4,6 +4,8 @@ module Lifx.Lan.Messages
       StateVersion(..),
       StateWifiFirmware(..),
       StateHostFirmware(..),
+      StateLight(..),
+      StateHostInfo(..),
       getHostInfo,
       getHostFirmware,
       getWifiFirmware,
