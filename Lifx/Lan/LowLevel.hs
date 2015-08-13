@@ -17,7 +17,9 @@ module Lifx.Lan.LowLevel
       HSBK(..),
       Bulb,
       Lan,
+      LifxException(..),
       openLan,
+      openLan',
       discoverBulbs
       ) where
 

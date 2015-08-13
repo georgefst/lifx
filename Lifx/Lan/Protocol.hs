@@ -3,9 +3,11 @@
 module Lifx.Lan.Protocol
     ( Lan,
       Bulb(..),
+      LifxException(..),
       newHdrAndCallback,
       sendMsg,
       openLan,
+      openLan',
       discoverBulbs
       ) where
 
@@ -299,6 +301,12 @@ dispatcher tmv = do
     runCallback st sa $ L.fromStrict bs
   -- close sock
 
+{-
+   LIFX requires each client on the network to have a unique,
+   nonzero 32-bit value to identify it.  We'll use our IP address
+   and port number, since that should be unique on our network.
+   Unfortunately, that's 48 bits, so we hash it to get 32.
+-}
 mkSource :: Word32 -> Word16 -> Word32
 mkSource ip port = nonzero $ murmur64 $ (ip' `shiftL` 16) .|. port'
   where ip' = fromIntegral ip :: Word64
