@@ -91,7 +91,7 @@ prHostFirmware shf = printf "%6x" (shfVersion shf)
 prVersion :: StateVersion -> String -- hardware version
 prVersion sv = printf "%d.%d.%d" (svVendor sv) (svProduct sv) (svVersion sv)
 
-fmtStr = "%-20.20s %-3.3s %-18.18s %-6.6s %-10.10s %-4.4s %-6.6s %-5.5s"
+fmtStr = "%-20.20s %-3.3s %-17.17s %-6.6s %-11.11s %-4.4s %-6.6s %-5.5s"
 
 prBulb :: StateHostInfo
           -> StateLight
@@ -119,8 +119,10 @@ lsCb bulb =
 
 lsBulbs :: Lan -> IO ()
 lsBulbs lan = do
-  printf fmtStr "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "Firmware" "Version"
-  putStrLn ""
+  let fmtStrn = fmtStr ++ "\n"
+      dashes = replicate 80 '-'
+  printf fmtStrn "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "Firmware" "Version"
+  printf fmtStrn dashes dashes dashes dashes dashes dashes dashes dashes
   discoverBulbs lan lsCb
 
 main = do
