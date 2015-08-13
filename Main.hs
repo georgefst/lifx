@@ -65,14 +65,15 @@ prLight :: StateLight -> (String, String, String) -- label, power, color
 prLight sl = (label, power, color)
   where label = show $ slLabel sl
         power = if slPower sl == 0 then "Off" else "On"
-        color = printf "%5.1f %5.1f %5.1f %4dK" h s b k
+        color = printf "%3d %3d %3d %4dK" h s b k
         hsbk = slColor sl
-        h = toDbl (hue hsbk) / m * 360
-        s = toDbl (saturation hsbk) / m * 100
-        b = toDbl (brightness hsbk) / m * 100
+        h = scale (hue hsbk) 360
+        s = scale (saturation hsbk) 100
+        b = scale (brightness hsbk) 100
         k = kelvin hsbk
-        m = toDbl (maxBound :: Word16)
-        toDbl x = (fromIntegral x) :: Double
+        m = maxBound :: Word16
+        asInt x = fromIntegral x :: Int
+        scale x mul = asInt x * asInt mul `div` asInt m
 
 prHostInfo :: StateHostInfo -> String -- temp
 prHostInfo shi = printf "%4.1f°C" (temp :: Double)
@@ -90,7 +91,7 @@ prHostFirmware shf = printf "%6x" (shfVersion shf)
 prVersion :: StateVersion -> String -- hardware version
 prVersion sv = printf "%d.%d.%d" (svVendor sv) (svProduct sv) (svVersion sv)
 
-fmtStr = "%-18.18s %-3.3s %-21.21s %-6.6s %-10.10s %-4.4s %-6.6s %-5.5s"
+fmtStr = "%-20.20s %-3.3s %-18.18s %-6.6s %-10.10s %-4.4s %-6.6s %-5.5s"
 
 prBulb :: StateHostInfo
           -> StateLight
