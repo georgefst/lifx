@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module Lifx.Lan.Protocol
     ( Lan,
       Bulb(..),
@@ -13,6 +15,7 @@ import Control.Concurrent.STM
 {-
     ( STM, TArray, TVar, writeTVar, readTVar, newTVar, atomically )
 -}
+import Control.Exception
 import Control.Monad ( when, forever )
 import Data.Array.MArray ( writeArray, readArray, newListArray )
 import Data.Binary
@@ -23,11 +26,15 @@ import Data.Binary
       decodeOrFail )
 import Data.Binary.Put ( putWord32le )
 import Data.Binary.Get ( getWord32le )
-import Data.Bits ( Bits((.&.)) )
+import Data.Bits
 import qualified Data.ByteString.Lazy as L
   ( ByteString, toChunks, append, length, fromStrict )
 import Data.Int ( Int64 )
-import Data.Word ( Word8, Word32, Word64 )
+import Data.List
+import Data.Maybe
+import Data.Typeable
+import Data.Word ( Word8, Word16, Word32, Word64 )
+import qualified Network.Info as NI
 import Network.Socket
     ( Socket,
       SocketType(Datagram),
@@ -44,6 +51,7 @@ import Network.Socket
       defaultProtocol,
       defaultHints,
       bind,
+      socketPort,
       aNY_PORT )
 import Network.Socket.ByteString ( sendManyTo, recvFrom )
 import System.Mem.Weak
@@ -260,21 +268,28 @@ discoverBulbs st cb = do
   pkt <- atomically $ discovery st cb
   sendManyTo (stSocket st) (L.toChunks pkt) (stBcast st)
 
-openLan :: IO Lan
-openLan = do
+openLan :: String -> IO Lan
+openLan ifname = openLan' ifname Nothing Nothing
+
+openLan' :: String -> Maybe Word16 -> Maybe (String -> IO()) -> IO Lan
+openLan' ifname mport mlog = do
+  (addr, mac) <- ifaceAddr ifname
   let flags = [ AI_NUMERICHOST , AI_NUMERICSERV ]
       myHints = defaultHints { addrFlags = flags }
-  (ai:_ ) <- getAddrInfo (Just myHints) (Just "192.168.11.3") Nothing
+  (ai:_ ) <- getAddrInfo (Just myHints) (Just addr) Nothing
   sock <- socket AF_INET Datagram defaultProtocol
   let (SockAddrInet _ hostAddr) = addrAddress ai
   bind sock $ SockAddrInet aNY_PORT hostAddr
   when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
-  let bcast = SockAddrInet (fromIntegral 56700) 0xffffffff -- 255.255.255.255
+  myPort <- socketPort sock
+  let port = 56700 `fromMaybe` mport
+      bcast = SockAddrInet (fromIntegral port) 0xffffffff -- 255.255.255.255
+      source = mkSource mac (fromIntegral myPort)
   tmv <- newEmptyTMVarIO
   thr <- forkIO (dispatcher tmv)
   wthr <- mkWeakThreadId thr
   atomically $ do
-    st <- newState 37619 sock bcast wthr (Just putStrLn)
+    st <- newState source sock bcast wthr mlog
     putTMVar tmv st
     return st
 
@@ -287,3 +302,35 @@ dispatcher tmv = do
     (bs, sa) <- recvFrom (stSocket st) ethMtu
     runCallback st sa $ L.fromStrict bs
   -- close sock
+
+mkSource :: Word64 -> Word64 -> Word32
+mkSource mac port = fromIntegral $ murmur64 $ (mac `shiftL` 16) .|. port
+  -- use Mumur3's 64-bit finalizer as an integer hash function
+  where murmur64 n =
+          let h1 = n `xor` (n `shiftR` 33)
+              h2 = h1 * 0xff51afd7ed558ccd
+              h3 = h2 `xor` (h2 `shiftR` 33)
+              h4 = h3 * 0xc4ceb9fe1a85ec53
+          in h4 `xor` (h4 `shiftR` 33)
+
+data LifxException = NoSuchInterface String [String]
+                   deriving (Show, Typeable)
+
+instance Exception LifxException
+
+-- given an interface name, return the interface's IPv4 address (as a string)
+-- and MAC address (as a Word64), or throw NoSuchInterface with the
+-- attempted interface name, and a list of actual interface names
+ifaceAddr :: String -> IO (String, Word64)
+ifaceAddr ifname = do
+  ifaces <- NI.getNetworkInterfaces
+  let miface = find (\x -> ifname == NI.name x) ifaces
+      ifnames = map NI.name ifaces
+  iface <- case miface of
+    Just x -> return x
+    Nothing -> throw $ NoSuchInterface ifname ifnames
+  let addr = show $ NI.ipv4 iface
+      (NI.MAC b1 b2 b3 b4 b5 b6) = NI.mac iface
+      macBytes = [b1, b2, b3, b4, b5, b6]
+      macWord = foldl' (\a b -> fromIntegral b .|. (a `shiftL` 8)) 0 macBytes
+  return (addr, macWord)

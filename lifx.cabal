@@ -70,6 +70,7 @@ executable lifx
                      , network >=2.6 && <2.7
                      , reinterpret-cast >= 0.1 && < 0.2
                      , hourglass >= 0.2.9 && < 0.3
+                     , network-info >= 0.2 && < 0.3
 
   -- Directories containing source files.
   -- hs-source-dirs:

@@ -62,6 +62,6 @@ nsToDuration (NanoSeconds ns) =
         (days, hours) = h `quotRem` 24
 
 main = do
-  lan <- openLan
+  lan <- openLan "en1"
   discoverBulbs lan myCb
   forever $ threadDelay 1000000000
