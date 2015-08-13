@@ -29,13 +29,17 @@ import Data.Binary
 import Data.Binary.Put ( putWord32le )
 import Data.Binary.Get ( getWord32le )
 import Data.Bits
+import qualified Data.ByteString.Base16.Lazy as L16
 import qualified Data.ByteString.Lazy as L
+{-
   ( ByteString, toChunks, append, length, fromStrict )
+-}
 import Data.Int ( Int64 )
 import Data.List
 import Data.Maybe
 import Data.Typeable
 import Data.Word ( Word8, Word16, Word32, Word64 )
+import Debug.Trace
 import qualified Network.Info as NI
 import Network.Socket
     ( Socket,
@@ -130,7 +134,7 @@ serializeMsg hdr payload = hdrBs `L.append` payloadBS
   where payloadBS = encode payload
         hsize = dfltHdrSize + L.length payloadBS
         hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
-        hdrBs = encode hdr'
+        hdrBs = encode $ traceShowId hdr'
 
 newState :: Word32 -> Socket -> SockAddr -> Weak ThreadId
             -> Maybe (String -> IO ()) -> STM Lan
@@ -268,6 +272,7 @@ discovery st cb = do
 discoverBulbs :: Lan -> (Bulb -> IO ()) -> IO ()
 discoverBulbs st cb = do
   pkt <- atomically $ discovery st cb
+  L.putStrLn $ L16.encode pkt
   sendManyTo (stSocket st) (L.toChunks pkt) (stBcast st)
 
 openLan :: String -> IO Lan
@@ -277,7 +282,7 @@ openLan' :: String -> Maybe Word16 -> Maybe (String -> IO()) -> IO Lan
 openLan' ifname mport mlog = do
   hostAddr <- ifaceAddr ifname
   sock <- socket AF_INET Datagram defaultProtocol
-  bind sock $ SockAddrInet aNY_PORT hostAddr
+  bind sock $ SockAddrInet (fromIntegral 56700) hostAddr
   when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
   hostPort <- socketPort sock
   let port = 56700 `fromMaybe` mport
@@ -298,6 +303,7 @@ dispatcher tmv = do
   st <- atomically $ takeTMVar tmv
   forever $ do
     (bs, sa) <- recvFrom (stSocket st) ethMtu
+    putStrLn $ "got something from " ++ show sa
     runCallback st sa $ L.fromStrict bs
   -- close sock
 
