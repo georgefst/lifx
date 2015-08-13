@@ -273,14 +273,14 @@ openLan ifname = openLan' ifname Nothing Nothing
 
 openLan' :: String -> Maybe Word16 -> Maybe (String -> IO()) -> IO Lan
 openLan' ifname mport mlog = do
-  (hostAddr, mac) <- ifaceAddr ifname
+  hostAddr <- ifaceAddr ifname
   sock <- socket AF_INET Datagram defaultProtocol
   bind sock $ SockAddrInet aNY_PORT hostAddr
   when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
   hostPort <- socketPort sock
   let port = 56700 `fromMaybe` mport
       bcast = SockAddrInet (fromIntegral port) 0xffffffff -- 255.255.255.255
-      source = mkSource mac (fromIntegral hostPort)
+      source = mkSource hostAddr (fromIntegral hostPort)
   tmv <- newEmptyTMVarIO
   thr <- forkIO (dispatcher tmv)
   wthr <- mkWeakThreadId thr
@@ -299,25 +299,32 @@ dispatcher tmv = do
     runCallback st sa $ L.fromStrict bs
   -- close sock
 
-mkSource :: Word64 -> Word64 -> Word32
-mkSource mac port = fromIntegral $ murmur64 $ (mac `shiftL` 16) .|. port
-  -- use Mumur3's 64-bit finalizer as an integer hash function
-  where murmur64 n =
+mkSource :: Word32 -> Word16 -> Word32
+mkSource ip port = nonzero $ murmur64 $ (ip' `shiftL` 16) .|. port'
+  where ip' = fromIntegral ip :: Word64
+        port' = fromIntegral port :: Word64
+        -- use Mumur3's 64-bit finalizer as an integer hash function
+        murmur64 n =
           let h1 = n `xor` (n `shiftR` 33)
               h2 = h1 * 0xff51afd7ed558ccd
               h3 = h2 `xor` (h2 `shiftR` 33)
               h4 = h3 * 0xc4ceb9fe1a85ec53
           in h4 `xor` (h4 `shiftR` 33)
+        -- 32-bit source can't be 0, so check to see if either half
+        -- of the 64-bit result is nonzero
+        nonzero m64 =
+          let lo = fromIntegral m64 :: Word32
+              hi = fromIntegral (m64 `shiftR` 32) :: Word32
+          in if lo /= 0 then lo
+             else if hi /= 0 then hi
+                  else 0xdeadbeef
 
 data LifxException = NoSuchInterface String [String]
                    deriving (Show, Typeable)
 
 instance Exception LifxException
 
--- given an interface name, return the interface's IPv4 address (as a string)
--- and MAC address (as a Word64), or throw NoSuchInterface with the
--- attempted interface name, and a list of actual interface names
-ifaceAddr :: String -> IO (Word32, Word64)
+ifaceAddr :: String -> IO Word32
 ifaceAddr ifname = do
   ifaces <- NI.getNetworkInterfaces
   let miface = find (\x -> ifname == NI.name x) ifaces
@@ -326,7 +333,4 @@ ifaceAddr ifname = do
     Just x -> return x
     Nothing -> throw $ NoSuchInterface ifname ifnames
   let (NI.IPv4 addr) = NI.ipv4 iface
-      (NI.MAC b1 b2 b3 b4 b5 b6) = NI.mac iface
-      macBytes = [b1, b2, b3, b4, b5, b6]
-      macWord = foldl' (\a b -> fromIntegral b .|. (a `shiftL` 8)) 0 macBytes
-  return (addr, macWord)
+  return addr
