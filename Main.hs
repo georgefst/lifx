@@ -8,6 +8,7 @@ import Data.Hourglass
       ISO8601_DateAndTime(ISO8601_DateAndTime),
       timePrint )
 -}
+import Data.Int ( Int64 )
 import Data.Word ( Word16, Word64 )
 import Text.Printf ( printf )
 
@@ -52,10 +53,10 @@ myCb bulb = do
 
 deriving instance Show Duration
 
-nsToDuration :: NanoSeconds -> (Int, Duration)
+nsToDuration :: NanoSeconds -> (Int64, Duration)
 nsToDuration (NanoSeconds ns) =
-  (fromIntegral days, Duration (Hours hours) (Minutes minutes)
-                      (Seconds seconds) (NanoSeconds nanos))
+  (days, Duration (Hours hours) (Minutes minutes)
+                  (Seconds seconds) (NanoSeconds nanos))
   where (s, nanos) = ns `quotRem` 1000000000
         (m, seconds) = s `quotRem` 60
         (h, minutes) = m `quotRem` 60
@@ -83,7 +84,9 @@ prInfo :: StateInfo -> String -- uptime
 prInfo si = fmtDur $ nsToDuration $ fromIntegral $ siUptime si
   where fmtDur (days, Duration (Hours hours) (Minutes minutes)
                       (Seconds seconds) _) =
-          printf "%dd%dh%dm%ds" days hours minutes seconds
+          let xs = [(days, "d"), (hours, "h"), (minutes, "m"), (seconds, "s")]
+              xs' = dropWhile (\(n, _ ) -> n == 0) xs
+          in concatMap (\(n, s) -> show n ++ s) xs'
 
 prHostFirmware :: StateHostFirmware -> String -- firmware version
 prHostFirmware shf = printf "%6x" (shfVersion shf)
