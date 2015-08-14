@@ -14,6 +14,7 @@ import Data.Binary ( Put, Get )
 import Data.Binary.Put ( putWord32le, putWord16le )
 import Data.Binary.Get ( getWord32le, getWord16le )
 import Data.Bits ( Bits((.&.), bit, shiftR, zeroBits) )
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
     ( ByteString, append, length, take, replicate )
 import Data.Int ( Int16, Int64 )
@@ -45,10 +46,10 @@ putInt16le i = putWord16le $ fromIntegral i
 getInt16le :: Get Int16
 getInt16le = fromIntegral <$> getWord16le
 
-padByteString :: Int64 -> L.ByteString -> L.ByteString
+padByteString :: Int -> B.ByteString -> B.ByteString
 padByteString goal bs = f (l `compare` goal)
-  where l = L.length bs
-        f LT = bs `L.append` pad
+  where l = B.length bs
+        f LT = bs `B.append` pad
         f EQ = bs
-        f GT = L.take goal bs
-        pad = L.replicate (goal - l) 0
+        f GT = B.take goal bs
+        pad = B.replicate (goal - l) 0

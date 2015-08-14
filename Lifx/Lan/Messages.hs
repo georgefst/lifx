@@ -21,9 +21,10 @@ import Control.Concurrent.STM ( atomically )
 import Data.Binary
     ( Binary(..), putWord8, getWord8 )
 import Data.Binary.Put
-    ( putWord64le, putWord32le, putWord16le, putLazyByteString )
+    ( putWord64le, putWord32le, putWord16le, putByteString )
 import Data.Binary.Get
-    ( skip, getWord64le, getWord32le, getWord16le, getLazyByteString )
+    ( skip, getWord64le, getWord32le, getWord16le, getByteString )
+import qualified Data.ByteString as B ( ByteString, takeWhile )
 import qualified Data.ByteString.Lazy as L ( ByteString, takeWhile )
 import Data.Int ( Int16 )
 import Data.Word ( Word16, Word32, Word64 )
@@ -288,7 +289,7 @@ data StateLight =
   { slColor :: HSBK
     -- Reserved16 (dim)
   , slPower :: !Word16
-  , slLabel :: L.ByteString -- 32 bytes (aka labelSize)
+  , slLabel :: B.ByteString -- 32 bytes (aka labelSize)
     -- Reserved64 (tags)
   } deriving Show
 
@@ -300,16 +301,16 @@ instance Binary StateLight where
     put $ slColor x
     putWord16le 0 -- Reserved16 (dim)
     putWord16le $ slPower x
-    putLazyByteString $ padByteString labelSize $ slLabel x
+    putByteString $ padByteString labelSize $ slLabel x
     putWord64le 0 -- Reserved64 (tags)
 
   get = do
     color <- get
     skip 2 -- Reserved16 (dim)
     power <- getWord16le
-    label <- getLazyByteString labelSize
+    label <- getByteString labelSize
     skip 8 -- Reserved64 (tags)
-    return $ StateLight color power $ L.takeWhile (/= 0) label
+    return $ StateLight color power $ B.takeWhile (/= 0) label
 
 ----------------------------------------------------------
 
