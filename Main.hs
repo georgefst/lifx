@@ -9,6 +9,9 @@ import Data.Hourglass
       timePrint )
 -}
 import Data.Int ( Int64 )
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
+import qualified Data.Text.Encoding.Error as TEE
 import Data.Word ( Word16, Word64 )
 import Text.Printf ( printf )
 
@@ -64,7 +67,7 @@ nsToDuration (NanoSeconds ns) =
 
 prLight :: StateLight -> (String, String, String) -- label, power, color
 prLight sl = (label, power, color)
-  where label = show $ slLabel sl
+  where label = T.unpack $ TE.decodeUtf8With TEE.lenientDecode $ slLabel sl
         power = if slPower sl == 0 then "Off" else "On"
         color = printf "%3d %3d %3d %4dK" h s b k
         hsbk = slColor sl
