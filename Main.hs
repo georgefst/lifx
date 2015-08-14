@@ -127,8 +127,6 @@ lsBulbs lan = do
 
 main = do
   lan <- openLan' "en1" Nothing (Just putStrLn)
-  forever $ do
-    discoverBulbs lan myCb
-    threadDelay 1000000
-  -- lsBulbs lan
-  -- forever $ threadDelay 1000000000
+  -- discoverBulbs lan myCb
+  lsBulbs lan
+  forever $ threadDelay 1000000000
