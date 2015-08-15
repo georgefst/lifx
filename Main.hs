@@ -92,25 +92,26 @@ prInfo si = fmtDur $ nsToDuration $ fromIntegral $ siUptime si
           in concatMap (\(n, s) -> show n ++ s) xs'
 
 prHostFirmware :: StateHostFirmware -> String -- firmware version
-prHostFirmware shf = printf "%6x" (shfVersion shf)
+prHostFirmware shf = printf "%x" (shfVersion shf)
 
 prVersion :: StateVersion -> String -- hardware version
 prVersion sv = printf "%d.%d.%d" (svVendor sv) (svProduct sv) (svVersion sv)
 
-fmtStr = "%-20.20s %-3.3s %-17.17s %-6.6s %-11.11s %-4.4s %-6.6s %-5.5s"
+fmtStr = "%-16.16s %-3.3s %-17.17s %-6.6s %9.9s %-12.12s %-5.5s %-5.5s"
 
-prBulb :: StateHostInfo
+prBulb :: Bulb
+          -> StateHostInfo
           -> StateLight
           -> StateHostFirmware
           -> StateVersion
           -> StateInfo
           -> String
-prBulb shi sl shf sv si =
+prBulb bulb shi sl shf sv si =
   printf fmtStr label power color temp uptime devid fw vers
   where (label, power, color) = prLight sl
         temp = prHostInfo shi
         uptime = prInfo si
-        devid = "todo"
+        devid = deviceId bulb
         fw = prHostFirmware shf
         vers = prVersion sv
 
@@ -121,7 +122,7 @@ lsCb bulb =
       getHostFirmware bulb $ \shf ->
         getVersion bulb $ \sv ->
           getInfo bulb $ \si ->
-            putStrLn $ prBulb shi sl shf sv si
+            putStrLn $ prBulb bulb shi sl shf sv si
 
 lsBulbs :: Lan -> IO ()
 lsBulbs lan = do

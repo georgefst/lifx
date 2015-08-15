@@ -12,8 +12,8 @@ import Data.Binary
       putWord8,
       getWord8,
       encode )
-import Data.Binary.Put ( putWord64le, putWord32le, putWord16le )
-import Data.Binary.Get ( getWord64le, getWord32le, getWord16le )
+import Data.Binary.Put ( putWord64be, putWord64le, putWord32le, putWord16le )
+import Data.Binary.Get ( getWord64be, getWord64le, getWord32le, getWord16le )
 import Data.Bits ( Bits(shiftL, testBit) )
 import qualified Data.ByteString.Lazy as L ( length )
 import Data.Word ( Word8, Word16, Word32, Word64 )
@@ -104,7 +104,7 @@ instance Binary Header where
       (hOrg `shiftL` bOrigin)
     putWord32le $ hdrSource h
     -- "Frame Address"
-    putWord64le $ hdrTarget h
+    putWord64be $ hdrTarget h
     putWord32le 0 -- Reserved48
     putWord16le 0
     let hAck = hdrAckRequired h
@@ -124,7 +124,7 @@ instance Binary Header where
                (testBit otap bAddressable)
                (extract otap bProtocol 12)
     hhh <- hh <$> getWord32le -- hdrSource
-              <*> getWord64le -- hdrTarget
+              <*> getWord64be -- hdrTarget
     getWord32le -- Reserved48
     getWord16le
     ar <- getWord8

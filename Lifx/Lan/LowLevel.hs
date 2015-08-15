@@ -22,7 +22,8 @@ module Lifx.Lan.LowLevel
       LifxException(..),
       openLan,
       openLan',
-      discoverBulbs
+      discoverBulbs,
+      deviceId
       ) where
 
 import Lifx.Lan.Util

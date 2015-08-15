@@ -8,7 +8,8 @@ module Lifx.Lan.Protocol
       sendMsg,
       openLan,
       openLan',
-      discoverBulbs
+      discoverBulbs,
+      deviceId
       ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
@@ -108,20 +109,21 @@ data Lan
     , stSocket :: Socket
     , stBcast :: SockAddr
     , stThread :: Weak ThreadId
+    , stIfName :: String
     }
 
 instance Show Lan where
-  show _ = "(Lan)"
+  show (Lan { stIfName = ifname }) = ifname
 
 newtype Target = Target Word64
 
 instance Show Target where
-  show (Target x) = colonize $ printf "%012X" (x .&. 0xffffffffffff)
-    where colonize [c1, c2] = [c1, c2]
-          -- mac address seems to be backwards
-          colonize (c1:c2:rest) = colonize rest ++ [':', c1, c2]
+  show (Target x) = printf "%012x" (x `shiftR` 16)
 
 data Bulb = Bulb Lan SockAddr Target deriving Show
+
+deviceId :: Bulb -> String
+deviceId (Bulb _ _ targ) = show targ
 
 serviceUDP = 1
 
@@ -132,9 +134,9 @@ serializeMsg hdr payload = hdrBs `L.append` payloadBS
         hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
         hdrBs = encode hdr'
 
-newState :: Word32 -> Socket -> SockAddr -> Weak ThreadId
+newState :: String -> Word32 -> Socket -> SockAddr -> Weak ThreadId
             -> Maybe (String -> IO ()) -> STM Lan
-newState src sock bcast wthr logFunc = do
+newState ifname src sock bcast wthr logFunc = do
   seq <- newTVar 0
   cbacks <- newListArray (0, 255) (map noSeq [0..255])
   let lg = mkLogState logFunc
@@ -145,6 +147,7 @@ newState src sock bcast wthr logFunc = do
              , stSocket = sock
              , stBcast = bcast
              , stThread = wthr
+             , stIfName = ifname
              }
   where mkLogState Nothing = \_ -> return ()
         mkLogState (Just f) = f
@@ -287,7 +290,7 @@ openLan' ifname mport mlog = do
   thr <- forkIO (dispatcher tmv)
   wthr <- mkWeakThreadId thr
   atomically $ do
-    st <- newState source sock bcast wthr mlog
+    st <- newState ifname source sock bcast wthr mlog
     putTMVar tmv st
     return st
 
