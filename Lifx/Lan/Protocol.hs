@@ -345,3 +345,56 @@ ifaceAddr ifname = do
     Nothing -> throw $ NoSuchInterface ifname ifnames
   let (NI.IPv4 addr) = NI.ipv4 iface
   return addr
+
+data RetryParams =
+  RetryParams
+  { rpMinInterval :: !Float -- seconds
+  , rpMaxInterval :: !Float -- seconds
+  , rpMultiplier  :: !Float
+  , rpTimeLimit   :: !Float -- seconds
+  }
+
+microsPerSecond = 1000000
+
+reliableAction :: RetryParams
+                  -> (IO () -> IO ())
+                  -> IO ()
+                  -> IO ()
+                  -> IO ()
+reliableAction rp query cbSucc cbFail =
+  reliableQuery rp query' cbSucc' cbFail
+  where query' cb = query $ cb ()
+        cbSucc' _ = cbSucc
+
+reliableQuery :: RetryParams
+                 -> ((a -> IO ()) -> IO ())
+                 -> (a -> IO ())
+                 -> IO ()
+                 -> IO ()
+reliableQuery rp query cbSucc cbFail = do
+  v <- newTVarIO False
+  rq v (rpMinInterval rp) 0 $ round $ rpTimeLimit rp * microsPerSecond
+  where rq v interval totalµs limitµs = do
+          let exceeded = totalµs >= limitµs
+          done <- atomically $ do
+            d <- readTVar v
+            when exceeded $ writeTVar v True
+            return d
+          case (done, exceeded) of
+           (True, _ ) -> return ()
+           (False, True) -> cbFail
+           (False, False) -> do
+             query $ \x -> do
+               done' <- atomically $ do
+                 d <- readTVar v
+                 writeTVar v True
+                 return d
+               when (not done') $ cbSucc x
+             let remainingµs = limitµs - totalµs
+                 intervalµs = round $ interval * microsPerSecond
+                 delayµs = min remainingµs intervalµs
+             threadDelay delayµs
+             let newInterval =
+                   min (rpMaxInterval rp) (interval * rpMultiplier rp)
+             rq v newInterval (totalµs + delayµs) limitµs
+
