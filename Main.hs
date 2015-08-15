@@ -142,12 +142,9 @@ lsBulbs lan = do
   printf fmtStrn "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "Firmware" "Version"
   printf fmtStrn dashes dashes dashes dashes dashes dashes dashes dashes
   s <- STMSet.newIO
-  discoverBulbs lan (lsCb s)
-  threadDelay 500000
-  discoverBulbs lan (lsCb s)
-  threadDelay 500000
-  discoverBulbs lan (lsCb s)
-  threadDelay 500000
+  forever $ do
+    discoverBulbs lan (lsCb s)
+    threadDelay 500000
 
 main = do
   lan <- openLan "en1" -- Nothing (Just putStrLn)
