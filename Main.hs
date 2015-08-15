@@ -1,6 +1,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
 import Control.Concurrent
+import Control.Concurrent.STM
 import Control.Monad ( when, forever )
 import Data.Hourglass
 {-
@@ -13,6 +14,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
 import Data.Word ( Word16, Word64 )
+import qualified STMContainers.Set as STMSet
 import Text.Printf ( printf )
 
 import Lifx.Lan.LowLevel
@@ -115,14 +117,23 @@ prBulb bulb shi sl shf sv si =
         fw = prHostFirmware shf
         vers = prVersion sv
 
-lsCb :: Bulb -> IO ()
-lsCb bulb =
-  getHostInfo bulb $ \shi ->
-    getLight bulb $ \sl ->
-      getHostFirmware bulb $ \shf ->
-        getVersion bulb $ \sv ->
-          getInfo bulb $ \si ->
-            putStrLn $ prBulb bulb shi sl shf sv si
+type DevID = String
+
+lsCb :: STMSet.Set DevID -> Bulb -> IO ()
+lsCb done bulb = do
+  let dev = deviceId bulb
+  already <- atomically $ STMSet.lookup dev done
+  when (not already) $
+    getHostInfo bulb $ \shi ->
+      getLight bulb $ \sl ->
+        getHostFirmware bulb $ \shf ->
+          getVersion bulb $ \sv ->
+            getInfo bulb $ \si -> do
+              dup <- atomically $ do
+                d <- STMSet.lookup dev done
+                when (not d) $ STMSet.insert dev done
+                return d
+              when (not dup) $ putStrLn $ prBulb bulb shi sl shf sv si
 
 lsBulbs :: Lan -> IO ()
 lsBulbs lan = do
@@ -130,10 +141,16 @@ lsBulbs lan = do
       dashes = replicate 80 '-'
   printf fmtStrn "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "Firmware" "Version"
   printf fmtStrn dashes dashes dashes dashes dashes dashes dashes dashes
-  discoverBulbs lan lsCb
+  s <- STMSet.newIO
+  discoverBulbs lan (lsCb s)
+  threadDelay 500000
+  discoverBulbs lan (lsCb s)
+  threadDelay 500000
+  discoverBulbs lan (lsCb s)
+  threadDelay 500000
 
 main = do
-  lan <- openLan' "en1" Nothing (Just putStrLn)
+  lan <- openLan "en1" -- Nothing (Just putStrLn)
   -- discoverBulbs lan myCb
   lsBulbs lan
-  forever $ threadDelay 1000000000
+  -- forever $ threadDelay 1000000000
