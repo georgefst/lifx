@@ -12,14 +12,14 @@ data HSBK a =
   , kelvin :: a
   } deriving (Show, Eq, Ord)
 
-{-
+
 instance Functor HSBK where
-  fmap f x = HSBK { hue = fmap f $ hue x
-                  , saturation = fmap f $ saturation x
-                  , brightness = fmap f $ brightness x
-                  , kelvin = f $ fmap kelvin x
+  fmap f x = HSBK { hue = f $ hue x
+                  , saturation = f $ saturation x
+                  , brightness = f $ brightness x
+                  , kelvin = f $ kelvin x
                   }
--}
+
 
 instance (Monoid a) => Monoid (HSBK a) where
   mempty = HSBK { hue = mempty
