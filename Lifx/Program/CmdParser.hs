@@ -4,17 +4,6 @@ import System.Console.CmdArgs.Explicit
 
 import Lifx.Program.Types
 
-newtype DeviceId = DeviceId Text
-newtype GroupId = GroupId Text
-newtype LocId = LocId Text
-
-data Selector = SelAll
-              | SelLabel Text
-              | SelDevId DeviceId
-              | SelGroup Text
-              | SelGroupId GroupId
-              | SelLocation Text
-              | SelLocationId LocId
 
 data LiteArgs =
   LiteArgs
@@ -29,15 +18,6 @@ data LiteCmd = CmdList
              | CmdColor   ColorArg
              | CmdPulse   PulseArg
              | CmdBreathe PulseArg
-
-data ColorArg = CNamed  NamedColor
-              | CCustom MaybeColor
-
-data NamedColor = White | Red | Orange | Yellow
-                | Cyan | Green | Blue | Purple | Pink
-                deriving (Show, Read, Ord, Eq, Enum)
-
-type LiFractional = Scientific
 
 data PulseArg =
   PulseArg
@@ -59,19 +39,6 @@ defPulseArg = PulseArg
   , paPowerOn   = True
   , paPeak      = 0.5
   }
-
-emptyColor = CCustom $ HSBK Nothing Nothing Nothing Nothing
-
-isEmptyColor (CCustom (HSBK Nothing Nothing Nothing Nothing)) = True
-isEmptyColor _ = False
-
-isCompleteColor (CNamed _) = True
-isCompleteColor (CCustom (HSBK (Just _ ) (Just _ ) (Just _ ) (Just _ ))) = True
-isCompleteColor _ = False
-
-customColor :: ColorArg -> MaybeColor
-customColor (CNamed _ ) = emptyColor
-customColor (CCustom x) = x
 
 defList :: LiteArgs
 defList = LiteArgs { aInterface = Nothing, aTarget = SelAll, aCmd = CmdList }
