@@ -119,16 +119,19 @@ prBulb bulb shi sl shf sv si =
 
 type DevID = String
 
+-- ra q cb = reliableAction defaultRetryParams q cb $ return ()
+rq q cb = reliableQuery  defaultRetryParams q cb $ putStrLn "timeout!"
+
 lsCb :: STMSet.Set DevID -> Bulb -> IO ()
 lsCb done bulb = do
   let dev = deviceId bulb
   already <- atomically $ STMSet.lookup dev done
   when (not already) $
-    getHostInfo bulb $ \shi ->
-      getLight bulb $ \sl ->
-        getHostFirmware bulb $ \shf ->
-          getVersion bulb $ \sv ->
-            getInfo bulb $ \si -> do
+    rq (getHostInfo bulb) $ \shi ->
+      rq (getLight bulb) $ \sl ->
+        rq (getHostFirmware bulb) $ \shf ->
+          rq (getVersion bulb) $ \sv ->
+            rq (getInfo bulb) $ \si -> do
               dup <- atomically $ do
                 d <- STMSet.lookup dev done
                 when (not d) $ STMSet.insert dev done

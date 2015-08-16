@@ -20,10 +20,14 @@ module Lifx.Lan.LowLevel
       Bulb,
       Lan,
       LifxException(..),
+      RetryParams(..),
       openLan,
       openLan',
       discoverBulbs,
-      deviceId
+      deviceId,
+      defaultRetryParams,
+      reliableAction,
+      reliableQuery
       ) where
 
 import Lifx.Lan.Util

@@ -4,12 +4,16 @@ module Lifx.Lan.Protocol
     ( Lan,
       Bulb(..),
       LifxException(..),
+      RetryParams(..),
       newHdrAndCallback,
       sendMsg,
       openLan,
       openLan',
       discoverBulbs,
-      deviceId
+      deviceId,
+      defaultRetryParams,
+      reliableAction,
+      reliableQuery
       ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
@@ -352,6 +356,14 @@ data RetryParams =
   , rpMaxInterval :: !Float -- seconds
   , rpMultiplier  :: !Float
   , rpTimeLimit   :: !Float -- seconds
+  }
+
+defaultRetryParams =
+  RetryParams
+  { rpMinInterval = 0.1
+  , rpMaxInterval = 0.5
+  , rpMultiplier = 2
+  , rpTimeLimit = 5
   }
 
 microsPerSecond = 1000000
