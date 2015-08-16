@@ -385,7 +385,8 @@ reliableQuery :: RetryParams
                  -> IO ()
 reliableQuery rp query cbSucc cbFail = do
   v <- newTVarIO False
-  rq v (rpMinInterval rp) 0 $ round $ rpTimeLimit rp * microsPerSecond
+  forkIO $ rq v (rpMinInterval rp) 0 $ round $ rpTimeLimit rp * microsPerSecond
+  return ()
   where rq v interval totalµs limitµs = do
           let exceeded = totalµs >= limitµs
           done <- atomically $ do
