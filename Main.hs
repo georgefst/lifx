@@ -19,6 +19,7 @@ import Text.Printf ( printf )
 
 import Lifx.Lan.LowLevel
 import qualified Lifx.Program.Types as P
+import qualified Lifx.Program.CmdParser as C
 
 myTime :: Word64 -> String
 myTime nanos =

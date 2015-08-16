@@ -57,6 +57,7 @@ executable lifx
                , Lifx.Lan.Protocol
                , Lifx.Lan.LowLevel
                , Lifx.Program.Types
+               , Lifx.Program.CmdParser
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -75,6 +76,7 @@ executable lifx
                      , text >= 1.2.1 && < 1.3
                      , stm-containers >= 0.2.9 && < 1.3
                      , scientific >= 0.3.3 && < 0.4
+                     , cmdargs >= 0.10.13 && < 0.11
 
   -- Directories containing source files.
   -- hs-source-dirs:

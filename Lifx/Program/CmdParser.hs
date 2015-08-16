@@ -1,6 +1,11 @@
 module Lifx.Program.CmdParser where
 
+import Data.Char
+import Data.List
+import Data.Text (Text)
+import qualified Data.Text as T
 import System.Console.CmdArgs.Explicit
+import Text.Read
 
 import Lifx.Program.Types
 
@@ -23,11 +28,11 @@ data PulseArg =
   PulseArg
   { paColor     :: ColorArg
   , paFromColor :: ColorArg
-  , paPeriod    :: LiFractional
-  , paCycles    :: LiFractional
+  , paPeriod    :: LiFrac
+  , paCycles    :: LiFrac
   , paPersist   :: Bool
   , paPowerOn   :: Bool
-  , paPeak      :: LiFractional
+  , paPeak      :: LiFrac
   }
 
 defPulseArg = PulseArg
@@ -79,15 +84,15 @@ downcase = map toLower
 
 capitalize :: String -> String
 capitalize [] = []
-capitalize x:xs = toUpper x : downcase xs
+capitalize (x:xs) = toUpper x : downcase xs
 
-mkCFlag :: String -> String -> (MaybeColor -> Maybe LiFractional -> MaybeColor)
+mkCFlag :: String -> String -> (MaybeColor -> Maybe LiFrac -> MaybeColor)
            -> Flag LiteArgs
 mkCFlag name range f =
   flagReq [head name, name] (cflagUpdate f) "FLOAT"
   ("Set " ++ name ++ " of light's color (" ++ range ++ ")")
 
-cflagUpdate :: (MaybeColor -> Maybe LiFractional -> MaybeColor)
+cflagUpdate :: (MaybeColor -> Maybe LiFrac -> MaybeColor)
                -> String
                -> LiteArgs
                -> Either String LiteArgs
@@ -96,7 +101,7 @@ cflagUpdate f arg args = do
   newCmd <- updColor (`f` Just num) (aCmd args)
   return $ args { aCmd = newCmd }
 
-updColor :: (MaybeColor -> MaybeColor) -> LiteCmd -> Either String LiteCmd
+updColor :: (ColorArg -> ColorArg) -> LiteCmd -> Either String LiteCmd
 updColor f (CmdColor c) = Right $ CCustom $ f $ customColor c
 updColor f (CmdPulse p) = CmdPulse $ updPulseColor f p
 updColor f (CmdBreathe p) = CmdPulse $ updPulseColor f p
@@ -111,10 +116,10 @@ nameColors = intercalate ", " $ map show colors
 updNamed :: String -> LiteArgs -> Either String LiteArgs
 updNamed arg args = do
   color <- readEither $ capitalize arg
-  newCmd <- updColor todo (aCmd args)
+  newCmd <- updColor (const $ CNamed color) (aCmd args)
   return $ args { aCmd = newCmd }
 
-updPulseColor :: (MaybeColor -> MaybeColor) -> PulseArg -> PulseArg
+updPulseColor :: (ColorArg -> ColorArg) -> PulseArg -> PulseArg
 updPulseColor f p = PulseArg { paColor = CCustom $ f $ customColor $ paColor p }
 
 pFlags = cFlags ++ [pFlag, cFlag, tFlag, oFlag, eFlag]
@@ -127,8 +132,8 @@ eFlag = flagReq ["e", "peak"] updPeak "FLOAT" "Is this different than duty cycle
 
 updPeriod = updFrac (\n p -> p { paPeriod = n })
 updCycles = updFrac (\n p -> p { paCycles = n })
-upPersist = updBool (\b p -> p { paPersist = b })
-upPowerOn = updBool (\b p -> p { paPowerOn = b })
+updPersist = updBool (\b p -> p { paPersist = b })
+updPowerOn = updBool (\b p -> p { paPowerOn = b })
 updPeak = updFrac (\n p -> p { paPeak = n })
 
 updFrac = updPulse id
