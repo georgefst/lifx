@@ -56,6 +56,7 @@ executable lifx
                , Lifx.Lan.Messages
                , Lifx.Lan.Protocol
                , Lifx.Lan.LowLevel
+               , Lifx.Program.Types
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -73,6 +74,7 @@ executable lifx
                      , network-info >= 0.2 && < 0.3
                      , text >= 1.2.1 && < 1.3
                      , stm-containers >= 0.2.9 && < 1.3
+                     , scientific >= 0.3.3 && < 0.4
 
   -- Directories containing source files.
   -- hs-source-dirs:

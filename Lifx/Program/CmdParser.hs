@@ -1,4 +1,8 @@
+module Lifx.Program.CmdParser where
+
 import System.Console.CmdArgs.Explicit
+
+import Lifx.Program.Types
 
 newtype DeviceId = DeviceId Text
 newtype GroupId = GroupId Text

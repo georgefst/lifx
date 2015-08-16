@@ -18,6 +18,7 @@ import qualified STMContainers.Set as STMSet
 import Text.Printf ( printf )
 
 import Lifx.Lan.LowLevel
+import qualified Lifx.Program.Types as P
 
 myTime :: Word64 -> String
 myTime nanos =

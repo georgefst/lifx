@@ -1,3 +1,9 @@
+module Lifx.Program.Types where
+
+import Data.Monoid
+import Data.Scientific
+import Data.Word
+
 data HSBK a =
   HSBK
   { hue :: a
@@ -6,14 +12,16 @@ data HSBK a =
   , kelvin :: a
   } deriving (Show, Eq, Ord)
 
-instance Functor a => Functor (HSBK a) where
+{-
+instance Functor HSBK where
   fmap f x = HSBK { hue = fmap f $ hue x
                   , saturation = fmap f $ saturation x
                   , brightness = fmap f $ brightness x
                   , kelvin = f $ fmap kelvin x
                   }
+-}
 
-instance Monoid a => Monoid (HSBK a) where
+instance (Monoid a) => Monoid (HSBK a) where
   mempty = HSBK { hue = mempty
                 , saturation = mempty
                 , brightness = mempty
