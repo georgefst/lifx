@@ -21,7 +21,7 @@ import qualified STMContainers.Set as STMSet
 import Text.Printf ( printf )
 
 import Lifx.Lan.LowLevel
-import qualified Lifx.Program.Types as P
+import Lifx.Program.Types (Product(..), productFromId)
 -- import qualified Lifx.Program.CmdParser as C
 
 myTime :: Word64 -> String
@@ -104,15 +104,12 @@ prHostFirmware shf = printf "%d.%d" major minor
         major = v `shiftR` 16
         minor = v .&. 0xffff
 
-productName :: Word32 -> Word32 -> (String, String)
-productName 1 1 = ("LIFX Original 1000", "O1000")
-productName 1 2 = ("LIFX Color 650",     "C650")
-productName 1 3 = ("LIFX White 800",     "W800")
-productName vend prod = (printf "vendor %d, product %d" vend prod,
-                         printf "%d:%d" vend prod)
-
 prVersion :: StateVersion -> String -- hardware version
-prVersion sv = snd $ productName (svVendor sv) (svProduct sv)
+prVersion sv = f $ productFromId vend prod
+  where vend = svVendor sv
+        prod = svProduct sv
+        f (Just p) = T.unpack $ pShortName p
+        f Nothing = printf "%d:%d" vend prod
 
 tr :: String -> IO ()
 tr s = putStrLn $ dropWhileEnd isSpace s

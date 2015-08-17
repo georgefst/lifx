@@ -1,6 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Lifx.Program.Types where
 
-import Data.Monoid
+import Data.List (find)
+import Data.Monoid (Monoid(..))
 import Data.Scientific
 import Data.Text (Text(..))
 import Data.Word
@@ -73,3 +76,29 @@ customColor :: ColorArg -> MaybeColor
 customColor (CNamed _ ) = HSBK Nothing Nothing Nothing Nothing
 customColor (CCustom x) = x
 
+data Product =
+  Product
+  { pVendor :: !Word32
+  , pProduct :: !Word32
+  , pLongName :: Text
+  , pShortName :: Text
+  } deriving (Show, Eq, Ord)
+
+products :: [Product]
+products =
+  [ Product 1 1 "LIFX Original 1000" "O1000"
+  , Product 1 2 "LIFX Color 650"     "C650"
+  , Product 1 3 "LIFX White 800"     "W800"
+  ]
+
+productFromId :: Word32 -> Word32 -> Maybe Product
+productFromId v p = find f products
+  where f (Product v' p' _ _) = v == v' && p == p'
+
+productFromLongName :: Text -> Maybe Product
+productFromLongName ln = find f products
+  where f (Product _ _ ln' _) = ln == ln'
+
+productFromShortName :: Text -> Maybe Product
+productFromShortName sn = find f products
+  where f (Product _ _ _ sn') = sn == sn'
