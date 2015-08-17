@@ -3,6 +3,7 @@
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad ( when, forever )
+import Data.Bits
 import Data.Hourglass
 {-
     ( ElapsedP(ElapsedP),
@@ -19,7 +20,7 @@ import Text.Printf ( printf )
 
 import Lifx.Lan.LowLevel
 import qualified Lifx.Program.Types as P
-import qualified Lifx.Program.CmdParser as C
+-- import qualified Lifx.Program.CmdParser as C
 
 myTime :: Word64 -> String
 myTime nanos =
@@ -96,12 +97,15 @@ prInfo si = fmtDur $ nsToDuration $ fromIntegral $ siUptime si
           in concatMap (\(n, s) -> show n ++ s) xs'
 
 prHostFirmware :: StateHostFirmware -> String -- firmware version
-prHostFirmware shf = printf "%x" (shfVersion shf)
+prHostFirmware shf = printf "%d.%d" major minor
+  where v = shfVersion shf
+        major = v `shiftR` 16
+        minor = v .&. 0xffff
 
 prVersion :: StateVersion -> String -- hardware version
 prVersion sv = printf "%d.%d.%d" (svVendor sv) (svProduct sv) (svVersion sv)
 
-fmtStr = "%-16.16s %-3.3s %-17.17s %-6.6s %9.9s %-12.12s %-5.5s %-5.5s"
+fmtStr = "%-16.16s %-3.3s %-17.17s %-6.6s %11.11s %-12.12s %-3.3s %-5.5s"
 
 prBulb :: Bulb
           -> StateHostInfo
@@ -144,7 +148,7 @@ lsBulbs :: Lan -> IO ()
 lsBulbs lan = do
   let fmtStrn = fmtStr ++ "\n"
       dashes = replicate 80 '-'
-  printf fmtStrn "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "Firmware" "Version"
+  printf fmtStrn "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "FW" "HW"
   printf fmtStrn dashes dashes dashes dashes dashes dashes dashes dashes
   s <- STMSet.newIO
   forever $ do
