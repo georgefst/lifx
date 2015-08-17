@@ -65,7 +65,7 @@ iFlag = Flag
   }
 
 ifaceUpdate :: String -> LiteArgs -> Either String LiteArgs
-ifaceUpdate arg args = Right $ args { aInterface = T.pack arg }
+ifaceUpdate arg args = Right $ args { aInterface = Just $ T.pack arg }
 
 cFlags = [hFlag, sFlag, bFlag, kFlag, nFlag]
 
@@ -89,7 +89,7 @@ capitalize (x:xs) = toUpper x : downcase xs
 mkCFlag :: String -> String -> (MaybeColor -> Maybe LiFrac -> MaybeColor)
            -> Flag LiteArgs
 mkCFlag name range f =
-  flagReq [head name, name] (cflagUpdate f) "FLOAT"
+  flagReq [[head name], name] (cflagUpdate f) "FLOAT"
   ("Set " ++ name ++ " of light's color (" ++ range ++ ")")
 
 cflagUpdate :: (MaybeColor -> Maybe LiFrac -> MaybeColor)
@@ -101,10 +101,10 @@ cflagUpdate f arg args = do
   newCmd <- updColor (`f` Just num) (aCmd args)
   return $ args { aCmd = newCmd }
 
-updColor :: (ColorArg -> ColorArg) -> LiteCmd -> Either String LiteCmd
-updColor f (CmdColor c) = Right $ CCustom $ f $ customColor c
-updColor f (CmdPulse p) = CmdPulse $ updPulseColor f p
-updColor f (CmdBreathe p) = CmdPulse $ updPulseColor f p
+updColor :: (MaybeColor -> MaybeColor) -> LiteCmd -> Either String LiteCmd
+updColor f (CmdColor c) = Right $ CmdColor $ CCustom $ f $ customColor c
+updColor f (CmdPulse p) = Right $ CmdPulse $ updPulseColor f p
+updColor f (CmdBreathe p) = Right $ CmdPulse $ updPulseColor f p
 updColor _ _ = Left "Color arguments not applicable to this command"
 
 nFlag = flagReq ["n", "color"] updNamed "COLOR-NAME"
@@ -149,10 +149,21 @@ updPulse f1 f2 arg args = do
   newCmd <- updPulse2 (f2 x) (aCmd args)
   return $ args { aCmd = newCmd }
 
-updPulse2 :: (PulseArg -> PulseArg) LiteCmd
+updPulse2 :: (PulseArg -> PulseArg) -> LiteCmd
 updPulse2 f (CmdPulse p) = CmdPulse (f p)
 updPulse2 f (CmdBreathe p) = CmdBreathe (f p)
 updPulse2 _ _ = Left "Pulse arguments not applicable to this command"
+
+updArg :: String -> LiteArgs -> Either String LiteArgs
+updArg arg args = Right $ args { aTarget = sel arg }
+  where sel "all" = SelAll
+        sel label = SelLabel $ T.pack label
+
+selArg = Arg
+  { argValue = updArg
+  , argType = "LABEL|DEVID"
+  , argRequire = False
+  }
 
 arguments :: Mode [(String, String)]
 arguments =
