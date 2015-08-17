@@ -4,6 +4,7 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad ( when, forever )
 import Data.Bits
+import Data.Char
 import Data.Hourglass
 {-
     ( ElapsedP(ElapsedP),
@@ -11,10 +12,11 @@ import Data.Hourglass
       timePrint )
 -}
 import Data.Int ( Int64 )
+import Data.List
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
-import Data.Word ( Word16, Word64 )
+import Data.Word ( Word16, Word32, Word64 )
 import qualified STMContainers.Set as STMSet
 import Text.Printf ( printf )
 
@@ -102,8 +104,18 @@ prHostFirmware shf = printf "%d.%d" major minor
         major = v `shiftR` 16
         minor = v .&. 0xffff
 
+productName :: Word32 -> Word32 -> (String, String)
+productName 1 1 = ("LIFX Original 1000", "O1000")
+productName 1 2 = ("LIFX Color 650",     "C650")
+productName 1 3 = ("LIFX White 800",     "W800")
+productName vend prod = (printf "vendor %d, product %d" vend prod,
+                         printf "%d:%d" vend prod)
+
 prVersion :: StateVersion -> String -- hardware version
-prVersion sv = printf "%d.%d.%d" (svVendor sv) (svProduct sv) (svVersion sv)
+prVersion sv = snd $ productName (svVendor sv) (svProduct sv)
+
+tr :: String -> IO ()
+tr s = putStrLn $ dropWhileEnd isSpace s
 
 fmtStr = "%-16.16s %-3.3s %-17.17s %-6.6s %11.11s %-12.12s %-3.3s %-5.5s"
 
@@ -142,14 +154,14 @@ lsCb done bulb = do
                 d <- STMSet.lookup dev done
                 when (not d) $ STMSet.insert dev done
                 return d
-              when (not dup) $ putStrLn $ prBulb bulb shi sl shf sv si
+              when (not dup) $ tr $ prBulb bulb shi sl shf sv si
 
 lsBulbs :: Lan -> IO ()
 lsBulbs lan = do
   let fmtStrn = fmtStr ++ "\n"
       dashes = replicate 80 '-'
-  printf fmtStrn "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "FW" "HW"
-  printf fmtStrn dashes dashes dashes dashes dashes dashes dashes dashes
+  tr $ printf fmtStrn "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "FW" "HW"
+  tr $ printf fmtStrn dashes dashes dashes dashes dashes dashes dashes dashes
   s <- STMSet.newIO
   forever $ do
     discoverBulbs lan (lsCb s)
