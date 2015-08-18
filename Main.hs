@@ -18,6 +18,7 @@ import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
 import Data.Word ( Word16, Word32, Word64 )
 import qualified STMContainers.Set as STMSet
+import System.Console.CmdArgs.Explicit
 import Text.Printf ( printf )
 
 import Lifx.Lan.LowLevel
@@ -165,6 +166,8 @@ lsBulbs lan = do
     threadDelay 500000
 
 main = do
+  args <- processArgs C.arguments
+  print args
   lan <- openLan "en1" -- Nothing (Just putStrLn)
   -- discoverBulbs lan myCb
   lsBulbs lan

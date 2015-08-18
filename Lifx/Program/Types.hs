@@ -44,9 +44,9 @@ type HSBK16 = HSBK Word16
 type Color = HSBK LiFrac
 type MaybeColor = HSBK (Maybe LiFrac)
 
-newtype DeviceId = DeviceId Text
-newtype GroupId = GroupId Text
-newtype LocId = LocId Text
+newtype DeviceId = DeviceId Text deriving (Show, Eq, Ord)
+newtype GroupId = GroupId Text deriving (Show, Eq, Ord)
+newtype LocId = LocId Text deriving (Show, Eq, Ord)
 
 data Selector = SelAll
               | SelLabel Text
@@ -55,9 +55,11 @@ data Selector = SelAll
               | SelGroupId GroupId
               | SelLocation Text
               | SelLocationId LocId
+                deriving (Show, Eq, Ord)
 
 data ColorArg = CNamed  NamedColor
               | CCustom MaybeColor
+                deriving (Show, Eq, Ord)
 
 data NamedColor = White | Red | Orange | Yellow
                 | Cyan | Green | Blue | Purple | Pink

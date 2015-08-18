@@ -5,6 +5,7 @@ import Data.List
 import Data.Text (Text)
 import qualified Data.Text as T
 import System.Console.CmdArgs.Explicit
+import System.Console.CmdArgs.Text (TextFormat(..))
 import Text.Read
 
 import Lifx.Program.Types
@@ -15,7 +16,8 @@ data LiteArgs =
   { aInterface :: Maybe Text
   , aTarget :: Selector
   , aCmd :: LiteCmd
-  }
+  , aHelp :: Maybe (HelpFormat, TextFormat)
+  } deriving (Show, Eq, Ord)
 
 data LiteCmd = CmdList
              | CmdOn
@@ -23,6 +25,7 @@ data LiteCmd = CmdList
              | CmdColor   ColorArg
              | CmdPulse   PulseArg
              | CmdBreathe PulseArg
+               deriving (Show, Eq, Ord)
 
 data PulseArg =
   PulseArg
@@ -33,7 +36,7 @@ data PulseArg =
   , paPersist   :: Bool
   , paPowerOn   :: Bool
   , paPeak      :: LiFrac
-  }
+  } deriving (Show, Eq, Ord)
 
 defPulseArg = PulseArg
   { paColor     = emptyColor
@@ -46,15 +49,20 @@ defPulseArg = PulseArg
   }
 
 defList :: LiteArgs
-defList = LiteArgs { aInterface = Nothing, aTarget = SelAll, aCmd = CmdList }
+defList = LiteArgs { aInterface = Nothing
+                   , aTarget = SelAll
+                   , aCmd = CmdList
+                   , aHelp = Nothing }
 
 defOn      = defList { aCmd = CmdOn }
-defOff     = defList { aCmd = CmdOn }
+defOff     = defList { aCmd = CmdOff }
 defColor   = defList { aCmd = CmdColor   (CNamed White) }
 defPulse   = defList { aCmd = CmdPulse   defPulseArg }
 defBreathe = defList { aCmd = CmdBreathe defPulseArg }
 
-gFlags = [iFlag]
+gFlags = [iFlag, helpFlag]
+
+helpFlag = flagHelpFormat $ \hf tf args -> args { aHelp = Just (hf, tf) }
 
 iFlag = Flag
   { flagNames = ["i", "interface"]
@@ -186,11 +194,11 @@ selArg = Arg
 
 arguments :: Mode LiteArgs
 arguments =
-  modes  "lifx"    defList  "Control LIFX light bulbs"
-  [ mode "list"    defList  "List bulbs"        selArg gFlags
-  , mode "on"      defOn    "Turn bulb on"      selArg gFlags
-  , mode "off"     defOff   "Turn bulb off"     selArg gFlags
-  , mode "color"   defColor "Set bulb color"    selArg $ gFlags ++ cFlags
-  , mode "pulse"   defPulse "Square wave blink" selArg $ gFlags ++ pFlags
-  , mode "breathe" defPulse "Sine wave blink"   selArg $ gFlags ++ pFlags
-  ]
+  (modes  "lifx"    defList  "Control LIFX light bulbs"
+   [ mode "list"    defList  "List bulbs"        selArg []
+   , mode "on"      defOn    "Turn bulb on"      selArg []
+   , mode "off"     defOff   "Turn bulb off"     selArg []
+   , mode "color"   defColor "Set bulb color"    selArg cFlags
+   , mode "pulse"   defPulse "Square wave blink" selArg pFlags
+   , mode "breathe" defPulse "Sine wave blink"   selArg pFlags
+   ]) { modeGroupFlags = toGroup gFlags }
