@@ -107,6 +107,9 @@ updColor f (CmdPulse p) = Right $ CmdPulse $ updPulseColor f p
 updColor f (CmdBreathe p) = Right $ CmdPulse $ updPulseColor f p
 updColor _ _ = Left "Color arguments not applicable to this command"
 
+updPulseColor :: (MaybeColor -> MaybeColor) -> PulseArg -> PulseArg
+updPulseColor f p = p { paColor = CCustom $ f $ customColor $ paColor p }
+
 nFlag = flagReq ["n", "color"] updNamed "COLOR-NAME"
         ("Specify color by name (" ++ nameColors ++ ")")
 
@@ -116,11 +119,17 @@ nameColors = intercalate ", " $ map show colors
 updNamed :: String -> LiteArgs -> Either String LiteArgs
 updNamed arg args = do
   color <- readEither $ capitalize arg
-  newCmd <- updColor (const $ CNamed color) (aCmd args)
+  newCmd <- updColorNamed (CNamed color) (aCmd args)
   return $ args { aCmd = newCmd }
 
-updPulseColor :: (ColorArg -> ColorArg) -> PulseArg -> PulseArg
-updPulseColor f p = PulseArg { paColor = CCustom $ f $ customColor $ paColor p }
+updColorNamed :: ColorArg -> LiteCmd -> Either String LiteCmd
+updColorNamed ca (CmdColor c) = Right $ CmdColor ca
+updColorNamed ca (CmdPulse p) = Right $ CmdPulse $ updPulseColorNamed ca p
+updColorNamed ca (CmdBreathe p) = Right $ CmdPulse $ updPulseColorNamed ca p
+updColorNamed _ _ = Left "Color arguments not applicable to this command"
+
+updPulseColorNamed :: ColorArg -> PulseArg -> PulseArg
+updPulseColorNamed ca p = p { paColor = ca }
 
 pFlags = cFlags ++ [pFlag, cFlag, tFlag, oFlag, eFlag]
 
@@ -136,10 +145,20 @@ updPersist = updBool (\b p -> p { paPersist = b })
 updPowerOn = updBool (\b p -> p { paPowerOn = b })
 updPeak = updFrac (\n p -> p { paPeak = n })
 
+updFrac :: (LiFrac -> PulseArg -> PulseArg)
+           -> String
+           -> LiteArgs
+           -> Either String LiteArgs
 updFrac = updPulse id
+
+updBool :: (Bool -> PulseArg -> PulseArg)
+           -> String
+           -> LiteArgs
+           -> Either String LiteArgs
 updBool = updPulse capitalize
 
-updPulse :: (a -> a)
+updPulse :: Read a
+            => (String -> String)
             -> (a -> PulseArg -> PulseArg)
             -> String
             -> LiteArgs
@@ -149,9 +168,9 @@ updPulse f1 f2 arg args = do
   newCmd <- updPulse2 (f2 x) (aCmd args)
   return $ args { aCmd = newCmd }
 
-updPulse2 :: (PulseArg -> PulseArg) -> LiteCmd
-updPulse2 f (CmdPulse p) = CmdPulse (f p)
-updPulse2 f (CmdBreathe p) = CmdBreathe (f p)
+updPulse2 :: (PulseArg -> PulseArg) -> LiteCmd -> Either String LiteCmd
+updPulse2 f (CmdPulse p) = Right $ CmdPulse (f p)
+updPulse2 f (CmdBreathe p) = Right $ CmdBreathe (f p)
 updPulse2 _ _ = Left "Pulse arguments not applicable to this command"
 
 updArg :: String -> LiteArgs -> Either String LiteArgs
