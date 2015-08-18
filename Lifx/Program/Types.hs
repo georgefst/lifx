@@ -61,7 +61,7 @@ data ColorArg = CNamed  NamedColor
 
 data NamedColor = White | Red | Orange | Yellow
                 | Cyan | Green | Blue | Purple | Pink
-                deriving (Show, Read, Ord, Eq, Enum)
+                deriving (Show, Read, Ord, Eq, Enum, Bounded)
 
 emptyColor = CCustom $ HSBK Nothing Nothing Nothing Nothing
 

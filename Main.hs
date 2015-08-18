@@ -22,7 +22,7 @@ import Text.Printf ( printf )
 
 import Lifx.Lan.LowLevel
 import Lifx.Program.Types (Product(..), productFromId)
--- import qualified Lifx.Program.CmdParser as C
+import qualified Lifx.Program.CmdParser as C
 
 myTime :: Word64 -> String
 myTime nanos =

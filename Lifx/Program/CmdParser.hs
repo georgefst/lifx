@@ -184,7 +184,7 @@ selArg = Arg
   , argRequire = False
   }
 
-arguments :: Mode [(String, String)]
+arguments :: Mode LiteArgs
 arguments =
   modes  "lifx"    defList  "Control LIFX light bulbs"
   [ mode "list"    defList  "List bulbs"        selArg gFlags
