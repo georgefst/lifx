@@ -39,6 +39,7 @@ instance (Monoid a) => Monoid (HSBK a) where
                      }
 
 type LiFrac = Scientific
+type Interface = Text
 
 type HSBK16 = HSBK Word16
 type Color = HSBK LiFrac

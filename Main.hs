@@ -13,6 +13,7 @@ import Data.Hourglass
 -}
 import Data.Int ( Int64 )
 import Data.List
+import Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
@@ -167,8 +168,9 @@ lsBulbs lan = do
 
 main = do
   args <- C.parseCmdLine
-  print args
-  lan <- openLan "en1" -- Nothing (Just putStrLn)
+  let ifname = fromMaybe (T.pack "en1") $ C.aInterface args
+  -- print args
+  lan <- openLan ifname
   -- discoverBulbs lan myCb
   lsBulbs lan
   -- forever $ threadDelay 1000000000

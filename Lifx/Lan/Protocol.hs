@@ -39,6 +39,8 @@ import qualified Data.ByteString.Lazy as L
 import Data.Int ( Int64 )
 import Data.List
 import Data.Maybe
+import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Typeable
 import Data.Word ( Word8, Word16, Word32, Word64 )
 import qualified Network.Info as NI
@@ -113,11 +115,11 @@ data Lan
     , stSocket :: Socket
     , stBcast :: SockAddr
     , stThread :: Weak ThreadId
-    , stIfName :: String
+    , stIfName :: Text
     }
 
 instance Show Lan where
-  show (Lan { stIfName = ifname }) = ifname
+  show (Lan { stIfName = ifname }) = T.unpack ifname
 
 newtype Target = Target Word64
 
@@ -138,7 +140,7 @@ serializeMsg hdr payload = hdrBs `L.append` payloadBS
         hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
         hdrBs = encode hdr'
 
-newState :: String -> Word32 -> Socket -> SockAddr -> Weak ThreadId
+newState :: Text -> Word32 -> Socket -> SockAddr -> Weak ThreadId
             -> Maybe (String -> IO ()) -> STM Lan
 newState ifname src sock bcast wthr logFunc = do
   seq <- newTVar 0
@@ -277,12 +279,12 @@ discoverBulbs st cb = do
   pkt <- atomically $ discovery st cb
   sendManyTo (stSocket st) (L.toChunks pkt) (stBcast st)
 
-openLan :: String -> IO Lan
+openLan :: Text -> IO Lan
 openLan ifname = openLan' ifname Nothing Nothing
 
-openLan' :: String -> Maybe Word16 -> Maybe (String -> IO()) -> IO Lan
+openLan' :: Text -> Maybe Word16 -> Maybe (String -> IO()) -> IO Lan
 openLan' ifname mport mlog = do
-  hostAddr <- ifaceAddr ifname
+  hostAddr <- ifaceAddr $ T.unpack ifname
   sock <- socket AF_INET Datagram defaultProtocol
   bind sock $ SockAddrInet aNY_PORT hostAddr
   when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
