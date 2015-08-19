@@ -166,11 +166,52 @@ lsBulbs lan = do
     discoverBulbs lan (lsCb s)
     threadDelay 500000
 
+cmdList :: TSem -> Bulb -> IO ()
+cmdList sem bulb = do
+  let rq op q cb = reliableQuery defaultRetryParams q cb $ do
+        putStrLn $ show bulb ++ " not responding to " ++ op
+        atomically $ signalTSem sem
+  rq "getHostInfo" (getHostInfo bulb) $ \shi ->
+    rq "getLight" (getLight bulb) $ \sl ->
+      rq "getHostFirmware" (getHostFirmware bulb) $ \shf ->
+        rq "getVersion" (getVersion bulb) $ \sv ->
+          rq "getInfo" (getInfo bulb) $ \si -> do
+            tr $ prBulb bulb shi sl shf sv si
+            signalTSem sem
+
+cmdPower :: Bool -> TSem -> Bulb -> IO ()
+cmdPower pwr sem bulb = do
+  let ra op q cb = reliableAction defaultRetryParams q cb $ do
+        putStrLn $ show bulb ++ " not responding to " ++ op
+        atomically $ signalTSem sem
+  ra "setPower" (setPower bulb pwr) $ atomically $ signalTSem sem
+
+cmd2func :: LiteCmd -> TSem -> Bulb -> IO ()
+cmd2func CmdList = cmdList
+cmd2func CmdOn = cmdPower True
+cmd2func CmdOff = cmdPower False
+cmd2func (CmdColor ca) = cmdColor ca
+cmd2func (CmdPulse pa) = cmdWave Pulse pa
+cmd2func (CmdBreathe ca) = cmdWave Sine pa
+
+lsHeader :: IO ()
+lsHeader = do
+  let fmtStrn = fmtStr ++ "\n"
+      dashes = replicate 80 '-'
+  tr $ printf fmtStrn "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "FW" "HW"
+  tr $ printf fmtStrn dashes dashes dashes dashes dashes dashes dashes dashes
+
+hdrIfNeeded :: LiteCmd -> IO ()
+hdrIfNeeded CmdList = lsHeader
+hdrIfNeeded _ = return ()
+
 main = do
   args <- C.parseCmdLine
   let ifname = fromMaybe (T.pack "en1") $ C.aInterface args
-  -- print args
+      cmd = C.aCmd args
+      func = cmd2func cmd
   lan <- openLan ifname
+  hdrIfNeeded cmd
   -- discoverBulbs lan myCb
   lsBulbs lan
   -- forever $ threadDelay 1000000000
