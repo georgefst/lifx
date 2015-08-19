@@ -2,6 +2,7 @@
 
 import Control.Concurrent
 import Control.Concurrent.STM
+import Control.Concurrent.STM.TSem
 import Control.Monad ( when, forever )
 import Data.Bits
 import Data.Char
@@ -14,6 +15,7 @@ import Data.Hourglass
 import Data.Int ( Int64 )
 import Data.List
 import Data.Maybe
+-- import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
@@ -23,7 +25,8 @@ import System.Console.CmdArgs.Explicit
 import Text.Printf ( printf )
 
 import Lifx.Lan.LowLevel
-import Lifx.Program.Types (Product(..), productFromId)
+import Lifx.Program.Types hiding (HSBK(..))
+import qualified Lifx.Program.Types as TY (HSBK(..))
 import qualified Lifx.Program.CmdParser as C
 
 myTime :: Word64 -> String
@@ -166,33 +169,81 @@ lsBulbs lan = do
     discoverBulbs lan (lsCb s)
     threadDelay 500000
 
+myQuery :: TSem -> Bulb -> String -> ((a -> IO ()) -> IO ()) -> (a -> IO ()) -> IO ()
+myQuery sem bulb op q cb =
+  reliableQuery defaultRetryParams q cb $ do
+    putStrLn $ show bulb ++ " not responding to " ++ op
+    atomically $ signalTSem sem
+
+myAction :: TSem -> Bulb -> String -> (IO () -> IO ()) -> IO () -> IO ()
+myAction sem bulb op q cb =
+  reliableAction defaultRetryParams q cb $ do
+    putStrLn $ show bulb ++ " not responding to " ++ op
+    atomically $ signalTSem sem
+
 cmdList :: TSem -> Bulb -> IO ()
 cmdList sem bulb = do
-  let rq op q cb = reliableQuery defaultRetryParams q cb $ do
-        putStrLn $ show bulb ++ " not responding to " ++ op
-        atomically $ signalTSem sem
+  let rq = myQuery sem bulb
   rq "getHostInfo" (getHostInfo bulb) $ \shi ->
     rq "getLight" (getLight bulb) $ \sl ->
       rq "getHostFirmware" (getHostFirmware bulb) $ \shf ->
         rq "getVersion" (getVersion bulb) $ \sv ->
           rq "getInfo" (getInfo bulb) $ \si -> do
             tr $ prBulb bulb shi sl shf sv si
-            signalTSem sem
+            atomically $ signalTSem sem
 
 cmdPower :: Bool -> TSem -> Bulb -> IO ()
 cmdPower pwr sem bulb = do
-  let ra op q cb = reliableAction defaultRetryParams q cb $ do
-        putStrLn $ show bulb ++ " not responding to " ++ op
-        atomically $ signalTSem sem
+  let ra = myAction sem bulb
   ra "setPower" (setPower bulb pwr) $ atomically $ signalTSem sem
 
-cmd2func :: LiteCmd -> TSem -> Bulb -> IO ()
-cmd2func CmdList = cmdList
-cmd2func CmdOn = cmdPower True
-cmd2func CmdOff = cmdPower False
-cmd2func (CmdColor ca) = cmdColor ca
-cmd2func (CmdPulse pa) = cmdWave Pulse pa
-cmd2func (CmdBreathe ca) = cmdWave Sine pa
+justColor :: Color -> MaybeColor
+justColor = fmap Just
+
+definitelyColor :: MaybeColor -> Color
+definitelyColor = fmap fromJust
+
+color16toFrac :: HSBK -> Color
+color16toFrac c = TY.HSBK
+  { TY.hue = fromIntegral (hue c) / 65535 * 360
+  , TY.saturation = fromIntegral (saturation c) / 65535
+  , TY.brightness = fromIntegral (brightness c) / 65535
+  , TY.kelvin = fromIntegral (kelvin c)
+  }
+
+colorFracTo16 :: Color -> HSBK
+colorFracTo16 c = HSBK
+  { hue = round $ TY.hue c * 65535 / 360
+  , saturation = round $ TY.saturation c * 65535
+  , brightness = round $ TY.brightness c * 65535
+  , kelvin = round $ TY.kelvin c
+  }
+
+
+cmdColor :: ColorArg -> TSem -> Bulb -> IO ()
+cmdColor ca sem bulb = do
+  let rq = myQuery sem bulb
+  if isCompleteColor ca
+    then setColor' $ customColor ca -- FIXME: handle named colors
+    else rq "getLight" (getLight bulb) $ \sl -> do
+    let orig = justColor $ color16toFrac $ slColor sl
+        newC = orig `combineColors` customColor ca
+    setColor' newC
+  where
+    ra = myAction sem bulb
+    dur = 1000
+    setColor' newC = ra "setColor" (setColor bulb (colorFracTo16 $ definitelyColor newC) dur) (atomically $ signalTSem sem)
+
+cmdWave :: Waveform -> C.PulseArg -> TSem -> Bulb -> IO ()
+cmdWave = undefined
+
+cmd2func :: C.LiteCmd -> TSem -> Bulb -> IO ()
+cmd2func C.CmdList = cmdList
+cmd2func C.CmdOn = cmdPower True
+cmd2func C.CmdOff = cmdPower False
+cmd2func (C.CmdColor ca) = cmdColor ca
+cmd2func (C.CmdPulse pa) = cmdWave Pulse pa
+cmd2func (C.CmdBreathe pa) = cmdWave Sine pa
 
 lsHeader :: IO ()
 lsHeader = do
@@ -201,8 +252,8 @@ lsHeader = do
   tr $ printf fmtStrn "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "FW" "HW"
   tr $ printf fmtStrn dashes dashes dashes dashes dashes dashes dashes dashes
 
-hdrIfNeeded :: LiteCmd -> IO ()
-hdrIfNeeded CmdList = lsHeader
+hdrIfNeeded :: C.LiteCmd -> IO ()
+hdrIfNeeded C.CmdList = lsHeader
 hdrIfNeeded _ = return ()
 
 main = do
@@ -213,5 +264,5 @@ main = do
   lan <- openLan ifname
   hdrIfNeeded cmd
   -- discoverBulbs lan myCb
-  lsBulbs lan
+  -- lsBulbs lan
   -- forever $ threadDelay 1000000000

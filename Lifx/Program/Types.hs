@@ -45,6 +45,18 @@ type HSBK16 = HSBK Word16
 type Color = HSBK LiFrac
 type MaybeColor = HSBK (Maybe LiFrac)
 
+combineColors :: MaybeColor -> MaybeColor -> MaybeColor
+combineColors x y = HSBK
+  { hue = hue x `combineMaybe` hue y
+  , saturation = saturation x `combineMaybe` saturation y
+  , brightness = brightness x `combineMaybe` brightness y
+  , kelvin = kelvin x `combineMaybe` kelvin y
+  }
+
+combineMaybe :: Maybe a -> Maybe a -> Maybe a
+combineMaybe x Nothing = x
+combineMaybe _ x@(Just _) = x
+
 newtype DeviceId = DeviceId Text deriving (Show, Eq, Ord)
 newtype GroupId = GroupId Text deriving (Show, Eq, Ord)
 newtype LocId = LocId Text deriving (Show, Eq, Ord)
