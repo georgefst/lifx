@@ -256,6 +256,15 @@ hdrIfNeeded :: C.LiteCmd -> IO ()
 hdrIfNeeded C.CmdList = lsHeader
 hdrIfNeeded _ = return ()
 
+discCb :: STMSet.Set DevID -> (Bulb -> IO ()) -> Bulb -> IO ()
+discCb done realCb bulb = do
+  let dev = deviceId bulb
+  dup <- atomically $ do
+    d <- STMSet.lookup dev done
+    when (not d) $ STMSet.insert dev done
+    return d
+  when (not dup) $ realCb bulb
+
 main = do
   args <- C.parseCmdLine
   let ifname = fromMaybe (T.pack "en1") $ C.aInterface args
@@ -263,6 +272,11 @@ main = do
       func = cmd2func cmd
   lan <- openLan ifname
   hdrIfNeeded cmd
+  s <- STMSet.newIO
+  sem <- atomically $ newTSem 0
+  forever $ do
+    discoverBulbs lan (discCb s $ func sem)
+    threadDelay 500000
   -- discoverBulbs lan myCb
   -- lsBulbs lan
   -- forever $ threadDelay 1000000000
