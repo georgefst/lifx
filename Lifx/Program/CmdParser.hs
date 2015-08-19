@@ -6,6 +6,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import System.Console.CmdArgs.Explicit
 import System.Console.CmdArgs.Text (TextFormat(..), showText)
+import qualified System.Console.CmdArgs.Text as TXT (Text(..))
 import System.Exit
 import Text.Read
 
@@ -189,7 +190,7 @@ updArg arg args = Right $ args { aTarget = sel arg }
 
 selArg = Arg
   { argValue = updArg
-  , argType = "LABEL|DEVID"
+  , argType = "[LABEL|DEVID]"
   , argRequire = False
   }
 
@@ -208,7 +209,12 @@ handleHelp :: Maybe (HelpFormat, TextFormat) -> IO ()
 handleHelp Nothing = return ()
 handleHelp (Just (hf, tf)) = do
   let txt = helpText [] hf arguments
-      str = showText tf txt
+      extra = [ TXT.Line ""
+              , TXT.Line "For more detailed help, do \"--help=all\"" ]
+      ext HelpFormatDefault = extra
+      ext HelpFormatOne = extra
+      ext _ = []
+      str = showText tf (txt ++ ext hf)
   putStr str
   exitSuccess
 
