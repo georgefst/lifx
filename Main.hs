@@ -166,7 +166,7 @@ lsBulbs lan = do
     threadDelay 500000
 
 main = do
-  args <- processArgs C.arguments
+  args <- C.parseCmdLine
   print args
   lan <- openLan "en1" -- Nothing (Just putStrLn)
   -- discoverBulbs lan myCb

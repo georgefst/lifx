@@ -5,7 +5,8 @@ import Data.List
 import Data.Text (Text)
 import qualified Data.Text as T
 import System.Console.CmdArgs.Explicit
-import System.Console.CmdArgs.Text (TextFormat(..))
+import System.Console.CmdArgs.Text (TextFormat(..), showText)
+import System.Exit
 import Text.Read
 
 import Lifx.Program.Types
@@ -202,3 +203,17 @@ arguments =
    , mode "pulse"   defPulse "Square wave blink" selArg pFlags
    , mode "breathe" defPulse "Sine wave blink"   selArg pFlags
    ]) { modeGroupFlags = toGroup gFlags }
+
+handleHelp :: Maybe (HelpFormat, TextFormat) -> IO ()
+handleHelp Nothing = return ()
+handleHelp (Just (hf, tf)) = do
+  let txt = helpText [] hf arguments
+      str = showText tf txt
+  putStr str
+  exitSuccess
+
+parseCmdLine :: IO LiteArgs
+parseCmdLine = do
+  args <- processArgs arguments
+  handleHelp $ aHelp args
+  return args
