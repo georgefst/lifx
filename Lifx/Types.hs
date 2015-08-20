@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lifx.Program.Types where
+module Lifx.Types where
 
 import Data.List (find)
 import Data.Monoid (Monoid(..))

@@ -26,8 +26,8 @@ import System.Console.CmdArgs.Explicit
 import Text.Printf ( printf )
 
 import Lifx.Lan.LowLevel
-import Lifx.Program.Types hiding (HSBK(..))
-import qualified Lifx.Program.Types as TY (HSBK(..))
+import Lifx.Types hiding (HSBK(..))
+import qualified Lifx.Types as TY (HSBK(..))
 import qualified Lifx.Program.CmdParser as C
 
 myTime :: Word64 -> String

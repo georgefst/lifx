@@ -10,7 +10,7 @@ import qualified System.Console.CmdArgs.Text as TXT (Text(..))
 import System.Exit
 import Text.Read
 
-import Lifx.Program.Types
+import Lifx.Types
 
 
 data LiteArgs =
