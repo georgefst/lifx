@@ -26,8 +26,7 @@ import System.Console.CmdArgs.Explicit
 import Text.Printf ( printf )
 
 import Lifx.Lan.LowLevel
-import Lifx.Types hiding (HSBK(..))
-import qualified Lifx.Types as TY (HSBK(..))
+import Lifx.Types
 import qualified Lifx.Program.CmdParser as C
 
 myTime :: Word64 -> String
@@ -207,20 +206,20 @@ justColor = fmap Just
 definitelyColor :: MaybeColor -> Color
 definitelyColor = fmap fromJust
 
-color16toFrac :: HSBK -> Color
-color16toFrac c = TY.HSBK
-  { TY.hue = fromIntegral (hue c) / 65535 * 360
-  , TY.saturation = fromIntegral (saturation c) / 65535
-  , TY.brightness = fromIntegral (brightness c) / 65535
-  , TY.kelvin = fromIntegral (kelvin c)
+color16toFrac :: HSBK16 -> Color
+color16toFrac c = HSBK
+  { hue = fromIntegral (hue c) / 65535 * 360
+  , saturation = fromIntegral (saturation c) / 65535
+  , brightness = fromIntegral (brightness c) / 65535
+  , kelvin = fromIntegral (kelvin c)
   }
 
-colorFracTo16 :: Color -> HSBK
+colorFracTo16 :: Color -> HSBK16
 colorFracTo16 c = HSBK
-  { hue = round $ TY.hue c * 65535 / 360
-  , saturation = round $ TY.saturation c * 65535
-  , brightness = round $ TY.brightness c * 65535
-  , kelvin = round $ TY.kelvin c
+  { hue = round $ hue c * 65535 / 360
+  , saturation = round $ saturation c * 65535
+  , brightness = round $ brightness c * 65535
+  , kelvin = round $ kelvin c
   }
 
 

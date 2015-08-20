@@ -1,10 +1,11 @@
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+
 module Lifx.Lan.Types
     ( MessageType(..),
       Header(..),
       dfltHdr,
       dfltHdrSize,
-      Waveform(..),
-      HSBK(..) ) where
+      Waveform(..)) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Data.Binary
@@ -18,17 +19,10 @@ import Data.Bits ( Bits(shiftL, testBit) )
 import qualified Data.ByteString.Lazy as L ( length )
 import Data.Word ( Word8, Word16, Word32, Word64 )
 
+import Lifx.Types
 import Lifx.Lan.Util
 
-data HSBK =
-  HSBK
-  { hue :: !Word16
-  , saturation :: !Word16
-  , brightness :: !Word16
-  , kelvin :: !Word16
-  } deriving Show
-
-instance Binary HSBK where
+instance Binary HSBK16 where
   put x = do
     putWord16le $ hue x
     putWord16le $ saturation x

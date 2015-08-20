@@ -16,7 +16,6 @@ module Lifx.Lan.LowLevel
       setColor,
       setWaveform,
       Waveform(..),
-      HSBK(..),
       Bulb,
       Lan,
       LifxException(..),

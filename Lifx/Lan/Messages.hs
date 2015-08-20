@@ -29,6 +29,7 @@ import qualified Data.ByteString.Lazy as L ( ByteString, takeWhile )
 import Data.Int ( Int16 )
 import Data.Word ( Word16, Word32, Word64 )
 
+import Lifx.Types
 import Lifx.Lan.Util
 import Lifx.Lan.Types
 import Lifx.Lan.Protocol
@@ -292,7 +293,7 @@ getLight bulb @(Bulb st _ _) cb = do
 
 data StateLight =
   StateLight
-  { slColor :: HSBK
+  { slColor :: HSBK16
     -- Reserved16 (dim)
   , slPower :: !Word16
   , slLabel :: B.ByteString -- 32 bytes (aka labelSize)
@@ -323,7 +324,7 @@ instance Binary StateLight where
 data SetColor =
   SetColor
   { -- Reserved8 (stream)
-    scColor :: HSBK
+    scColor :: HSBK16
   , scDuration :: !Word32
   }
 
@@ -340,7 +341,7 @@ instance Binary SetColor where
     skip 1 -- Reserved8 (stream)
     SetColor <$> get <*> getWord32le
 
-setColor :: Bulb -> HSBK -> Word32 -> IO () -> IO ()
+setColor :: Bulb -> HSBK16 -> Word32 -> IO () -> IO ()
 setColor bulb@(Bulb st _ _) color duration cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
   sendMsg bulb (needAck hdr) (SetColor color duration)
@@ -351,7 +352,7 @@ data SetWaveform =
   SetWaveform
   { -- Reserved8 (stream)
     swTransient :: !Bool
-  , swColor :: HSBK
+  , swColor :: HSBK16
   , swPeriod :: !Word32
   , swCycles :: !Float
   , swDutyCycle :: !Int16
