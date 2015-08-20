@@ -193,12 +193,13 @@ cmdList sem bulb = do
             tr $ prBulb bulb shi sl shf sv si
             atomically $ signalTSem sem
 
-dur = 1000
+f2ms :: LiFrac -> Word32
+f2ms x = round $ 1000 * x
 
-cmdPower :: Bool -> TSem -> Bulb -> IO ()
-cmdPower pwr sem bulb = do
+cmdPower :: Bool -> LiFrac -> TSem -> Bulb -> IO ()
+cmdPower pwr dur sem bulb = do
   let ra = myAction sem bulb
-  ra "setPower" (setPower bulb pwr dur) $ atomically $ signalTSem sem
+  ra "setPower" (setPower bulb pwr $ f2ms dur) $ atomically $ signalTSem sem
 
 justColor :: Color -> MaybeColor
 justColor = fmap Just
@@ -223,8 +224,8 @@ colorFracTo16 c = HSBK
   }
 
 
-cmdColor :: ColorArg -> TSem -> Bulb -> IO ()
-cmdColor ca sem bulb = do
+cmdColor :: ColorArg -> LiFrac -> TSem -> Bulb -> IO ()
+cmdColor ca dur sem bulb = do
   let rq = myQuery sem bulb
   if isCompleteColor ca
     then setColor' $ customColor ca -- FIXME: handle named colors
@@ -234,7 +235,7 @@ cmdColor ca sem bulb = do
     setColor' newC
   where
     ra = myAction sem bulb
-    setColor' newC = ra "setColor" (setColor bulb (colorFracTo16 $ definitelyColor newC) dur) (atomically $ signalTSem sem)
+    setColor' newC = ra "setColor" (setColor bulb (colorFracTo16 $ definitelyColor newC) $ f2ms dur) (atomically $ signalTSem sem)
 
 cmdWave :: Waveform -> C.PulseArg -> TSem -> Bulb -> IO ()
 cmdWave wf pa sem bulb = do
@@ -259,13 +260,13 @@ cmdWave wf pa sem bulb = do
                             }
       in ra "setWaveform" (setWaveform bulb swf) (atomically $ signalTSem sem)
 
-cmd2func :: C.LiteCmd -> TSem -> Bulb -> IO ()
-cmd2func C.CmdList = cmdList
-cmd2func C.CmdOn = cmdPower True
-cmd2func C.CmdOff = cmdPower False
-cmd2func (C.CmdColor ca) = cmdColor ca
-cmd2func (C.CmdPulse pa) = cmdWave Pulse pa
-cmd2func (C.CmdBreathe pa) = cmdWave Sine pa
+cmd2func :: C.LiteCmd -> LiFrac -> TSem -> Bulb -> IO ()
+cmd2func C.CmdList _ = cmdList
+cmd2func C.CmdOn dur = cmdPower True dur
+cmd2func C.CmdOff dur = cmdPower False dur
+cmd2func (C.CmdColor ca) dur = cmdColor ca dur
+cmd2func (C.CmdPulse pa) _ = cmdWave Pulse pa
+cmd2func (C.CmdBreathe pa) _ = cmdWave Sine pa
 
 lsHeader :: IO ()
 lsHeader = do
@@ -291,7 +292,7 @@ main = do
   args <- C.parseCmdLine
   let ifname = fromMaybe (T.pack "en1") $ C.aInterface args
       cmd = C.aCmd args
-      func = cmd2func cmd
+      func = cmd2func cmd (C.aDuration args)
   lan <- openLan ifname
   hdrIfNeeded cmd
   s <- STMSet.newIO

@@ -19,6 +19,7 @@ data LiteArgs =
   , aTarget :: Selector
   , aCmd :: LiteCmd
   , aHelp :: Maybe (HelpFormat, TextFormat)
+  , aDuration :: LiFrac
   } deriving (Show, Eq, Ord)
 
 data LiteCmd = CmdList
@@ -54,7 +55,9 @@ defList :: LiteArgs
 defList = LiteArgs { aInterface = Nothing
                    , aTarget = SelAll
                    , aCmd = CmdList
-                   , aHelp = Nothing }
+                   , aHelp = Nothing
+                   , aDuration = 1
+                   }
 
 defOn      = defList { aCmd = CmdOn }
 defOff     = defList { aCmd = CmdOff }
@@ -194,13 +197,21 @@ selArg = Arg
   , argRequire = False
   }
 
+durFlag = flagReq ["d", "duration"] durFlagUpdate "FLOAT"
+          "Number of seconds that change should occur over"
+
+durFlagUpdate :: String -> LiteArgs -> Either String LiteArgs
+durFlagUpdate arg args = do
+  x <- readEither arg
+  return $ args { aDuration = x }
+
 arguments :: Mode LiteArgs
 arguments =
   (modes  "lifx"    defList  "Control LIFX light bulbs"
    [ mode "list"    defList  "List bulbs"        selArg []
-   , mode "on"      defOn    "Turn bulb on"      selArg []
-   , mode "off"     defOff   "Turn bulb off"     selArg []
-   , mode "color"   defColor "Set bulb color"    selArg cFlags
+   , mode "on"      defOn    "Turn bulb on"      selArg [durFlag]
+   , mode "off"     defOff   "Turn bulb off"     selArg [durFlag]
+   , mode "color"   defColor "Set bulb color"    selArg (durFlag : cFlags)
    , mode "pulse"   defPulse "Square wave blink" selArg pFlags
    , mode "breathe" defPulse "Sine wave blink"   selArg pFlags
    ]) { modeGroupFlags = toGroup gFlags }
