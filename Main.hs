@@ -44,7 +44,7 @@ myCb bulb = do
     print shi
     getLight bulb $ \sl -> do
       print sl
-      setPower bulb True $
+      setPower bulb True 1000 $
         setColor bulb (HSBK 32768 65535 65535 3000) 0 $ do
           -- positive numbers mean more time spent on original color
           let swf = SetWaveform False (HSBK 0 0 65535 9000) 1000 10 (-20000) Pulse
@@ -193,10 +193,12 @@ cmdList sem bulb = do
             tr $ prBulb bulb shi sl shf sv si
             atomically $ signalTSem sem
 
+dur = 1000
+
 cmdPower :: Bool -> TSem -> Bulb -> IO ()
 cmdPower pwr sem bulb = do
   let ra = myAction sem bulb
-  ra "setPower" (setPower bulb pwr) $ atomically $ signalTSem sem
+  ra "setPower" (setPower bulb pwr dur) $ atomically $ signalTSem sem
 
 justColor :: Color -> MaybeColor
 justColor = fmap Just
@@ -232,7 +234,6 @@ cmdColor ca sem bulb = do
     setColor' newC
   where
     ra = myAction sem bulb
-    dur = 1000
     setColor' newC = ra "setColor" (setColor bulb (colorFracTo16 $ definitelyColor newC) dur) (atomically $ signalTSem sem)
 
 cmdWave :: Waveform -> C.PulseArg -> TSem -> Bulb -> IO ()

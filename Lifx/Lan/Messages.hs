@@ -166,20 +166,26 @@ instance Binary StateWifiFirmware where
 
 ----------------------------------------------------------
 
-data SetPower = SetPower { spLevel :: !Word16 }
+data SetPower =
+  SetPower
+  { spLevel :: !Word16
+  , spDuration :: !Word32
+  }
 
 instance MessageType SetPower where
-  msgType _ = 21
+  msgType _ = 117
 
 instance Binary SetPower where
-  put x = putWord16le $ spLevel x
+  put x = do
+    putWord16le $ spLevel x
+    putWord32le $ spDuration x
 
-  get = SetPower <$> getWord16le
+  get = SetPower <$> getWord16le <*> getWord32le
 
-setPower :: Bulb -> Bool -> IO () -> IO ()
-setPower bulb@(Bulb st _ _) pwr cb = do
+setPower :: Bulb -> Bool -> Word32 -> IO () -> IO ()
+setPower bulb@(Bulb st _ _) pwr duration cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
-  sendMsg bulb (needAck hdr) (SetPower $ f pwr)
+  sendMsg bulb (needAck hdr) (SetPower (f pwr) duration)
   where f True = 0xffff
         f False = 0
 
