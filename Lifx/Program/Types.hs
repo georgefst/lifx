@@ -4,7 +4,6 @@ module Lifx.Program.Types where
 
 import Data.List (find)
 import Data.Monoid (Monoid(..))
-import Data.Scientific
 import Data.Text (Text(..))
 import Data.Word
 
@@ -38,7 +37,7 @@ instance (Monoid a) => Monoid (HSBK a) where
                      , kelvin = kelvin x `mappend` kelvin y
                      }
 
-type LiFrac = Scientific
+type LiFrac = Double
 type Interface = Text
 
 type HSBK16 = HSBK Word16
