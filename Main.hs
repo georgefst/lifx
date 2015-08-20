@@ -20,6 +20,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
 import Data.Word ( Word16, Word32, Word64 )
+import GHC.Float
 import qualified STMContainers.Set as STMSet
 import System.Console.CmdArgs.Explicit
 import Text.Printf ( printf )
@@ -235,7 +236,27 @@ cmdColor ca sem bulb = do
     setColor' newC = ra "setColor" (setColor bulb (colorFracTo16 $ definitelyColor newC) dur) (atomically $ signalTSem sem)
 
 cmdWave :: Waveform -> C.PulseArg -> TSem -> Bulb -> IO ()
-cmdWave = undefined
+cmdWave wf pa sem bulb = do
+  let rq = myQuery sem bulb
+      ca = C.paColor pa
+  if isCompleteColor ca
+    then setColor' $ customColor ca -- FIXME: handle named colors
+    else rq "getLight" (getLight bulb) $ \sl -> do
+    let orig = justColor $ color16toFrac $ slColor sl
+        newC = orig `combineColors` customColor ca
+    setColor' newC
+  where
+    ra = myAction sem bulb
+    dur = 1000
+    setColor' newC =
+      let swf = SetWaveform { swTransient = not $ C.paPersist pa
+                            , swColor = colorFracTo16 $ definitelyColor newC
+                            , swPeriod = round $ 1000 * C.paPeriod pa
+                            , swCycles = double2Float $ C.paCycles pa
+                            , swDutyCycle = floor $ 65535 * (C.paPeak pa - 0.5)
+                            , swWaveform = wf
+                            }
+      in ra "setWaveform" (setWaveform bulb swf) (atomically $ signalTSem sem)
 
 cmd2func :: C.LiteCmd -> TSem -> Bulb -> IO ()
 cmd2func C.CmdList = cmdList
