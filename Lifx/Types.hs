@@ -2,6 +2,7 @@
 
 module Lifx.Types where
 
+import Data.Binary
 import Data.Hashable
 import Data.List (find)
 import Data.Monoid (Monoid(..))
@@ -58,11 +59,11 @@ combineMaybe x Nothing = x
 combineMaybe _ x@(Just _) = x
 
 newtype DeviceId = DeviceId { unDeviceId :: Text }
-                 deriving (Show, Read, Eq, Ord, Hashable)
+                 deriving (Show, Read, Eq, Ord, Hashable, Binary)
 newtype GroupId  = GroupId { unGroupId :: Text }
-                 deriving (Show, Read, Eq, Ord, Hashable)
+                 deriving (Show, Read, Eq, Ord, Hashable, Binary)
 newtype LocId    = LocId { unLocId :: Text }
-                 deriving (Show, Read, Eq, Ord, Hashable)
+                 deriving (Show, Read, Eq, Ord, Hashable, Binary)
 
 data Selector = SelAll
               | SelLabel Text
