@@ -129,7 +129,7 @@ prBulb :: Bulb
           -> StateInfo
           -> String
 prBulb bulb shi sl shf sv si =
-  printf fmtStr label power color temp uptime devid fw vers
+  printf fmtStr label power color temp uptime (T.unpack $ unDeviceId devid) fw vers
   where (label, power, color) = prLight sl
         temp = prHostInfo shi
         uptime = prInfo si
@@ -137,7 +137,7 @@ prBulb bulb shi sl shf sv si =
         fw = prHostFirmware shf
         vers = prVersion sv
 
-type DevID = String
+type DevID = DeviceId
 
 -- ra q cb = reliableAction defaultRetryParams q cb $ return ()
 rq q cb = reliableQuery  defaultRetryParams q cb $ putStrLn "timeout!"

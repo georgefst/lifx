@@ -1,7 +1,8 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, GeneralizedNewtypeDeriving #-}
 
 module Lifx.Types where
 
+import Data.Hashable
 import Data.List (find)
 import Data.Monoid (Monoid(..))
 import Data.Text (Text(..))
@@ -56,9 +57,12 @@ combineMaybe :: Maybe a -> Maybe a -> Maybe a
 combineMaybe x Nothing = x
 combineMaybe _ x@(Just _) = x
 
-newtype DeviceId = DeviceId Text deriving (Show, Eq, Ord)
-newtype GroupId = GroupId Text deriving (Show, Eq, Ord)
-newtype LocId = LocId Text deriving (Show, Eq, Ord)
+newtype DeviceId = DeviceId { unDeviceId :: Text }
+                 deriving (Show, Read, Eq, Ord, Hashable)
+newtype GroupId  = GroupId { unGroupId :: Text }
+                 deriving (Show, Read, Eq, Ord, Hashable)
+newtype LocId    = LocId { unLocId :: Text }
+                 deriving (Show, Read, Eq, Ord, Hashable)
 
 data Selector = SelAll
               | SelLabel Text

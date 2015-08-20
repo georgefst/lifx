@@ -66,6 +66,7 @@ import Network.Socket.ByteString ( sendManyTo, recvFrom )
 import System.Mem.Weak
 import Text.Printf ( printf )
 
+import Lifx.Types
 import Lifx.Lan.Util
 import Lifx.Lan.Types
 
@@ -128,8 +129,8 @@ instance Show Target where
 
 data Bulb = Bulb Lan SockAddr Target deriving Show
 
-deviceId :: Bulb -> String
-deviceId (Bulb _ _ targ) = show targ
+deviceId :: Bulb -> DeviceId
+deviceId (Bulb _ _ targ) = DeviceId $ T.pack $ show targ
 
 serviceUDP = 1
 
