@@ -69,6 +69,22 @@ newtype DeviceId = DeviceId B.ByteString deriving (Eq, Ord, Hashable)
 newtype GroupId  = GroupId B.ByteString  deriving (Eq, Ord, Hashable)
 newtype LocId    = LocId B.ByteString    deriving (Eq, Ord, Hashable)
 
+class ToFromByteString t where
+  toByteString :: t -> ByteString
+  fromByteString :: ByteString -> t
+
+class FixedLength t where
+  fixedLength :: t -> Int
+
+checkLength :: Int -> ByteString -> ByteString
+checkLength tname len bs
+  | bslen == len = bs
+  | otherwise =
+      error ("when constructing " ++ tname
+             ++ " from ByteString, expected length "
+             ++ show len ++ " but got " ++ show bslen)
+  where bslen = B.length bs
+
 mkDeviceId :: B.ByteString -> DeviceId
 mkDeviceId bs
   | B.length bs == 6 = DeviceId bs
