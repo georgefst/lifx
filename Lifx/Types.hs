@@ -3,6 +3,9 @@
 module Lifx.Types where
 
 import Data.Binary
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B8
+import qualified Data.ByteString.Base16 as B16
 import Data.Hashable
 import Data.List (find)
 import Data.Monoid (Monoid(..))
@@ -58,12 +61,32 @@ combineMaybe :: Maybe a -> Maybe a -> Maybe a
 combineMaybe x Nothing = x
 combineMaybe _ x@(Just _) = x
 
-newtype DeviceId = DeviceId { unDeviceId :: Text }
-                 deriving (Show, Read, Eq, Ord, Hashable, Binary)
-newtype GroupId  = GroupId { unGroupId :: Text }
-                 deriving (Show, Read, Eq, Ord, Hashable, Binary)
-newtype LocId    = LocId { unLocId :: Text }
-                 deriving (Show, Read, Eq, Ord, Hashable, Binary)
+newtype DeviceId = DeviceId B.ByteString deriving (Eq, Ord, Hashable)
+newtype GroupId  = GroupId B.ByteString  deriving (Eq, Ord, Hashable)
+newtype LocId    = LocId B.ByteString    deriving (Eq, Ord, Hashable)
+
+mkDeviceId :: B.ByteString -> DeviceId
+mkDeviceId bs
+  | B.length bs == 6 = DeviceId bs
+  | otherwise = error "length must be 6"
+
+unDeviceId :: DeviceId -> B.ByteString
+unDeviceId (DeviceId bs) = bs
+
+instance Show DeviceId where
+  showsPrec _ (DeviceId bs) pre = pre ++ B8.unpack (B16.encode bs)
+
+instance Read DeviceId where
+  readsPrec _ s =
+    let (bs, rest) = B16.decode (B8.pack s)
+    in if B.length bs == 6
+       then [(DeviceId bs, rest)]
+       else []
+
+instance Binary DeviceId where
+  put (DeviceId bs) = putByteString bs
+
+  get = DeviceId <$> getByteString 6
 
 data Selector = SelAll
               | SelLabel Text

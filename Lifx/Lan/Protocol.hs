@@ -122,15 +122,10 @@ data Lan
 instance Show Lan where
   show (Lan { stIfName = ifname }) = T.unpack ifname
 
-newtype Target = Target Word64
-
-instance Show Target where
-  show (Target x) = printf "%012x" (x `shiftR` 16)
-
-data Bulb = Bulb Lan SockAddr Target deriving Show
+data Bulb = Bulb Lan SockAddr DeviceId deriving Show
 
 deviceId :: Bulb -> DeviceId
-deviceId (Bulb _ _ targ) = DeviceId $ T.pack $ show targ
+deviceId (Bulb _ _ di) = di
 
 serviceUDP = 1
 

@@ -129,7 +129,7 @@ prBulb :: Bulb
           -> StateInfo
           -> String
 prBulb bulb shi sl shf sv si =
-  printf fmtStr label power color temp uptime (T.unpack $ unDeviceId devid) fw vers
+  printf fmtStr label power color temp uptime (show devid) fw vers
   where (label, power, color) = prLight sl
         temp = prHostInfo shi
         uptime = prInfo si

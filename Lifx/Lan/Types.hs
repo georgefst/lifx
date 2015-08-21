@@ -46,16 +46,20 @@ data Header
     , hdrAddressable :: !Bool
     , hdrProtocol    :: !Word16
     , hdrSource      :: !Word32
-    , hdrTarget      :: !Word64
-    -- , hdrReserved48  :: !Word64
-    -- , hdrReserved6   :: !Word8
+    , hdrTarget      :: DeviceId
+    -- 16 bits of padding for hdrTarget
+    -- Reserved48
+    -- Reserved6
     , hdrAckRequired :: !Bool
     , hdrResRequired :: !Bool
     , hdrSequence    :: !Word8
-    -- , hdrReserved64  :: !Word64
+    -- Reserved64
     , hdrType        :: !Word16
-    -- , hdrReserved16  :: !Word16
+    -- Reserved16
     } deriving Show
+
+all0dev :: DeviceId
+all0dev = read "000000000000"
 
 dfltHdr = dh { hdrSize = fromIntegral $ L.length $ encode dh }
   where dh = Header { hdrSize = 0
@@ -64,7 +68,7 @@ dfltHdr = dh { hdrSize = fromIntegral $ L.length $ encode dh }
                     , hdrAddressable = True
                     , hdrProtocol = 1024
                     , hdrSource = 91376
-                    , hdrTarget = 0
+                    , hdrTarget = all0devId
                     , hdrAckRequired = False
                     , hdrResRequired = False
                     , hdrSequence = 0
@@ -98,9 +102,8 @@ instance Binary Header where
       (hOrg `shiftL` bOrigin)
     putWord32le $ hdrSource h
     -- "Frame Address"
-    putWord64be $ hdrTarget h
-    putWord32le 0 -- Reserved48
-    putWord16le 0
+    put $ hdrTarget h
+    putWord64le 0 -- 16 bits padding + Reserved48
     let hAck = hdrAckRequired h
         hRes = hdrResRequired h
     putWord8 $ bitBool bResRequired hRes + bitBool bAckRequired hAck
@@ -118,15 +121,14 @@ instance Binary Header where
                (testBit otap bAddressable)
                (extract otap bProtocol 12)
     hhh <- hh <$> getWord32le -- hdrSource
-              <*> getWord64be -- hdrTarget
-    getWord32le -- Reserved48
-    getWord16le
+              <*> get         -- hdrTarget
+    skip 8 -- 16 bits padding + Reserved48
     ar <- getWord8
     let hhhh = hhh (testBit ar bAckRequired) (testBit ar bResRequired)
     hhhhh <- hhhh <$> getWord8 -- hdrSequence
-    getWord64le -- Reserved64
+    skip 8 -- Reserved64
     hhhhhh <- hhhhh <$> getWord16le -- hdrType
-    getWord16le -- Reserved16
+    skip 2 -- Reserved16
     return hhhhhh
 
 class MessageType t where
