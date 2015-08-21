@@ -69,12 +69,32 @@ newtype DeviceId = DeviceId B.ByteString deriving (Eq, Ord, Hashable)
 newtype GroupId  = GroupId B.ByteString  deriving (Eq, Ord, Hashable)
 newtype LocId    = LocId B.ByteString    deriving (Eq, Ord, Hashable)
 
+class LifxId t where
+  fixedLength :: t -> Int
+  toByteString' :: t -> ByteString
+  fromByteString' :: ByteString -> t
+
+instance LifxId DeviceId where
+  fixedLength _ = 6
+  toByteString' (DeviceId bs) = bs
+  fromByteString' bs = DeviceId bs
+
+instance LifxId GroupId where
+  fixedLength _ = 6
+  toByteString' (GroupId bs) = bs
+  fromByteString' bs = GroupId bs
+
+instance LifxId LocId where
+  fixedLength _ = 6
+  toByteString' (LocId bs) = bs
+  fromByteString' bs = LocId bs
+
 class ToFromByteString t where
   toByteString :: t -> ByteString
   fromByteString :: ByteString -> t
 
-class FixedLength t where
-  fixedLength :: t -> Int
+instance (LifxId a) => ToFromByteString a where
+  toByteString x = toByteString' x
 
 checkLength :: Int -> ByteString -> ByteString
 checkLength tname len bs
