@@ -206,7 +206,7 @@ wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
           | serv /= serviceUDP = stLog st $ "service: expected "
                                  ++ show serviceUDP ++ " but got "
                                  ++ show serv ++ frm
-          | otherwise = cb $ Bulb st (substPort sa port) (Target $ hdrTarget hdr)
+          | otherwise = cb $ Bulb st (substPort sa port) (hdrTarget hdr)
         substPort (SockAddrInet _ ha) port = SockAddrInet (fromIntegral port) ha
         substPort other _ = other
 
@@ -259,7 +259,7 @@ runCallback st sa bs =
 sendMsg :: (MessageType a, Binary a)
            => Bulb -> Header -> a
            -> IO ()
-sendMsg (Bulb st sa (Target targ)) hdr payload =
+sendMsg (Bulb st sa targ) hdr payload =
   sendManyTo (stSocket st) (L.toChunks pkt) sa
   where hdr' = hdr { hdrTarget = targ }
         pkt = serializeMsg hdr' payload

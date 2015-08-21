@@ -14,7 +14,8 @@ import Data.Binary
       getWord8,
       encode )
 import Data.Binary.Put ( putWord64be, putWord64le, putWord32le, putWord16le )
-import Data.Binary.Get ( getWord64be, getWord64le, getWord32le, getWord16le )
+import Data.Binary.Get
+    ( getWord64be, getWord64le, getWord32le, getWord16le, skip )
 import Data.Bits ( Bits(shiftL, testBit) )
 import qualified Data.ByteString.Lazy as L ( length )
 import Data.Word ( Word8, Word16, Word32, Word64 )
@@ -68,7 +69,7 @@ dfltHdr = dh { hdrSize = fromIntegral $ L.length $ encode dh }
                     , hdrAddressable = True
                     , hdrProtocol = 1024
                     , hdrSource = 91376
-                    , hdrTarget = all0devId
+                    , hdrTarget = all0dev
                     , hdrAckRequired = False
                     , hdrResRequired = False
                     , hdrSequence = 0

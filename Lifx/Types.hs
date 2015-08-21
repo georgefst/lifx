@@ -2,7 +2,10 @@
 
 module Lifx.Types where
 
+import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Data.Binary
+import Data.Binary.Get
+import Data.Binary.Put
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Base16 as B16
@@ -11,6 +14,7 @@ import Data.List (find)
 import Data.Monoid (Monoid(..))
 import Data.Text (Text(..))
 import Data.Word
+import Debug.Trace
 
 data HSBK a =
   HSBK
@@ -78,15 +82,21 @@ instance Show DeviceId where
 
 instance Read DeviceId where
   readsPrec _ s =
-    let (bs, rest) = B16.decode (B8.pack s)
+    let (bs, _) = B16.decode (B8.pack $ take 14 s)
     in if B.length bs == 6
-       then [(DeviceId bs, rest)]
+       then [(DeviceId bs, drop 12 s)]
        else []
 
 instance Binary DeviceId where
   put (DeviceId bs) = putByteString bs
 
   get = DeviceId <$> getByteString 6
+
+instance Show GroupId where
+  showsPrec _ (GroupId bs) pre = pre ++ B8.unpack (B16.encode bs)
+
+instance Show LocId where
+  showsPrec _ (LocId bs) pre = pre ++ B8.unpack (B16.encode bs)
 
 data Selector = SelAll
               | SelLabel Text
