@@ -13,6 +13,7 @@ import Data.Hashable
 import Data.List (find)
 import Data.Monoid (Monoid(..))
 import Data.Text (Text(..))
+import qualified Data.Text.Encoding as TE
 import Data.Word
 import Debug.Trace
 
@@ -71,12 +72,12 @@ newtype GroupId    = GroupId B.ByteString    deriving (Eq, Ord, Hashable)
 newtype LocationId = LocationId B.ByteString deriving (Eq, Ord, Hashable)
 
 class LifxId t where
-  toByteString :: t -> ByteString
-  fromByteString :: ByteString -> t
+  toByteString :: t -> B.ByteString
+  fromByteString :: B.ByteString -> t
   toText :: t -> Text
   fromText :: Text -> t
 
-checkLength :: String -> Int -> ByteString -> ByteString
+checkLength :: String -> Int -> B.ByteString -> B.ByteString
 checkLength tname len bs
   | bslen == len = bs
   | otherwise =
@@ -85,10 +86,10 @@ checkLength tname len bs
              ++ show len ++ " bytes, but got " ++ show bslen)
   where bslen = B.length bs
 
-idToText :: ByteString -> Text
+idToText :: B.ByteString -> Text
 idToText bs = TE.decodeUtf8 $ B16.encode bs
 
-textToId :: String -> Int -> Text -> ByteString
+textToId :: String -> Int -> Text -> B.ByteString
 textToId tname len txt
   | extralen /= 0 =
       error ("Got crud " ++ show extra ++ " after " ++ tname)
@@ -101,10 +102,10 @@ textToId tname len txt
         (bs, extra) = B16.decode $ TE.encodeUtf8 txt
         extralen = B.length extra
 
-implShow :: ByteString -> String -> String
+implShow :: B.ByteString -> String -> String
 implShow bs pre = pre ++ B8.unpack (B16.encode bs)
 
-implRead :: (ByteString -> a) -> Int -> String -> [(a, String)]
+implRead :: (B.ByteString -> a) -> Int -> String -> [(a, String)]
 implRead c len s =
   let digs = len * 2
       digs' = digs + 2
