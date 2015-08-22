@@ -63,56 +63,113 @@ combineColors x y = HSBK
 
 combineMaybe :: Maybe a -> Maybe a -> Maybe a
 combineMaybe x Nothing = x
-combineMaybe _ x@(Just _) = x
+combineMaybe _ x@(Just _ ) = x
 
-newtype DeviceId = DeviceId B.ByteString deriving (Eq, Ord, Hashable)
-newtype GroupId  = GroupId B.ByteString  deriving (Eq, Ord, Hashable)
-newtype LocId    = LocId B.ByteString    deriving (Eq, Ord, Hashable)
 
-class ToFromByteString t where
+newtype DeviceId   = DeviceId B.ByteString   deriving (Eq, Ord, Hashable)
+newtype GroupId    = GroupId B.ByteString    deriving (Eq, Ord, Hashable)
+newtype LocationId = LocationId B.ByteString deriving (Eq, Ord, Hashable)
+
+class LifxId t where
   toByteString :: t -> ByteString
   fromByteString :: ByteString -> t
+  toText :: t -> Text
+  fromText :: Text -> t
 
-class FixedLength t where
-  fixedLength :: t -> Int
-
-checkLength :: Int -> ByteString -> ByteString
+checkLength :: String -> Int -> ByteString -> ByteString
 checkLength tname len bs
   | bslen == len = bs
   | otherwise =
       error ("when constructing " ++ tname
-             ++ " from ByteString, expected length "
-             ++ show len ++ " but got " ++ show bslen)
+             ++ " from ByteString, expected "
+             ++ show len ++ " bytes, but got " ++ show bslen)
   where bslen = B.length bs
 
-mkDeviceId :: B.ByteString -> DeviceId
-mkDeviceId bs
-  | B.length bs == 6 = DeviceId bs
-  | otherwise = error "length must be 6"
+idToText :: ByteString -> Text
+idToText bs = TE.decodeUtf8 $ B16.encode bs
 
-unDeviceId :: DeviceId -> B.ByteString
-unDeviceId (DeviceId bs) = bs
+textToId :: String -> Int -> Text -> ByteString
+textToId tname len txt
+  | extralen /= 0 =
+      error ("Got crud " ++ show extra ++ " after " ++ tname)
+  | bslen == len = bs
+  | otherwise =
+      error ("when constructing " ++ tname
+             ++ " from Text, expected "
+             ++ show len ++ " bytes, but got " ++ show bslen)
+  where bslen = B.length bs
+        (bs, extra) = B16.decode $ TE.encodeUtf8 txt
+        extralen = B.length extra
+
+implShow :: ByteString -> String -> String
+implShow bs pre = pre ++ B8.unpack (B16.encode bs)
+
+implRead :: (ByteString -> a) -> Int -> String -> [(a, String)]
+implRead c len s =
+  let digs = len * 2
+      digs' = digs + 2
+      (bs, _ ) = B16.decode (B8.pack $ take digs' s)
+  in if B.length bs == len
+     then [(c bs, drop digs s)]
+     else []
+
+
+deviceIdLen = 6
+
+instance LifxId DeviceId where
+  toByteString (DeviceId bs) = bs
+  fromByteString bs = DeviceId $ checkLength "DeviceId" deviceIdLen bs
+  toText (DeviceId bs) = idToText bs
+  fromText txt = DeviceId $ textToId "DeviceId" deviceIdLen txt
 
 instance Show DeviceId where
-  showsPrec _ (DeviceId bs) pre = pre ++ B8.unpack (B16.encode bs)
+  showsPrec _ (DeviceId bs) pre = implShow bs pre
 
 instance Read DeviceId where
-  readsPrec _ s =
-    let (bs, _) = B16.decode (B8.pack $ take 14 s)
-    in if B.length bs == 6
-       then [(DeviceId bs, drop 12 s)]
-       else []
+  readsPrec _ s = implRead DeviceId deviceIdLen s
 
 instance Binary DeviceId where
   put (DeviceId bs) = putByteString bs
+  get = DeviceId <$> getByteString deviceIdLen
 
-  get = DeviceId <$> getByteString 6
+
+groupIdLen = 16
+
+instance LifxId GroupId where
+  toByteString (GroupId bs) = bs
+  fromByteString bs = GroupId $ checkLength "GroupId" groupIdLen bs
+  toText (GroupId bs) = idToText bs
+  fromText txt = GroupId $ textToId "GroupId" groupIdLen txt
 
 instance Show GroupId where
-  showsPrec _ (GroupId bs) pre = pre ++ B8.unpack (B16.encode bs)
+  showsPrec _ (GroupId bs) pre = implShow bs pre
 
-instance Show LocId where
-  showsPrec _ (LocId bs) pre = pre ++ B8.unpack (B16.encode bs)
+instance Read GroupId where
+  readsPrec _ s = implRead GroupId groupIdLen s
+
+instance Binary GroupId where
+  put (GroupId bs) = putByteString bs
+  get = GroupId <$> getByteString groupIdLen
+
+
+locationIdLen = 16
+
+instance LifxId LocationId where
+  toByteString (LocationId bs) = bs
+  fromByteString bs = LocationId $ checkLength "LocationId" locationIdLen bs
+  toText (LocationId bs) = idToText bs
+  fromText txt = LocationId $ textToId "LocationId" locationIdLen txt
+
+instance Show LocationId where
+  showsPrec _ (LocationId bs) pre = implShow bs pre
+
+instance Read LocationId where
+  readsPrec _ s = implRead LocationId locationIdLen s
+
+instance Binary LocationId where
+  put (LocationId bs) = putByteString bs
+  get = LocationId <$> getByteString locationIdLen
+
 
 data Selector = SelAll
               | SelLabel Text
@@ -120,7 +177,7 @@ data Selector = SelAll
               | SelGroup Text
               | SelGroupId GroupId
               | SelLocation Text
-              | SelLocationId LocId
+              | SelLocationId LocationId
                 deriving (Show, Eq, Ord)
 
 data ColorArg = CNamed  NamedColor
