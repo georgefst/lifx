@@ -79,7 +79,7 @@ nsToDuration (NanoSeconds ns) =
 
 prLight :: StateLight -> (String, String, String) -- label, power, color
 prLight sl = (label, power, color)
-  where label = T.unpack $ TE.decodeUtf8With TEE.lenientDecode $ slLabel sl
+  where label = T.unpack $ slLabel sl
         power = if slPower sl == 0 then "Off" else "On"
         color = printf "%3d %3d %3d %4dK" h s b k
         hsbk = slColor sl

@@ -4,6 +4,8 @@ module Lifx.Lan.Util
       putInt16le,
       getInt16le,
       padByteString,
+      textToByteString,
+      textToPaddedByteString,
       bounds,
       bitBool,
       extract ) where
@@ -72,3 +74,7 @@ textToByteString maxBytes txt = t2bs (maxBytes `div` 4)
                   else t2bs nPlus1
         txtLen = T.length txt
         convert n = TE.encodeUtf8 $ T.take n txt
+
+textToPaddedByteString :: Int -> T.Text -> B.ByteString
+textToPaddedByteString maxBytes txt =
+  padByteString maxBytes $ textToByteString maxBytes txt

@@ -27,6 +27,9 @@ import Data.Binary.Get
 import qualified Data.ByteString as B ( ByteString, takeWhile )
 import qualified Data.ByteString.Lazy as L ( ByteString, takeWhile )
 import Data.Int ( Int16 )
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
+import qualified Data.Text.Encoding.Error as TEE
 import Data.Word ( Word16, Word32, Word64 )
 
 import Lifx.Types
@@ -296,7 +299,7 @@ data StateLight =
   { slColor :: HSBK16
     -- Reserved16 (dim)
   , slPower :: !Word16
-  , slLabel :: B.ByteString -- 32 bytes (aka labelSize)
+  , slLabel :: T.Text -- max 32 bytes (aka labelSize) of UTF-8
     -- Reserved64 (tags)
   } deriving Show
 
@@ -308,7 +311,7 @@ instance Binary StateLight where
     put $ slColor x
     putWord16le 0 -- Reserved16 (dim)
     putWord16le $ slPower x
-    putByteString $ padByteString labelSize $ slLabel x
+    putByteString $ textToPaddedByteString labelSize $ slLabel x
     putWord64le 0 -- Reserved64 (tags)
 
   get = do
@@ -317,7 +320,9 @@ instance Binary StateLight where
     power <- getWord16le
     label <- getByteString labelSize
     skip 8 -- Reserved64 (tags)
-    return $ StateLight color power $ B.takeWhile (/= 0) label
+    return $ StateLight color power
+           $ TE.decodeUtf8With TEE.lenientDecode
+           $ B.takeWhile (/= 0) label
 
 ----------------------------------------------------------
 
