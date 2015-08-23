@@ -9,6 +9,7 @@ module Lifx.Program.Column
        ) where
 
 import Data.List
+import Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 
@@ -21,33 +22,8 @@ data Column =
   , cMinWidth :: !Int
   , cMaxWidth :: !Int
   , cPriority :: !Int -- width is allocated to columns by priority
-  , cName :: (Int -> T.Text) -- render column name, given a width
-  }
-
-namePair :: Column -> (T.Text, T.Text)
-namePair col = (cName col (cMinWidth col), cName col (cMaxWidth col))
-
-colTuple :: Column -> (Direction, Direction, Int, Int, Int, T.Text, T.Text)
-colTuple col =
-  (cJustify col, cTruncate col, cMinWidth col, cMaxWidth col,
-   cPriority col, shortName, longName)
-  where (shortName, longName) = namePair col
-
-instance Eq Column where
-  c1 == c2 = colTuple c1 == colTuple c2
-
-instance Ord Column where
-  compare c1 c2 = compare (colTuple c1) (colTuple c2)
-
-instance Show Column where
-  showsPrec _ col pre =
-    shows (namePair col)
-    $ shows (cPriority col)
-    $ shows (cMaxWidth col)
-    $ shows (cMinWidth col)
-    $ shows (cTruncate col)
-    $ shows (cJustify col)
-    $ pre ++ "Column "
+  , cName :: [T.Text] -- list of possible column names of different widths
+  } deriving (Eq, Ord, Read, Show)
 
 data FixedColumn =
   FixedColumn
@@ -57,13 +33,26 @@ data FixedColumn =
   , rName :: T.Text
   } deriving (Eq, Ord, Read, Show)
 
+pickBest :: [T.Text] -> Int -> T.Text
+pickBest names' width' = fromMaybe T.empty $ pb names' width'
+  where pb [] _ = Nothing
+        pb (name:names) width = Just $ better width name $ pb names width
+        better _ n Nothing = n
+        better w n1 (Just n2)
+          | T.length n1 <= w && T.length n2 > w = n1
+          | T.length n2 <= w && T.length n1 > w = n2
+          | T.length n1 <= w && T.length n1 > T.length n2 = n1
+          | T.length n1 <= w && T.length n1 <= T.length n2 = n2
+          | T.length n1 < T.length n2 = n1
+          | otherwise = n2
+
 convertCol :: Column -> Int -> FixedColumn
 convertCol col width =
   FixedColumn
   { rJustify = cJustify col
   , rTruncate = cTruncate col
   , rWidth = width
-  , rName = (cName col) width
+  , rName = pickBest (cName col) width
   }
 
 expandCols :: Int -> [(Int, Column)] -> [(Int, FixedColumn)]

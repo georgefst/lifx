@@ -127,7 +127,7 @@ columns =
   [ Column Lft Lft 16 32  40 ["Label"]
   , Column Lft Lft  3  3   0 ["Pwr", "Power"]
   , Column Lft Lft 17 17   0 ["Color"]
-  , Column Lft Lft  6  6   0 ["Temp", "Temperature"]
+  , Column Lft Lft  6  7  30 ["Temp", "Temperature"]
   , Column Rgt Lft 11 11  90 ["Uptime"]
   , Column Lft Rgt  6 12 100 ["DevID", "Device ID"]
   , Column Lft Lft  3  3   0 ["FW", "Firmware"]
