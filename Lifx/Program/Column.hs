@@ -11,7 +11,6 @@ module Lifx.Program.Column
 import Data.List
 import Data.Maybe
 import qualified Data.Text as T
-import qualified Data.Text.Lazy as LT
 
 data Direction = Lft | Rgt deriving (Eq, Ord, Read, Show)
 
@@ -86,28 +85,32 @@ fixColumns width cols =
         -- used to restore columns to their original order
         byFst c1 c2 = compare (fst c1) (fst c2)
 
-displayCol :: FixedColumn -> T.Text -> T.Text
-displayCol col txt
+displayCol :: FixedColumn -> [T.Text] -> T.Text
+displayCol col txts
   | txtLen == width = txt
   | txtLen < width = pad (rJustify col)
   | otherwise = trunc (rTruncate col)
-  where txtLen = T.length txt
+  where txt = pickBest txts width
+        txtLen = T.length txt
         width = fromIntegral $ rWidth col
         pad Lft = T.justifyLeft width ' ' txt
         pad Rgt = T.justifyRight width ' ' txt
         trunc Lft = T.take width txt
         trunc Rgt = T.takeEnd width txt
 
-displayRow :: [FixedColumn] -> [T.Text] -> T.Text
+displayRow :: [FixedColumn] -> [[T.Text]] -> T.Text
 displayRow cols txts =
   T.intercalate spc $ map (uncurry displayCol) $ zip cols txts
   where spc = T.singleton ' '
 
 displayHeader :: [FixedColumn] -> T.Text
-displayHeader cols = displayRow cols $ map rName cols
+displayHeader cols = displayRow cols $ map (listSingleton . rName) cols
 
-dashes :: T.Text
-dashes = T.replicate 100 $ T.singleton '-'
+dashes :: [T.Text]
+dashes = listSingleton $ T.replicate 100 $ T.singleton '-'
+
+listSingleton :: a -> [a]
+listSingleton x = [x]
 
 displaySep :: [FixedColumn] -> T.Text
 displaySep cols = displayRow cols $ repeat $ dashes
