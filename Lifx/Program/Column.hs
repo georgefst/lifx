@@ -3,7 +3,6 @@ module Lifx.Program.Column where
 import Data.List
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
-import qualified Data.Text.Lazy.Builder as BLT
 
 data Direction = Lft | Rgt deriving (Eq, Ord, Read, Show)
 
@@ -90,30 +89,19 @@ renderColumns width cols =
         -- used to restore columns to their original order
         byFst c1 c2 = compare (fst c1) (fst c2)
 
-displayCol :: RenderedColumn -> LT.Text -> BLT.Builder
-displayCol col txt = fromLazyText txt'
+displayCol :: RenderedColumn -> LT.Text -> LT.Text
+displayCol col txt
+  | txtLen == width = txt
+  | txtLen < width = pad (rJustify col)
+  | otherwise = trunc (rTruncate col)
   where txtLen = LT.length txt
-        width = rWidth col
-        txt'
-          | txtLen == width = txt
-          | txtLen < width = pad (rJustify col)
-          | otherwise = trunc (rTruncate col)
-        width64 = fromIntegral width
-        pad Lft = LT.justifyLeft width64 ' ' txt
-        pad Rgt = LT.justifyRight width64 ' ' txt
-        trunc Lft = LT.take width64 txt
-        trunc Rgt = LT.takeEnd width64 txt
-
-emptyBuilder :: BLT.Builder
-emptyBuilder = BLT.fromString ""
-
-displayRow' :: [RenderedColumn] -> [LT.Text] -> BLT.Builder
-displayRow' [] _ = emptyBuilder
-displayRow' _ [] = emptyBuilder
-displayRow' (col:cols) (txt:txts) =
-  displayCol col txt <> spc cols <> displayRow' cols txts
-  where spc [] = emptyBuilder
-        spc _ = BLT.singleton ' '
+        width = fromIntegral $ rWidth col
+        pad Lft = LT.justifyLeft width ' ' txt
+        pad Rgt = LT.justifyRight width ' ' txt
+        trunc Lft = LT.take width txt
+        trunc Rgt = LT.takeEnd width txt
 
 displayRow :: [RenderedColumn] -> [LT.Text] -> LT.Text
-displayRow cols txts = toLazyText $ displayRow' col txts
+displayRow cols txts =
+  LT.intercalate spc $ map (uncurry displayCol) $ zip cols txts
+  where spc = LT.singleton ' '
