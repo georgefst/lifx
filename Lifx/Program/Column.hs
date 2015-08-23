@@ -86,25 +86,28 @@ fixColumns width cols =
         -- used to restore columns to their original order
         byFst c1 c2 = compare (fst c1) (fst c2)
 
-displayCol :: FixedColumn -> LT.Text -> LT.Text
+displayCol :: FixedColumn -> T.Text -> T.Text
 displayCol col txt
   | txtLen == width = txt
   | txtLen < width = pad (rJustify col)
   | otherwise = trunc (rTruncate col)
-  where txtLen = LT.length txt
+  where txtLen = T.length txt
         width = fromIntegral $ rWidth col
-        pad Lft = LT.justifyLeft width ' ' txt
-        pad Rgt = LT.justifyRight width ' ' txt
-        trunc Lft = LT.take width txt
-        trunc Rgt = LT.takeEnd width txt
+        pad Lft = T.justifyLeft width ' ' txt
+        pad Rgt = T.justifyRight width ' ' txt
+        trunc Lft = T.take width txt
+        trunc Rgt = T.takeEnd width txt
 
-displayRow :: [FixedColumn] -> [LT.Text] -> LT.Text
+displayRow :: [FixedColumn] -> [T.Text] -> T.Text
 displayRow cols txts =
-  LT.intercalate spc $ map (uncurry displayCol) $ zip cols txts
-  where spc = LT.singleton ' '
+  T.intercalate spc $ map (uncurry displayCol) $ zip cols txts
+  where spc = T.singleton ' '
 
-displayHeader :: [FixedColumn] -> LT.Text
-displayHeader cols = displayRow cols $ map (LT.fromStrict . rName) cols
+displayHeader :: [FixedColumn] -> T.Text
+displayHeader cols = displayRow cols $ map rName cols
 
-displaySep :: [FixedColumn] -> LT.Text
-displaySep cols = displayRow cols $ repeat $ LT.repeat '-'
+dashes :: T.Text
+dashes = T.replicate 100 $ T.singleton '-'
+
+displaySep :: [FixedColumn] -> T.Text
+displaySep cols = displayRow cols $ repeat $ dashes
