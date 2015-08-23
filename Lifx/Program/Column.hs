@@ -1,3 +1,5 @@
+module Lifx.Program.Column where
+
 import Data.List
 import qualified Data.Text as T
 
@@ -9,7 +11,7 @@ data Column =
   , cTruncate :: !Direction
   , cMinWidth :: !Int
   , cMaxWidth :: !Int
-  , cPriority :: !Double -- width is allocated to columns by priority
+  , cPriority :: !Int -- width is allocated to columns by priority
   , cName :: (Int -> T.Text) -- render column name, given a width
   }
 
@@ -31,14 +33,27 @@ convertCol col width =
   }
 
 expandCols :: Int -> [(Int, Column)] -> [(Int, RenderedColumn)]
-expandCols extra ((pri, col) : rest) =
-  foo
-  where something
+expandCols _ [] = []
+expandCols budget ((orig, col) : rest) =
+  (orig, convertCol col (cMinWidth col + moreWidth))
+  : expandCols (budget - moreWidth) rest
+  where desired = cMaxWidth col - cMinWidth col
+        moreWidth | desired > budget = budget
+                  | otherwise = desired
+
+truncateCols :: Int -> [Column] -> [RenderedColumn]
+truncateCols _ [] = []
+truncateCols budget (col : rest)
+  | budget <= 0 = []
+  | otherwise = convertCol col width : truncateCols (budget - width - 1) rest
+  where minWidth = cMinWidth col
+        width | minWidth < budget = minWidth
+              | otherwise = budget
 
 renderColumns :: Int -> [Column] -> [RenderedColumn]
 renderColumns width cols =
   if minWidth >= width
-  then truncateCols
+  then truncateCols width cols
   else map snd $ sortBy byFst $ expandCols (width - minWidth) pcols
   where minWidth = sum (length cols - 1 : map cMinWidth cols)
         ocols = zip [1..] cols

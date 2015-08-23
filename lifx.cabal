@@ -58,6 +58,7 @@ executable lifx
                , Lifx.Lan.LowLevel
                , Lifx.Types
                , Lifx.Program.CmdParser
+               , Lifx.Program.Column
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
