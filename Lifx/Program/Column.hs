@@ -1,4 +1,12 @@
-module Lifx.Program.Column where
+module Lifx.Program.Column
+       ( Direction (..)
+       , Column (..)
+       , FixedColumn (..)
+       , fixColumns
+       , displayRow
+       , displayHeader
+       , displaySep
+       ) where
 
 import Data.List
 import qualified Data.Text as T
@@ -41,24 +49,24 @@ instance Show Column where
     $ shows (cJustify col)
     $ pre ++ "Column "
 
-data RenderedColumn =
-  RenderedColumn
+data FixedColumn =
+  FixedColumn
   { rJustify :: !Direction
   , rTruncate :: !Direction
   , rWidth :: !Int
   , rName :: T.Text
   } deriving (Eq, Ord, Read, Show)
 
-convertCol :: Column -> Int -> RenderedColumn
+convertCol :: Column -> Int -> FixedColumn
 convertCol col width =
-  RenderedColumn
+  FixedColumn
   { rJustify = cJustify col
   , rTruncate = cTruncate col
   , rWidth = width
   , rName = (cName col) width
   }
 
-expandCols :: Int -> [(Int, Column)] -> [(Int, RenderedColumn)]
+expandCols :: Int -> [(Int, Column)] -> [(Int, FixedColumn)]
 expandCols _ [] = []
 expandCols budget ((orig, col) : rest) =
   (orig, convertCol col (cMinWidth col + moreWidth))
@@ -67,7 +75,7 @@ expandCols budget ((orig, col) : rest) =
         moreWidth | desired > budget = budget
                   | otherwise = desired
 
-truncateCols :: Int -> [Column] -> [RenderedColumn]
+truncateCols :: Int -> [Column] -> [FixedColumn]
 truncateCols _ [] = []
 truncateCols budget (col : rest)
   | budget <= 0 = []
@@ -76,8 +84,8 @@ truncateCols budget (col : rest)
         width | minWidth < budget = minWidth
               | otherwise = budget
 
-renderColumns :: Int -> [Column] -> [RenderedColumn]
-renderColumns width cols =
+fixColumns :: Int -> [Column] -> [FixedColumn]
+fixColumns width cols =
   if minWidth >= width
   then truncateCols width cols
   else map snd $ sortBy byFst $ expandCols (width - minWidth) pcols
@@ -89,7 +97,7 @@ renderColumns width cols =
         -- used to restore columns to their original order
         byFst c1 c2 = compare (fst c1) (fst c2)
 
-displayCol :: RenderedColumn -> LT.Text -> LT.Text
+displayCol :: FixedColumn -> LT.Text -> LT.Text
 displayCol col txt
   | txtLen == width = txt
   | txtLen < width = pad (rJustify col)
@@ -101,7 +109,13 @@ displayCol col txt
         trunc Lft = LT.take width txt
         trunc Rgt = LT.takeEnd width txt
 
-displayRow :: [RenderedColumn] -> [LT.Text] -> LT.Text
+displayRow :: [FixedColumn] -> [LT.Text] -> LT.Text
 displayRow cols txts =
   LT.intercalate spc $ map (uncurry displayCol) $ zip cols txts
   where spc = LT.singleton ' '
+
+displayHeader :: [FixedColumn] -> LT.Text
+displayHeader cols = displayRow cols $ map (LT.fromStrict . rName) cols
+
+displaySep :: [FixedColumn] -> LT.Text
+displaySep cols = displayRow cols $ repeat $ LT.repeat '-'
