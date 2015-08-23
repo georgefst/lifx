@@ -28,7 +28,7 @@ import Text.Printf ( printf )
 import Lifx.Lan.LowLevel
 import Lifx.Types
 import qualified Lifx.Program.CmdParser as C
-import qualified Lifx.Program.Column as XYZ
+import Lifx.Program.Column
 
 myTime :: Word64 -> String
 myTime nanos =
@@ -121,6 +121,19 @@ tr :: String -> IO ()
 tr s = putStrLn $ dropWhileEnd isSpace s
 
 fmtStr = "%-16.16s %-3.3s %-17.17s %-6.6s %11.11s %-12.12s %-3.3s %-5.5s"
+
+{-
+columns =
+  [ Column Lft Lft 16 32  40 ["Label"]
+  , Column Lft Lft  3  3   0 ["Pwr", "Power"]
+  , Column Lft Lft 17 17   0 ["Color"]
+  , Column Lft Lft  6  6   0 ["Temp", "Temperature"]
+  , Column Rgt Lft 11 11  90 ["Uptime"]
+  , Column Lft Rgt  6 12 100 ["DevID", "Device ID"]
+  , Column Lft Lft  3  3   0 ["FW", "Firmware"]
+  , Column Lft Lft  5  7  50 ["HW", "Hardware"]
+  ]
+-}
 
 prBulb :: Bulb
           -> StateHostInfo
