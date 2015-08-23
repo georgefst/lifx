@@ -2,6 +2,8 @@ module Lifx.Program.Column where
 
 import Data.List
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Lazy.Builder as BLT
 
 data Direction = Lft | Rgt deriving (Eq, Ord, Read, Show)
 
@@ -14,6 +16,31 @@ data Column =
   , cPriority :: !Int -- width is allocated to columns by priority
   , cName :: (Int -> T.Text) -- render column name, given a width
   }
+
+namePair :: Column -> (T.Text, T.Text)
+namePair col = (cName col (cMinWidth col), cName col (cMaxWidth col))
+
+colTuple :: Column -> (Direction, Direction, Int, Int, Int, T.Text, T.Text)
+colTuple col =
+  (cJustify col, cTruncate col, cMinWidth col, cMaxWidth col,
+   cPriority col, shortName, longName)
+  where (shortName, longName) = namePair col
+
+instance Eq Column where
+  c1 == c2 = colTuple c1 == colTuple c2
+
+instance Ord Column where
+  compare c1 c2 = compare (colTuple c1) (colTuple c2)
+
+instance Show Column where
+  showsPrec _ col pre =
+    shows (namePair col)
+    $ shows (cPriority col)
+    $ shows (cMaxWidth col)
+    $ shows (cMinWidth col)
+    $ shows (cTruncate col)
+    $ shows (cJustify col)
+    $ pre ++ "Column "
 
 data RenderedColumn =
   RenderedColumn
@@ -62,3 +89,31 @@ renderColumns width cols =
         byPriority c1 c2 = compare (cPriority $ snd c2) (cPriority $ snd c1)
         -- used to restore columns to their original order
         byFst c1 c2 = compare (fst c1) (fst c2)
+
+displayCol :: RenderedColumn -> LT.Text -> BLT.Builder
+displayCol col txt = fromLazyText txt'
+  where txtLen = LT.length txt
+        width = rWidth col
+        txt'
+          | txtLen == width = txt
+          | txtLen < width = pad (rJustify col)
+          | otherwise = trunc (rTruncate col)
+        width64 = fromIntegral width
+        pad Lft = LT.justifyLeft width64 ' ' txt
+        pad Rgt = LT.justifyRight width64 ' ' txt
+        trunc Lft = LT.take width64 txt
+        trunc Rgt = LT.takeEnd width64 txt
+
+emptyBuilder :: BLT.Builder
+emptyBuilder = BLT.fromString ""
+
+displayRow' :: [RenderedColumn] -> [LT.Text] -> BLT.Builder
+displayRow' [] _ = emptyBuilder
+displayRow' _ [] = emptyBuilder
+displayRow' (col:cols) (txt:txts) =
+  displayCol col txt <> spc cols <> displayRow' cols txts
+  where spc [] = emptyBuilder
+        spc _ = BLT.singleton ' '
+
+displayRow :: [RenderedColumn] -> [LT.Text] -> LT.Text
+displayRow cols txts = toLazyText $ displayRow' col txts
