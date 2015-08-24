@@ -123,12 +123,14 @@ prHostFirmware shf = fmt "{}.{}" (major, minor)
         major = v `shiftR` 16
         minor = v .&. 0xffff
 
-prVersion :: StateVersion -> T.Text -- hardware version
-prVersion sv = f $ productFromId vend prod
+prVersion :: StateVersion -> [T.Text] -- hardware version
+prVersion sv = addVers $ f $ productFromId vend prod
   where vend = svVendor sv
         prod = svProduct sv
+        vers = svVersion sv
         f (Just p) = pShortName p
         f Nothing = fmt "{}:{}" (vend, prod)
+        addVers txt = [txt, fmt "{}v{}" (txt, vers)]
 
 tr :: T.Text -> IO ()
 tr = TIO.putStrLn . T.stripEnd
@@ -155,7 +157,7 @@ prBulb :: Bulb
           -> T.Text
 prBulb bulb shi sl shf sv si =
   displayRow fixedCols [[label], [power], [color], temp,
-                        uptime, [devid], [fw], [vers]]
+                        uptime, [devid], [fw], vers]
   where (label, power, color) = prLight sl
         temp = prHostInfo shi
         uptime = prInfo si
