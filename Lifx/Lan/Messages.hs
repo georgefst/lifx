@@ -278,6 +278,90 @@ instance Binary Acknowledgement where
 
 ----------------------------------------------------------
 
+data GetLocation = GetLocation
+
+instance MessageType GetLocation where
+  msgType _ = 48
+
+instance Binary GetLocation where
+  put _ = return ()
+  get = return GetLocation
+
+getLocation :: Bulb -> (StateLocation -> IO ()) -> IO ()
+getLocation bulb @(Bulb st _ _) cb = do
+  hdr <- atomically $ newHdrAndCallback st (const cb)
+  sendMsg bulb hdr GetLocation
+
+----------------------------------------------------------
+
+data StateLocation =
+  StateLocation
+  { sloLocation  :: LocationId
+  , sloLabel     :: T.Text -- max 32 bytes (aka labelSize) of UTF-8
+  , sloUpdatedAt :: !Word64
+  } deriving Show
+
+instance MessageType StateLocation where
+  msgType _ = 50
+
+instance Binary StateLocation where
+  put x = do
+    put $ sloLocation x
+    putByteString $ textToPaddedByteString labelSize $ sloLabel x
+    putWord64le $ sloUpdatedAt x
+
+  get = do
+    loc <- get
+    label <- getByteString labelSize
+    upd <- getWord64le
+    return $ StateLocation loc
+      (TE.decodeUtf8With TEE.lenientDecode $ B.takeWhile (/= 0) label)
+      upd
+
+----------------------------------------------------------
+
+data GetGroup = GetGroup
+
+instance MessageType GetGroup where
+  msgType _ = 51
+
+instance Binary GetGroup where
+  put _ = return ()
+  get = return GetGroup
+
+getGroup :: Bulb -> (StateGroup -> IO ()) -> IO ()
+getGroup bulb @(Bulb st _ _) cb = do
+  hdr <- atomically $ newHdrAndCallback st (const cb)
+  sendMsg bulb hdr GetGroup
+
+----------------------------------------------------------
+
+data StateGroup =
+  StateGroup
+  { sgGroup     :: GroupId
+  , sgLabel     :: T.Text -- max 32 bytes (aka labelSize) of UTF-8
+  , sgUpdatedAt :: !Word64
+  } deriving Show
+
+instance MessageType StateGroup where
+  msgType _ = 53
+
+instance Binary StateGroup where
+  put x = do
+    put $ sgGroup x
+    putByteString $ textToPaddedByteString labelSize $ sgLabel x
+    putWord64le $ sgUpdatedAt x
+
+  get = do
+    loc <- get
+    label <- getByteString labelSize
+    upd <- getWord64le
+    return $ StateGroup loc
+      (TE.decodeUtf8With TEE.lenientDecode $ B.takeWhile (/= 0) label)
+      upd
+
+----------------------------------------------------------
+
 data GetLight = GetLight
 
 instance MessageType GetLight where
