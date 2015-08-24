@@ -3,6 +3,7 @@
 module Lifx.Types where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
+import Control.Arrow (first)
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
@@ -13,7 +14,9 @@ import Data.Hashable
 import Data.List (find)
 import Data.Monoid (Monoid(..))
 import Data.Text (Text(..))
+import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
+import qualified Data.Text.Encoding.Error as TEE
 import Data.Word
 import Debug.Trace
 
@@ -70,6 +73,7 @@ combineMaybe _ x@(Just _ ) = x
 newtype DeviceId   = DeviceId B.ByteString   deriving (Eq, Ord, Hashable)
 newtype GroupId    = GroupId B.ByteString    deriving (Eq, Ord, Hashable)
 newtype LocationId = LocationId B.ByteString deriving (Eq, Ord, Hashable)
+newtype Label      = Label B.ByteString      deriving (Eq, Ord, Hashable)
 
 class LifxId t where
   toByteString :: t -> B.ByteString
@@ -172,6 +176,26 @@ instance Binary LocationId where
   get = LocationId <$> getByteString locationIdLen
 
 
+labelLen = 32
+
+instance LifxId Label where
+  toByteString (Label bs) = bs
+  fromByteString bs = Label $ checkLength "Label" labelLen bs
+  toText (Label bs) =
+    TE.decodeUtf8With TEE.lenientDecode $ B.takeWhile (/= 0) bs
+  fromText txt = Label $ textToPaddedByteString labelLen txt
+
+instance Show Label where
+  showsPrec p lbl pre = showsPrec p (toText lbl) pre
+
+instance Read Label where
+  readsPrec p s = map (first fromText) $ readsPrec p s
+
+instance Binary Label where
+  put (Label bs) = putByteString bs
+  get = Label <$> getByteString labelLen
+
+
 data Selector = SelAll
               | SelLabel Text
               | SelDevId DeviceId
@@ -228,3 +252,34 @@ productFromLongName ln = find f products
 productFromShortName :: Text -> Maybe Product
 productFromShortName sn = find f products
   where f (Product _ _ _ sn') = sn == sn'
+
+---- Utilities: move elsewhere?
+
+-- pad (with 0) or truncate a bytestring to make it exactly the specified length
+padByteString :: Int -> B.ByteString -> B.ByteString
+padByteString goal bs = f (l `compare` goal)
+  where l = B.length bs
+        f LT = bs `B.append` pad
+        f EQ = bs
+        f GT = B.take goal bs
+        pad = B.replicate (goal - l) 0
+
+-- truncate a Text to fit in the specific number of bytes, encoded as UTF-8,
+-- but without truncating in the middle of a character
+textToByteString :: Int -> T.Text -> B.ByteString
+textToByteString maxBytes txt = t2bs (maxBytes `div` 4)
+  where t2bs n =
+          let nPlus1 = n + 1
+              bs = convert nPlus1
+              bsLen = B.length bs
+          in if bsLen > maxBytes
+             then convert n
+             else if bsLen == maxBytes || n >= txtLen
+                  then bs
+                  else t2bs nPlus1
+        txtLen = T.length txt
+        convert n = TE.encodeUtf8 $ T.take n txt
+
+textToPaddedByteString :: Int -> T.Text -> B.ByteString
+textToPaddedByteString maxBytes txt =
+  padByteString maxBytes $ textToByteString maxBytes txt
