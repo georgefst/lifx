@@ -7,15 +7,9 @@ import Control.Monad ( when, forever )
 import Data.Bits
 import Data.Char
 import Data.Hourglass
-{-
-    ( ElapsedP(ElapsedP),
-      ISO8601_DateAndTime(ISO8601_DateAndTime),
-      timePrint )
--}
 import Data.Int ( Int64 )
 import Data.List
 import Data.Maybe
--- import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
@@ -31,12 +25,12 @@ import Lifx.Types
 import qualified Lifx.Program.CmdParser as C
 import Lifx.Program.Column
 
+{-
 myTime :: Word64 -> String
 myTime nanos =
   let (q, r) = quotRem nanos 1000000000
       elapp = ElapsedP (fromIntegral q) (fromIntegral r)
   in timePrint ISO8601_DateAndTime elapp
-
 
 myCb :: Bulb -> IO ()
 myCb bulb = do
@@ -67,6 +61,7 @@ myCb bulb = do
                     print $ nsToDuration $ fromIntegral $ siUptime si
                     print $ nsToDuration $ fromIntegral $ siDowntime si
                     putStrLn "done!"
+-}
 
 deriving instance Show Duration
 
@@ -153,36 +148,6 @@ prBulb bulb shi sl shf sv si =
         vers = prVersion sv
 
 type DevID = DeviceId
-
--- ra q cb = reliableAction defaultRetryParams q cb $ return ()
-rq q cb = reliableQuery  defaultRetryParams q cb $ putStrLn "timeout!"
-
-lsCb :: STMSet.Set DevID -> Bulb -> IO ()
-lsCb done bulb = do
-  let dev = deviceId bulb
-  already <- atomically $ STMSet.lookup dev done
-  when (not already) $
-    rq (getHostInfo bulb) $ \shi ->
-      rq (getLight bulb) $ \sl ->
-        rq (getHostFirmware bulb) $ \shf ->
-          rq (getVersion bulb) $ \sv ->
-            rq (getInfo bulb) $ \si -> do
-              dup <- atomically $ do
-                d <- STMSet.lookup dev done
-                when (not d) $ STMSet.insert dev done
-                return d
-              when (not dup) $ tr $ prBulb bulb shi sl shf sv si
-
-lsBulbs :: Lan -> IO ()
-lsBulbs lan = do
-  let fmtStrn = fmtStr ++ "\n"
-      dashes = replicate 80 '-'
-  tr $ printf fmtStrn "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "FW" "HW"
-  tr $ printf fmtStrn dashes dashes dashes dashes dashes dashes dashes dashes
-  s <- STMSet.newIO
-  forever $ do
-    discoverBulbs lan (lsCb s)
-    threadDelay 500000
 
 myQuery :: TSem -> Bulb -> String -> ((a -> IO ()) -> IO ()) -> (a -> IO ()) -> IO ()
 myQuery sem bulb op q cb =
@@ -319,6 +284,3 @@ main = do
   forever $ do
     discoverBulbs lan (discCb s $ func sem)
     threadDelay 500000
-  -- discoverBulbs lan myCb
-  -- lsBulbs lan
-  -- forever $ threadDelay 1000000000
