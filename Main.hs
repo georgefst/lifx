@@ -81,8 +81,10 @@ nsToDuration (NanoSeconds ns) =
 fmt :: Params ps => Format -> ps -> T.Text
 fmt f p = LT.toStrict $ format f p
 
+l2 = left 2 ' '
 l3 = left 3 ' '
 l4 = left 4 ' '
+l5 = left 5 ' '
 
 prLight :: StateLight -> (T.Text, T.Text, T.Text) -- label, power, color
 prLight sl = (label, power, color)
@@ -98,17 +100,22 @@ prLight sl = (label, power, color)
         asInt x = fromIntegral x :: Int
         scale x mul = asInt x * asInt mul `div` asInt m
 
-prHostInfo :: StateHostInfo -> T.Text -- temp
-prHostInfo shi = fmt "{}°C" (Only $ l4 $ fixed 1 temp)
+prHostInfo :: StateHostInfo -> [T.Text] -- temp
+prHostInfo shi = [ fmt "{}°C" (Only $ l2 $ fixed 0 temp)
+                 , fmt "{}°C" (Only $ l4 $ fixed 1 temp)
+                 , fmt "{}°C" (Only $ l5 $ fixed 2 temp)
+                 ]
   where temp = ((fromIntegral $ shiMcuTemperature shi) / 100) :: Double
 
-prInfo :: StateInfo -> T.Text -- uptime
+prInfo :: StateInfo -> [T.Text] -- uptime
 prInfo si = fmtDur $ nsToDuration $ fromIntegral $ siUptime si
   where fmtDur (days, Duration (Hours hours) (Minutes minutes)
                       (Seconds seconds) _) =
           let xs = [(days, 'd'), (hours, 'h'), (minutes, 'm'), (seconds, 's')]
               xs' = dropWhile (\(n, _ ) -> n == 0) xs
-          in mconcat $ map (\(n, s) -> fmt "{}{}" (n, s)) xs'
+              txts = map (\(n, s) -> fmt "{}{}" (n, s)) xs'
+              choices = tail $ inits txts
+          in map mconcat choices
 
 prHostFirmware :: StateHostFirmware -> T.Text -- firmware version
 prHostFirmware shf = fmt "{}.{}" (major, minor)
@@ -147,8 +154,8 @@ prBulb :: Bulb
           -> StateInfo
           -> T.Text
 prBulb bulb shi sl shf sv si =
-  displayRow fixedCols [[label], [power], [color], [temp],
-                        [uptime], [devid], [fw], [vers]]
+  displayRow fixedCols [[label], [power], [color], temp,
+                        uptime, [devid], [fw], [vers]]
   where (label, power, color) = prLight sl
         temp = prHostInfo shi
         uptime = prInfo si
