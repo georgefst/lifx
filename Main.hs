@@ -122,18 +122,18 @@ tr s = putStrLn $ dropWhileEnd isSpace s
 
 fmtStr = "%-16.16s %-3.3s %-17.17s %-6.6s %11.11s %-12.12s %-3.3s %-5.5s"
 
-{-
+t = T.pack
+
 columns =
-  [ Column Lft Lft 16 32  40 ["Label"]
-  , Column Lft Lft  3  3   0 ["Pwr", "Power"]
-  , Column Lft Lft 17 17   0 ["Color"]
-  , Column Lft Lft  6  7  30 ["Temp", "Temperature"]
-  , Column Rgt Lft 11 11  90 ["Uptime"]
-  , Column Lft Rgt  6 12 100 ["DevID", "Device ID"]
-  , Column Lft Lft  3  3   0 ["FW", "Firmware"]
-  , Column Lft Lft  5  7  50 ["HW", "Hardware"]
+  [ Column Lft Lft 16 32  40 [t "Label"]
+  , Column Lft Lft  3  3   0 [t "Pwr", t "Power"]
+  , Column Lft Lft 17 17   0 [t "Color"]
+  , Column Lft Lft  6  7  30 [t "Temp", t "Temperature"]
+  , Column Rgt Lft 11 11  90 [t "Uptime"]
+  , Column Lft Rgt  6 12 100 [t "DevID", t "Device ID"]
+  , Column Lft Lft  3  3   0 [t "FW", t "Firmware"]
+  , Column Lft Lft  5  7  50 [t "HW", t "Hardware"]
   ]
--}
 
 prBulb :: Bulb
           -> StateHostInfo
