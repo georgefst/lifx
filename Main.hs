@@ -1,4 +1,4 @@
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StandaloneDeriving, NoMonomorphismRestriction #-}
 
 import Control.Concurrent
 import Control.Concurrent.STM
@@ -10,9 +10,14 @@ import Data.Hourglass
 import Data.Int ( Int64 )
 import Data.List
 import Data.Maybe
+import Data.Monoid
+import Data.String
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
+import Data.Text.Format
+import Data.Text.Format.Params
+import qualified Data.Text.Lazy as LT
 import qualified Data.Text.IO as TIO
 import Data.Word ( Word16, Word32, Word64 )
 import GHC.Float
@@ -74,11 +79,17 @@ nsToDuration (NanoSeconds ns) =
         (h, minutes) = m `quotRem` 60
         (days, hours) = h `quotRem` 24
 
-prLight :: StateLight -> (String, String, String) -- label, power, color
+fmt :: Params ps => String -> ps -> T.Text
+fmt f p = LT.toStrict $ format (fromString f) p
+
+l3 = left 3 ' '
+l4 = left 4 ' '
+
+prLight :: StateLight -> (T.Text, T.Text, T.Text) -- label, power, color
 prLight sl = (label, power, color)
-  where label = T.unpack $ slLabel sl
-        power = if slPower sl == 0 then "Off" else "On"
-        color = printf "%3d %3d %3d %4dK" h s b k
+  where label = slLabel sl
+        power = if slPower sl == 0 then t "Off" else t "On"
+        color = fmt "{} {} {} {}K" (l3 h, l3 s, l3 b, l4 k)
         hsbk = slColor sl
         h = scale (hue hsbk) 360
         s = scale (saturation hsbk) 100
@@ -88,33 +99,33 @@ prLight sl = (label, power, color)
         asInt x = fromIntegral x :: Int
         scale x mul = asInt x * asInt mul `div` asInt m
 
-prHostInfo :: StateHostInfo -> String -- temp
-prHostInfo shi = printf "%4.1f°C" (temp :: Double)
-  where temp = (fromIntegral $ shiMcuTemperature shi) / 100
+prHostInfo :: StateHostInfo -> T.Text -- temp
+prHostInfo shi = fmt "{}°C" (Only $ l4 $ fixed 1 temp)
+  where temp = ((fromIntegral $ shiMcuTemperature shi) / 100) :: Double
 
-prInfo :: StateInfo -> String -- uptime
+prInfo :: StateInfo -> T.Text -- uptime
 prInfo si = fmtDur $ nsToDuration $ fromIntegral $ siUptime si
   where fmtDur (days, Duration (Hours hours) (Minutes minutes)
                       (Seconds seconds) _) =
           let xs = [(days, "d"), (hours, "h"), (minutes, "m"), (seconds, "s")]
               xs' = dropWhile (\(n, _ ) -> n == 0) xs
-          in concatMap (\(n, s) -> show n ++ s) xs'
+          in mconcat $ map (\(n, s) -> fmt "{}{}" (n, s)) xs'
 
-prHostFirmware :: StateHostFirmware -> String -- firmware version
-prHostFirmware shf = printf "%d.%d" major minor
+prHostFirmware :: StateHostFirmware -> T.Text -- firmware version
+prHostFirmware shf = fmt "{}.{}" (major, minor)
   where v = shfVersion shf
         major = v `shiftR` 16
         minor = v .&. 0xffff
 
-prVersion :: StateVersion -> String -- hardware version
+prVersion :: StateVersion -> T.Text -- hardware version
 prVersion sv = f $ productFromId vend prod
   where vend = svVendor sv
         prod = svProduct sv
-        f (Just p) = T.unpack $ pShortName p
-        f Nothing = printf "%d:%d" vend prod
+        f (Just p) = pShortName p
+        f Nothing = fmt "{}:{}" (vend, prod)
 
 tr :: T.Text -> IO ()
-tr s = TIO.putStrLn $ T.dropWhileEnd isSpace s
+tr = TIO.putStrLn . T.stripEnd
 
 t = T.pack
 
@@ -139,12 +150,12 @@ prBulb :: Bulb
           -> StateInfo
           -> T.Text
 prBulb bulb shi sl shf sv si =
-  displayRow fixedCols [[t label], [t power], [t color], [t temp],
-                        [t uptime], [toText devid], [t fw], [t vers]]
+  displayRow fixedCols [[label], [power], [color], [temp],
+                        [uptime], [devid], [fw], [vers]]
   where (label, power, color) = prLight sl
         temp = prHostInfo shi
         uptime = prInfo si
-        devid = deviceId bulb
+        devid = toText $ deviceId bulb
         fw = prHostFirmware shf
         vers = prVersion sv
 
