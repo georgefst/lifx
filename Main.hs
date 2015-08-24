@@ -19,6 +19,7 @@ import Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
+import qualified Data.Text.IO as TIO
 import Data.Word ( Word16, Word32, Word64 )
 import GHC.Float
 import qualified STMContainers.Set as STMSet
@@ -283,10 +284,15 @@ cmd2func (C.CmdBreathe pa) _ = cmdWave Sine pa
 
 lsHeader :: IO ()
 lsHeader = do
+  let cols = fixColumns 80 columns
+  TIO.putStrLn $ displayHeader cols
+  TIO.putStrLn $ displaySep cols
+{-
   let fmtStrn = fmtStr ++ "\n"
       dashes = replicate 80 '-'
   tr $ printf fmtStrn "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "FW" "HW"
   tr $ printf fmtStrn dashes dashes dashes dashes dashes dashes dashes dashes
+-}
 
 hdrIfNeeded :: C.LiteCmd -> IO ()
 hdrIfNeeded C.CmdList = lsHeader
