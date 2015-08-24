@@ -1,4 +1,4 @@
-{-# LANGUAGE StandaloneDeriving, NoMonomorphismRestriction #-}
+{-# LANGUAGE StandaloneDeriving, NoMonomorphismRestriction, OverloadedStrings #-}
 
 import Control.Concurrent
 import Control.Concurrent.STM
@@ -23,7 +23,6 @@ import Data.Word ( Word16, Word32, Word64 )
 import GHC.Float
 import qualified STMContainers.Set as STMSet
 import System.Console.CmdArgs.Explicit
-import Text.Printf ( printf )
 
 import Lifx.Lan.LowLevel
 import Lifx.Types
@@ -79,8 +78,8 @@ nsToDuration (NanoSeconds ns) =
         (h, minutes) = m `quotRem` 60
         (days, hours) = h `quotRem` 24
 
-fmt :: Params ps => String -> ps -> T.Text
-fmt f p = LT.toStrict $ format (fromString f) p
+fmt :: Params ps => Format -> ps -> T.Text
+fmt f p = LT.toStrict $ format f p
 
 l3 = left 3 ' '
 l4 = left 4 ' '
@@ -88,7 +87,7 @@ l4 = left 4 ' '
 prLight :: StateLight -> (T.Text, T.Text, T.Text) -- label, power, color
 prLight sl = (label, power, color)
   where label = slLabel sl
-        power = if slPower sl == 0 then t "Off" else t "On"
+        power = if slPower sl == 0 then "Off" else "On"
         color = fmt "{} {} {} {}K" (l3 h, l3 s, l3 b, l4 k)
         hsbk = slColor sl
         h = scale (hue hsbk) 360
@@ -107,7 +106,7 @@ prInfo :: StateInfo -> T.Text -- uptime
 prInfo si = fmtDur $ nsToDuration $ fromIntegral $ siUptime si
   where fmtDur (days, Duration (Hours hours) (Minutes minutes)
                       (Seconds seconds) _) =
-          let xs = [(days, "d"), (hours, "h"), (minutes, "m"), (seconds, "s")]
+          let xs = [(days, 'd'), (hours, 'h'), (minutes, 'm'), (seconds, 's')]
               xs' = dropWhile (\(n, _ ) -> n == 0) xs
           in mconcat $ map (\(n, s) -> fmt "{}{}" (n, s)) xs'
 
@@ -127,17 +126,15 @@ prVersion sv = f $ productFromId vend prod
 tr :: T.Text -> IO ()
 tr = TIO.putStrLn . T.stripEnd
 
-t = T.pack
-
 columns =
-  [ Column Lft Lft 16 32  40 [t "Label"]
-  , Column Lft Lft  3  3   0 [t "Pwr", t "Power"]
-  , Column Lft Lft 17 17   0 [t "Color"]
-  , Column Lft Lft  6  7  30 [t "Temp", t "Temperature"]
-  , Column Rgt Lft 11 11  90 [t "Uptime"]
-  , Column Lft Rgt  6 12 100 [t "DevID", t "Device ID"]
-  , Column Lft Lft  3  3   0 [t "FW", t "Firmware"]
-  , Column Lft Lft  5  7  50 [t "HW", t "Hardware"]
+  [ Column Lft Lft 16 32  40 ["Label"]
+  , Column Lft Lft  3  3   0 ["Pwr", "Power"]
+  , Column Lft Lft 17 17   0 ["Color"]
+  , Column Lft Lft  6  7  30 ["Temp", "Temperature"]
+  , Column Rgt Lft 11 11  90 ["Uptime"]
+  , Column Lft Rgt  6 12 100 ["DevID", "Device ID"]
+  , Column Lft Lft  3  3   0 ["FW", "Firmware"]
+  , Column Lft Lft  5  7  50 ["HW", "Hardware"]
   ]
 
 fixedCols = fixColumns 80 columns
