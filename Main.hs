@@ -113,10 +113,8 @@ prVersion sv = f $ productFromId vend prod
         f (Just p) = T.unpack $ pShortName p
         f Nothing = printf "%d:%d" vend prod
 
-tr :: String -> IO ()
-tr s = putStrLn $ dropWhileEnd isSpace s
-
-fmtStr = "%-16.16s %-3.3s %-17.17s %-6.6s %11.11s %-12.12s %-3.3s %-5.5s"
+tr :: T.Text -> IO ()
+tr s = TIO.putStrLn $ T.dropWhileEnd isSpace s
 
 t = T.pack
 
@@ -131,15 +129,18 @@ columns =
   , Column Lft Lft  5  7  50 [t "HW", t "Hardware"]
   ]
 
+fixedCols = fixColumns 80 columns
+
 prBulb :: Bulb
           -> StateHostInfo
           -> StateLight
           -> StateHostFirmware
           -> StateVersion
           -> StateInfo
-          -> String
+          -> T.Text
 prBulb bulb shi sl shf sv si =
-  printf fmtStr label power color temp uptime (show devid) fw vers
+  displayRow fixedCols [[t label], [t power], [t color], [t temp],
+                        [t uptime], [toText devid], [t fw], [t vers]]
   where (label, power, color) = prLight sl
         temp = prHostInfo shi
         uptime = prInfo si
@@ -249,15 +250,8 @@ cmd2func (C.CmdBreathe pa) _ = cmdWave Sine pa
 
 lsHeader :: IO ()
 lsHeader = do
-  let cols = fixColumns 80 columns
-  TIO.putStrLn $ displayHeader cols
-  TIO.putStrLn $ displaySep cols
-{-
-  let fmtStrn = fmtStr ++ "\n"
-      dashes = replicate 80 '-'
-  tr $ printf fmtStrn "Label" "Pwr" "Color" "Temp" "Uptime" "DevID" "FW" "HW"
-  tr $ printf fmtStrn dashes dashes dashes dashes dashes dashes dashes dashes
--}
+  tr $ displayHeader fixedCols
+  tr $ displaySep fixedCols
 
 hdrIfNeeded :: C.LiteCmd -> IO ()
 hdrIfNeeded C.CmdList = lsHeader
