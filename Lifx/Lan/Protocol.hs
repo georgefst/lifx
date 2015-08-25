@@ -290,9 +290,9 @@ openLan' ifname mport mlog = do
       source = mkSource hostAddr (fromIntegral hostPort)
   tmv <- newEmptyTMVarIO
   thr <- forkIO (dispatcher tmv)
-  wthr <- mkWeakThreadId thr
+  -- wthr <- mkWeakThreadId thr
   atomically $ do
-    st <- newState ifname source sock bcast wthr mlog
+    st <- newState ifname source sock bcast undefined {- wthr -} mlog
     putTMVar tmv st
     return st
 
