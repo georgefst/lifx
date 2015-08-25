@@ -8,9 +8,10 @@ import Data.Bits
 import Data.Char
 import Data.Hourglass
 import Data.Int ( Int64 )
-import Data.List
+import Data.List hiding (insert)
 import Data.Maybe
 import Data.Monoid
+import Data.Set hiding (map)
 import Data.String
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -21,7 +22,7 @@ import qualified Data.Text.Lazy as LT
 import qualified Data.Text.IO as TIO
 import Data.Word ( Word16, Word32, Word64 )
 import GHC.Float
-import qualified STMContainers.Set as STMSet
+-- import qualified STMContainers.Set as STMSet
 import System.Console.CmdArgs.Explicit
 
 import Lifx.Lan.LowLevel
@@ -274,12 +275,13 @@ hdrIfNeeded :: C.LiteCmd -> IO ()
 hdrIfNeeded C.CmdList = lsHeader
 hdrIfNeeded _ = return ()
 
-discCb :: STMSet.Set DevID -> (Bulb -> IO ()) -> Bulb -> IO ()
+discCb :: TVar (Set DevID) -> (Bulb -> IO ()) -> Bulb -> IO ()
 discCb done realCb bulb = do
   let dev = deviceId bulb
   dup <- atomically $ do
-    d <- STMSet.lookup dev done
-    when (not d) $ STMSet.insert dev done
+    s <- readTVar done
+    let d = dev `member` s
+    when (not d) $ writeTVar done $ dev `insert` s
     return d
   when (not dup) $ realCb bulb
 
@@ -290,7 +292,7 @@ main = do
       func = cmd2func cmd (C.aDuration args)
   lan <- openLan ifname
   hdrIfNeeded cmd
-  s <- STMSet.newIO
+  s <- newTVarIO empty
   sem <- atomically $ newTSem 0
   forever $ do
     discoverBulbs lan (discCb s $ func sem)

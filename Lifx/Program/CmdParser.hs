@@ -51,6 +51,9 @@ defPulseArg = PulseArg
   , paPeak      = 0.5
   }
 
+readEither :: Read a => String -> Either String a
+readEither s = Right (read s)
+
 defList :: LiteArgs
 defList = LiteArgs { aInterface = Nothing
                    , aTarget = SelAll
