@@ -37,8 +37,6 @@ import Lifx.Lan.Util
 import Lifx.Lan.Types
 import Lifx.Lan.Protocol
 
-labelSize = 32
-
 ackCb :: IO () -> Header -> Acknowledgement -> IO ()
 ackCb cb hdr ack = cb
 
@@ -297,7 +295,7 @@ getLocation bulb @(Bulb st _ _) cb = do
 data StateLocation =
   StateLocation
   { sloLocation  :: LocationId
-  , sloLabel     :: T.Text -- max 32 bytes (aka labelSize) of UTF-8
+  , sloLabel     :: Label
   , sloUpdatedAt :: !Word64
   } deriving Show
 
@@ -307,16 +305,14 @@ instance MessageType StateLocation where
 instance Binary StateLocation where
   put x = do
     put $ sloLocation x
-    putByteString $ textToPaddedByteString labelSize $ sloLabel x
+    put $ sloLabel x
     putWord64le $ sloUpdatedAt x
 
   get = do
     loc <- get
-    label <- getByteString labelSize
+    label <- get
     upd <- getWord64le
-    return $ StateLocation loc
-      (TE.decodeUtf8With TEE.lenientDecode $ B.takeWhile (/= 0) label)
-      upd
+    return $ StateLocation loc label upd
 
 ----------------------------------------------------------
 
@@ -339,7 +335,7 @@ getGroup bulb @(Bulb st _ _) cb = do
 data StateGroup =
   StateGroup
   { sgGroup     :: GroupId
-  , sgLabel     :: T.Text -- max 32 bytes (aka labelSize) of UTF-8
+  , sgLabel     :: Label
   , sgUpdatedAt :: !Word64
   } deriving Show
 
@@ -349,16 +345,14 @@ instance MessageType StateGroup where
 instance Binary StateGroup where
   put x = do
     put $ sgGroup x
-    putByteString $ textToPaddedByteString labelSize $ sgLabel x
+    put $ sgLabel x
     putWord64le $ sgUpdatedAt x
 
   get = do
     loc <- get
-    label <- getByteString labelSize
+    label <- get
     upd <- getWord64le
-    return $ StateGroup loc
-      (TE.decodeUtf8With TEE.lenientDecode $ B.takeWhile (/= 0) label)
-      upd
+    return $ StateGroup loc label upd
 
 ----------------------------------------------------------
 
@@ -383,7 +377,7 @@ data StateLight =
   { slColor :: HSBK16
     -- Reserved16 (dim)
   , slPower :: !Word16
-  , slLabel :: T.Text -- max 32 bytes (aka labelSize) of UTF-8
+  , slLabel :: Label
     -- Reserved64 (tags)
   } deriving Show
 
@@ -395,18 +389,16 @@ instance Binary StateLight where
     put $ slColor x
     putWord16le 0 -- Reserved16 (dim)
     putWord16le $ slPower x
-    putByteString $ textToPaddedByteString labelSize $ slLabel x
+    put $ slLabel x
     putWord64le 0 -- Reserved64 (tags)
 
   get = do
     color <- get
     skip 2 -- Reserved16 (dim)
     power <- getWord16le
-    label <- getByteString labelSize
+    label <- get
     skip 8 -- Reserved64 (tags)
-    return $ StateLight color power
-           $ TE.decodeUtf8With TEE.lenientDecode
-           $ B.takeWhile (/= 0) label
+    return $ StateLight color power label
 
 ----------------------------------------------------------
 

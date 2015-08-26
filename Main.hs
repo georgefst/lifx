@@ -92,7 +92,7 @@ l5 = left 5 ' '
 
 prLight :: StateLight -> (T.Text, T.Text, T.Text) -- label, power, color
 prLight sl = (label, power, color)
-  where label = slLabel sl
+  where label = toText $ slLabel sl
         power = if slPower sl == 0 then "Off" else "On"
         color = fmt "{} {} {} {}K" (l3 h, l3 s, l3 b, l4 k)
         hsbk = slColor sl
