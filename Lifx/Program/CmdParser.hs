@@ -8,6 +8,8 @@ import System.Console.CmdArgs.Explicit
 import System.Console.CmdArgs.Text (TextFormat(..), showText)
 import qualified System.Console.CmdArgs.Text as TXT (Text(..))
 import System.Exit
+import Text.ParserCombinators.ReadP (skipSpaces)
+import Text.ParserCombinators.ReadPrec (readPrec_to_S)
 import Text.Read
 
 import Lifx.Types
@@ -51,8 +53,20 @@ defPulseArg = PulseArg
   , paPeak      = 0.5
   }
 
-readEither :: Read a => String -> Either String a
-readEither s = Right (read s)
+-- readEither has been in Text.Read since base 4.6,
+-- but we have our own copy here to work with base 4.5.
+-- BSD3, (c) The University of Glasgow 2001
+readEither' :: Read a => String -> Either String a
+readEither' s =
+  case [ x | (x,"") <- readPrec_to_S read' minPrec s ] of
+    [x] -> Right x
+    []  -> Left "Prelude.read: no parse"
+    _   -> Left "Prelude.read: ambiguous parse"
+ where
+  read' =
+    do x <- readPrec
+       lift skipSpaces
+       return x
 
 defList :: LiteArgs
 defList = LiteArgs { aInterface = Nothing
@@ -113,7 +127,7 @@ cflagUpdate :: (MaybeColor -> Maybe LiFrac -> MaybeColor)
                -> LiteArgs
                -> Either String LiteArgs
 cflagUpdate f arg args = do
-  num <- readEither arg
+  num <- readEither' arg
   newCmd <- updColor (`f` Just num) (aCmd args)
   return $ args { aCmd = newCmd }
 
@@ -134,7 +148,7 @@ nameColors = intercalate ", " $ map show colors
 
 updNamed :: String -> LiteArgs -> Either String LiteArgs
 updNamed arg args = do
-  color <- readEither $ capitalize arg
+  color <- readEither' $ capitalize arg
   newCmd <- updColorNamed (CNamed color) (aCmd args)
   return $ args { aCmd = newCmd }
 
@@ -180,7 +194,7 @@ updPulse :: Read a
             -> LiteArgs
             -> Either String LiteArgs
 updPulse f1 f2 arg args = do
-  x <- readEither (f1 arg)
+  x <- readEither' (f1 arg)
   newCmd <- updPulse2 (f2 x) (aCmd args)
   return $ args { aCmd = newCmd }
 
@@ -205,7 +219,7 @@ durFlag = flagReq ["d", "duration"] durFlagUpdate "FLOAT"
 
 durFlagUpdate :: String -> LiteArgs -> Either String LiteArgs
 durFlagUpdate arg args = do
-  x <- readEither arg
+  x <- readEither' arg
   return $ args { aDuration = x }
 
 arguments :: Mode LiteArgs
