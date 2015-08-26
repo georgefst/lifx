@@ -10,7 +10,7 @@ import Data.Binary.Put
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Base16 as B16
-import Data.Hashable
+-- import Data.Hashable
 import Data.List (find)
 import Data.Monoid (Monoid(..))
 import Data.Text (Text(..))
@@ -70,10 +70,10 @@ combineMaybe x Nothing = x
 combineMaybe _ x@(Just _ ) = x
 
 
-newtype DeviceId   = DeviceId B.ByteString   deriving (Eq, Ord, Hashable)
-newtype GroupId    = GroupId B.ByteString    deriving (Eq, Ord, Hashable)
-newtype LocationId = LocationId B.ByteString deriving (Eq, Ord, Hashable)
-newtype Label      = Label B.ByteString      deriving (Eq, Ord, Hashable)
+newtype DeviceId   = DeviceId B.ByteString   deriving (Eq, Ord)
+newtype GroupId    = GroupId B.ByteString    deriving (Eq, Ord)
+newtype LocationId = LocationId B.ByteString deriving (Eq, Ord)
+newtype Label      = Label B.ByteString      deriving (Eq, Ord)
 
 class LifxId t where
   toByteString :: t -> B.ByteString
