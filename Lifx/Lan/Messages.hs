@@ -6,6 +6,8 @@ module Lifx.Lan.Messages
       StateHostFirmware(..),
       StateLight(..),
       StateHostInfo(..),
+      StateGroup(..),
+      StateLocation(..),
       getHostInfo,
       getHostFirmware,
       getWifiFirmware,
@@ -13,6 +15,8 @@ module Lifx.Lan.Messages
       getVersion,
       getInfo,
       getLight,
+      getGroup,
+      getLocation,
       setColor,
       setWaveform ) where
 

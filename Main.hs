@@ -148,6 +148,8 @@ columns =
   , Column Lft Rgt  6 12 100 ["DevID", "Device ID"]
   , Column Lft Lft  3  3   0 ["FW", "Firmware"]
   , Column Lft Lft  5  7  50 ["HW", "Hardware"]
+  , Column Lft Lft  8 32  34 ["Group"]
+  , Column Lft Lft  8 32  36 ["Location"]
   ]
 
 fixedCols = fixColumns 80 columns
@@ -158,16 +160,20 @@ prBulb :: Bulb
           -> StateHostFirmware
           -> StateVersion
           -> StateInfo
+          -> StateGroup
+          -> StateLocation
           -> T.Text
-prBulb bulb shi sl shf sv si =
+prBulb bulb shi sl shf sv si sg slo =
   displayRow fixedCols [[label], [power], [color], temp,
-                        uptime, [devid], [fw], vers]
+                        uptime, [devid], [fw], vers, [group], [loc]]
   where (label, power, color) = prLight sl
         temp = prHostInfo shi
         uptime = prInfo si
         devid = toText $ deviceId bulb
         fw = prHostFirmware shf
         vers = prVersion sv
+        group = toText $ sgLabel sg
+        loc = toText $ sloLabel slo
 
 type DevID = DeviceId
 
@@ -190,9 +196,11 @@ cmdList sem bulb = do
     rq "getLight" (getLight bulb) $ \sl ->
       rq "getHostFirmware" (getHostFirmware bulb) $ \shf ->
         rq "getVersion" (getVersion bulb) $ \sv ->
-          rq "getInfo" (getInfo bulb) $ \si -> do
-            tr $ prBulb bulb shi sl shf sv si
-            atomically $ signalTSem sem
+          rq "getInfo" (getInfo bulb) $ \si ->
+            rq "getGroup" (getGroup bulb) $ \sg ->
+              rq "getLocation" (getLocation bulb) $ \slo -> do
+                tr $ prBulb bulb shi sl shf sv si sg slo
+                atomically $ signalTSem sem
 
 f2ms :: LiFrac -> Word32
 f2ms x = round $ 1000 * x
