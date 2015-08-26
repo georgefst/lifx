@@ -4,6 +4,7 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TSem
 import Control.Monad ( when, forever )
+import Control.Exception (catch)
 import Data.Bits
 import Data.Char
 import Data.Hourglass
@@ -11,7 +12,7 @@ import Data.Int ( Int64 )
 import Data.List hiding (insert)
 import Data.Maybe
 import Data.Monoid
-import Data.Set hiding (map)
+import Data.Set hiding (map, filter)
 import Data.String
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -22,8 +23,10 @@ import qualified Data.Text.Lazy as LT
 import qualified Data.Text.IO as TIO
 import Data.Word ( Word16, Word32, Word64 )
 import GHC.Float
+import qualified Network.Info as NI
 -- import qualified STMContainers.Set as STMSet
 import System.Console.CmdArgs.Explicit
+import System.Exit
 
 import Lifx.Lan.LowLevel
 import Lifx.Types
@@ -285,12 +288,48 @@ discCb done realCb bulb = do
     return d
   when (not dup) $ realCb bulb
 
+ifaceColumns =
+  [ Column Lft Lft  4 10 50 ["Iface", "Interface"]
+  , Column Lft Lft 15 15  0 ["IPv4"]
+  , Column Lft Lft 17 17  0 ["MAC"]
+  ]
+
+ifaceFixedCols = fixColumns 80 ifaceColumns
+
+fmtIfaceRow :: NI.NetworkInterface -> T.Text
+fmtIfaceRow ni = displayRow ifaceFixedCols [[ifname], [ipv4], [mac]]
+  where ifname = T.pack $ NI.name ni
+        ipv4 = T.pack $ show $ NI.ipv4 ni
+        mac = T.pack $ show $ NI.mac ni
+
+nonZeroIpv4 :: NI.NetworkInterface -> Bool
+nonZeroIpv4 ni = 0 /= getv4 (NI.ipv4 ni)
+  where getv4 (NI.IPv4 v4) = v4
+
+fmtInterfaces :: [NI.NetworkInterface] -> T.Text
+fmtInterfaces ifaces =
+  let rows = map fmtIfaceRow $ filter nonZeroIpv4 ifaces
+      rows' = displayHeader ifaceFixedCols : displaySep ifaceFixedCols : rows
+  in T.unlines rows'
+
+prInterfaces :: IO ()
+prInterfaces = do
+  ifaces <- NI.getNetworkInterfaces
+  TIO.putStr $ fmtInterfaces ifaces
+
+prLifxException :: LifxException -> IO a
+prLifxException (NoSuchInterface ifname _ ) = do
+  TIO.putStrLn $ fmt "No such interface \"{}\".  Try instead:" (Only ifname)
+  TIO.putStrLn T.empty
+  prInterfaces
+  exitFailure
+
 main = do
   args <- C.parseCmdLine
   let ifname = fromMaybe (T.pack "en1") $ C.aInterface args
       cmd = C.aCmd args
       func = cmd2func cmd (C.aDuration args)
-  lan <- openLan ifname
+  lan <- openLan ifname `catch` prLifxException
   hdrIfNeeded cmd
   s <- newTVarIO empty
   sem <- atomically $ newTSem 0
