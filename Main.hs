@@ -139,33 +139,49 @@ prVersion sv = addVers $ f $ productFromId vend prod
 tr :: T.Text -> IO ()
 tr = TIO.putStrLn . T.stripEnd
 
+data LightRow =
+  LightRow
+  { lrLabel    :: [T.Text]
+  , lrPower    :: [T.Text]
+  , lrColor    :: [T.Text]
+  , lrTemp     :: [T.Text]
+  , lrUptime   :: [T.Text]
+  , lrDevId    :: [T.Text]
+  , lrFirmware :: [T.Text]
+  , lrHardware :: [T.Text]
+  , lrGroup    :: [T.Text]
+  , lrLocation :: [T.Text]
+  }
+
 columns =
-  [ Column Lft Lft 16 32  40 ["Label"]
-  , Column Lft Lft  3  3   0 ["Pwr", "Power"]
-  , Column Lft Lft 17 17   0 ["Color"]
-  , Column Lft Lft  6  7  30 ["Temp", "Temperature"]
-  , Column Rgt Lft 11 11  90 ["Uptime"]
-  , Column Lft Rgt  6 12 100 ["DevID", "Device ID"]
-  , Column Lft Lft  3  3   0 ["FW", "Firmware"]
-  , Column Lft Lft  5  7  50 ["HW", "Hardware"]
-  , Column Lft Lft  8 32  36 ["Group"]
-  , Column Lft Lft  8 32  34 ["Location"]
+  [ Column Lft Lft 16 32  40 ["Label"]               lrLabel
+  , Column Lft Lft  3  3   0 ["Pwr", "Power"]        lrPower
+  , Column Lft Lft 17 17   0 ["Color"]               lrColor
+  , Column Lft Lft  6  7  30 ["Temp", "Temperature"] lrTemp
+  , Column Rgt Lft 11 11  90 ["Uptime"]              lrUptime
+  , Column Lft Rgt  6 12 100 ["DevID", "Device ID"]  lrDevId
+  , Column Lft Lft  3  3   0 ["FW", "Firmware"]      lrFirmware
+  , Column Lft Lft  5  7  50 ["HW", "Hardware"]      lrHardware
+  , Column Lft Lft  8 32  36 ["Group"]               lrGroup
+  , Column Lft Lft  8 32  34 ["Location"]            lrLocation
   ]
 
 fixedCols = fixColumns 80 columns
 
-prBulb :: Bulb
-          -> StateHostInfo
-          -> StateLight
-          -> StateHostFirmware
-          -> StateVersion
-          -> StateInfo
-          -> StateGroup
-          -> StateLocation
-          -> T.Text
-prBulb bulb shi sl shf sv si sg slo =
-  displayRow fixedCols [[label], [power], [color], temp,
-                        uptime, [devid], [fw], vers, [group], [loc]]
+prRow :: LightRow -> T.Text
+prRow = displayRow' fixedCols
+
+mkRow :: Bulb
+         -> StateHostInfo
+         -> StateLight
+         -> StateHostFirmware
+         -> StateVersion
+         -> StateInfo
+         -> StateGroup
+         -> StateLocation
+         -> LightRow
+mkRow bulb shi sl shf sv si sg slo =
+  LightRow [label] [power] [color] temp uptime [devid] [fw] vers [group] [loc]
   where (label, power, color) = prLight sl
         temp = prHostInfo shi
         uptime = prInfo si
@@ -199,7 +215,7 @@ cmdList sem bulb = do
           rq "getInfo" (getInfo bulb) $ \si ->
             rq "getGroup" (getGroup bulb) $ \sg ->
               rq "getLocation" (getLocation bulb) $ \slo -> do
-                tr $ prBulb bulb shi sl shf sv si sg slo
+                tr $ prRow $ mkRow bulb shi sl shf sv si sg slo
                 atomically $ signalTSem sem
 
 f2ms :: LiFrac -> Word32
@@ -297,18 +313,15 @@ discCb done realCb bulb = do
   when (not dup) $ realCb bulb
 
 ifaceColumns =
-  [ Column Lft Lft  4 10 50 ["Iface", "Interface"]
-  , Column Lft Lft 15 15  0 ["IPv4"]
-  , Column Lft Lft 17 17  0 ["MAC"]
+  [ Column Lft Lft  4 10 50 ["Iface", "Interface"] (\n -> [T.pack $ NI.name n])
+  , Column Lft Lft 15 15  0 ["IPv4"]       (\n -> [T.pack $ show $ NI.ipv4 n])
+  , Column Lft Lft 17 17  0 ["MAC"]        (\n -> [T.pack $ show $ NI.mac n])
   ]
 
 ifaceFixedCols = fixColumns 80 ifaceColumns
 
 fmtIfaceRow :: NI.NetworkInterface -> T.Text
-fmtIfaceRow ni = displayRow ifaceFixedCols [[ifname], [ipv4], [mac]]
-  where ifname = T.pack $ NI.name ni
-        ipv4 = T.pack $ show $ NI.ipv4 ni
-        mac = T.pack $ show $ NI.mac ni
+fmtIfaceRow = displayRow' ifaceFixedCols
 
 nonZeroIpv4 :: NI.NetworkInterface -> Bool
 nonZeroIpv4 ni = 0 /= getv4 (NI.ipv4 ni)

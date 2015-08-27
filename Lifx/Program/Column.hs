@@ -4,6 +4,7 @@ module Lifx.Program.Column
        , FixedColumn (..)
        , fixColumns
        , displayRow
+       , displayRow'
        , displayHeader
        , displaySep
        ) where
@@ -14,7 +15,7 @@ import qualified Data.Text as T
 
 data Direction = Lft | Rgt deriving (Eq, Ord, Read, Show)
 
-data Column =
+data Column a =
   Column
   { cJustify :: !Direction
   , cTruncate :: !Direction
@@ -22,14 +23,16 @@ data Column =
   , cMaxWidth :: !Int
   , cPriority :: !Int -- width is allocated to columns by priority
   , cName :: [T.Text] -- list of possible column names of different widths
+  , cUser :: a -- whatever data the user wants to put here
   } deriving (Eq, Ord, Read, Show)
 
-data FixedColumn =
+data FixedColumn a =
   FixedColumn
   { rJustify :: !Direction
   , rTruncate :: !Direction
   , rWidth :: !Int
   , rName :: T.Text
+  , rUser :: a
   } deriving (Eq, Ord, Read, Show)
 
 pickBest :: [T.Text] -> Int -> T.Text
@@ -45,16 +48,17 @@ pickBest names' width' = fromMaybe T.empty $ pb names' width'
           | T.length n1 < T.length n2 = n1
           | otherwise = n2
 
-convertCol :: Column -> Int -> FixedColumn
+convertCol :: Column a -> Int -> FixedColumn a
 convertCol col width =
   FixedColumn
   { rJustify = cJustify col
   , rTruncate = cTruncate col
   , rWidth = width
   , rName = pickBest (cName col) width
+  , rUser = cUser col
   }
 
-expandCols :: Int -> [(Int, Column)] -> [(Int, FixedColumn)]
+expandCols :: Int -> [(Int, Column a)] -> [(Int, FixedColumn a)]
 expandCols _ [] = []
 expandCols budget ((orig, col) : rest) =
   (orig, convertCol col (cMinWidth col + moreWidth))
@@ -63,7 +67,7 @@ expandCols budget ((orig, col) : rest) =
         moreWidth | desired > budget = budget
                   | otherwise = desired
 
-truncateCols :: Int -> [Column] -> [FixedColumn]
+truncateCols :: Int -> [Column a] -> [FixedColumn a]
 truncateCols _ [] = []
 truncateCols budget (col : rest)
   | budget <= 0 = []
@@ -72,7 +76,7 @@ truncateCols budget (col : rest)
         width | minWidth < budget = minWidth
               | otherwise = budget
 
-fixColumns :: Int -> [Column] -> [FixedColumn]
+fixColumns :: Int -> [Column a] -> [FixedColumn a]
 fixColumns width cols =
   if minWidth >= width
   then truncateCols width cols
@@ -85,7 +89,7 @@ fixColumns width cols =
         -- used to restore columns to their original order
         byFst c1 c2 = compare (fst c1) (fst c2)
 
-displayCol :: FixedColumn -> [T.Text] -> T.Text
+displayCol :: FixedColumn a -> [T.Text] -> T.Text
 displayCol col txts
   | txtLen == width = txt
   | txtLen < width = pad (rJustify col)
@@ -98,12 +102,12 @@ displayCol col txts
         trunc Lft = T.take width txt
         trunc Rgt = T.takeEnd width txt
 
-displayRow :: [FixedColumn] -> [[T.Text]] -> T.Text
+displayRow :: [FixedColumn a] -> [[T.Text]] -> T.Text
 displayRow cols txts =
   T.intercalate spc $ map (uncurry displayCol) $ zip cols txts
   where spc = T.singleton ' '
 
-displayHeader :: [FixedColumn] -> T.Text
+displayHeader :: [FixedColumn a] -> T.Text
 displayHeader cols = displayRow cols $ map (listSingleton . rName) cols
 
 dashes :: [T.Text]
@@ -112,5 +116,9 @@ dashes = listSingleton $ T.replicate 100 $ T.singleton '-'
 listSingleton :: a -> [a]
 listSingleton x = [x]
 
-displaySep :: [FixedColumn] -> T.Text
+displaySep :: [FixedColumn a] -> T.Text
 displaySep cols = displayRow cols $ repeat $ dashes
+
+displayRow' :: [FixedColumn (a -> [T.Text])] -> a -> T.Text
+displayRow' cols u = displayRow cols $ map f cols
+  where f col = rUser col u
