@@ -4,7 +4,7 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TSem
 import Control.Monad ( when, forever )
-import Control.Exception (catch)
+import qualified Control.Exception as E (catch)
 import Data.Bits
 import Data.Char
 import Data.Hourglass
@@ -350,7 +350,7 @@ main = do
   let ifname = fromMaybe (T.pack "en1") $ C.aInterface args
       cmd = C.aCmd args
       func = cmd2func cmd (C.aDuration args)
-  lan <- openLan ifname `catch` prLifxException
+  lan <- openLan ifname `E.catch` prLifxException
   hdrIfNeeded cmd
   s <- newTVarIO empty
   sem <- atomically $ newTSem 0
