@@ -1,4 +1,21 @@
+{-# LANGUAGE StandaloneDeriving #-}
+
 module Lifx.Program.Timer where
+
+import Control.Applicative
+import Control.Monad
+import Data.Attoparsec.Text
+import Data.Char
+import Data.Hourglass
+import Data.Int
+import qualified Data.Set as S
+import qualified Data.Text as T
+
+import Lifx.Types
+import Lifx.Program.CmdParser as C
+
+deriving instance Show Duration
+deriving instance Read TimeOfDay
 
 data Command = On | Off | OnOff | Cycle deriving (Eq, Ord, Show, Read)
 
@@ -15,7 +32,7 @@ data Event =
   } deriving (Eq, Ord, Show, Read)
 
 parseCommand :: T.Text -> Either String Command
-parseCommand txt = readEither' $ capitalize $ T.unpack txt
+parseCommand txt = C.readEither' $ C.capitalize $ T.unpack txt
 
 parseWeekDays :: T.Text -> Either String (S.Set WeekDay)
 parseWeekDays txt = do
@@ -51,7 +68,8 @@ duration = do
     char 's'
     skipSpace
     return s
-  return Duration (Hours h) (Minutes m) (Seconds s) (NanoSeconds 0)
+  return Duration (Hours hours)     (Minutes minutes)
+                  (Seconds seconds) (NanoSeconds 0)
 
 durationRange :: Parser (Duration, Duration)
 durationRange = fromTo <|> plusMinus <|> singleTime
@@ -74,8 +92,8 @@ durationRange = fromTo <|> plusMinus <|> singleTime
       d <- duration
       return (t `durSub` d, t `durAdd` d)
 
-durAdd = dirOp (+)
-durSub = dirOp (-)
+durAdd = durOp (+)
+durSub = durOp (-)
 
 durOp :: TimeInterval i
          => (Int64 -> Int64 -> Int64)
@@ -98,7 +116,7 @@ timeOfDay = do
     satisfy (inClass "Mm")
     when (hour < 1) fail "hour cannot be less than 1"
     when (hour > 12) fail "hour cannot be more than 12"
-    hour' = if hour == 12 then 0 else hour
+    let hour' = if hour == 12 then 0 else hour
     return $ if inClass "Pp" ap then hour' + 12 else hour'
   when (adjHour > 23) fail "hour cannot be more than 23"
   when (minute > 59) fail "minute cannot be more than 59"
@@ -134,7 +152,7 @@ todOp :: TimeInterval i
          -> TimeOfDay
          -> i
          -> TimeOfDay
-todOp (TimeOfDay h m s ns) ti =
+todOp op (TimeOfDay h m s ns) ti =
   let todSecs = h * 3600 + m * 60 + s
       (Seconds iSecs) = toSeconds ti
       newSecs = todSecs `op` iSecs

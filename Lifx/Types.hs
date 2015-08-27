@@ -26,7 +26,7 @@ data HSBK a =
   , saturation :: a
   , brightness :: a
   , kelvin :: a
-  } deriving (Show, Eq, Ord)
+  } deriving (Show, Read, Eq, Ord)
 
 
 instance Functor HSBK where

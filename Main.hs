@@ -33,6 +33,7 @@ import Lifx.Lan.LowLevel
 import Lifx.Types
 import qualified Lifx.Program.CmdParser as C
 import Lifx.Program.Column
+import Lifx.Program.Timer as FOO
 
 {-
 myTime :: Word64 -> String
