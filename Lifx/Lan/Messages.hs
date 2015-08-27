@@ -360,6 +360,20 @@ instance Binary StateGroup where
 
 ----------------------------------------------------------
 
+data EchoRequest
+  EchoRequest
+  { erqPayload :: B.ByteString
+  } deriving Show
+
+----------------------------------------------------------
+
+data EchoResponse
+  EchoResponse
+  { erspPayload :: B.ByteString
+  } deriving Show
+
+----------------------------------------------------------
+
 data GetLight = GetLight
 
 instance MessageType GetLight where

@@ -285,6 +285,10 @@ cmdWave wf pa sem bulb = do
                             }
       in ra "setWaveform" (setWaveform bulb swf) (atomically $ signalTSem sem)
 
+cmdPing :: TSem -> Bulb -> IO ()
+cmdPing _ bulb = forkIO $ do
+  todo
+
 cmd2func :: C.LiteCmd -> LiFrac -> TSem -> Bulb -> IO ()
 cmd2func C.CmdList _ = cmdList
 cmd2func C.CmdOn dur = cmdPower True dur
@@ -292,6 +296,7 @@ cmd2func C.CmdOff dur = cmdPower False dur
 cmd2func (C.CmdColor ca) dur = cmdColor ca dur
 cmd2func (C.CmdPulse pa) _ = cmdWave Pulse pa
 cmd2func (C.CmdBreathe pa) _ = cmdWave Sine pa
+cmd2func C.Ping _ = cmdPing
 
 lsHeader :: IO ()
 lsHeader = do
