@@ -148,8 +148,8 @@ columns =
   , Column Lft Rgt  6 12 100 ["DevID", "Device ID"]
   , Column Lft Lft  3  3   0 ["FW", "Firmware"]
   , Column Lft Lft  5  7  50 ["HW", "Hardware"]
-  , Column Lft Lft  8 32  34 ["Group"]
-  , Column Lft Lft  8 32  36 ["Location"]
+  , Column Lft Lft  8 32  36 ["Group"]
+  , Column Lft Lft  8 32  34 ["Location"]
   ]
 
 fixedCols = fixColumns 80 columns
