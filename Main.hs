@@ -3,9 +3,10 @@
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TSem
-import Control.Monad ( when, forever )
+import Control.Monad ( when, forever, forM_ )
 import qualified Control.Exception as E (catch)
 import Data.Bits
+import qualified Data.ByteString as B
 import Data.Char
 import Data.Hourglass
 import Data.Int ( Int64 )
@@ -24,9 +25,9 @@ import qualified Data.Text.IO as TIO
 import Data.Word ( Word16, Word32, Word64 )
 import GHC.Float
 import qualified Network.Info as NI
--- import qualified STMContainers.Set as STMSet
 import System.Console.CmdArgs.Explicit
 import System.Exit
+import System.Hourglass
 
 import Lifx.Lan.LowLevel
 import Lifx.Types
@@ -285,9 +286,22 @@ cmdWave wf pa sem bulb = do
                             }
       in ra "setWaveform" (setWaveform bulb swf) (atomically $ signalTSem sem)
 
+forkIO_ f = do
+  forkIO f
+  return ()
+
 cmdPing :: TSem -> Bulb -> IO ()
-cmdPing _ bulb = forkIO $ do
-  todo
+cmdPing _ bulb = forkIO_ $ do
+  let payload = B.pack [0..63]
+  forM_ [0..] $ \i -> do
+    start <- timeCurrentP
+    echoRequest bulb payload $ \_ -> do
+      finish <- timeCurrentP
+      let (Seconds s, NanoSeconds ns) = finish `timeDiffP` start
+          ms = fromIntegral ns / 1000000 + fromIntegral s * 1000
+      TIO.putStrLn $ fmt "({}) #{} {}ms"
+        (Shown bulb, right 3 ' ' (i :: Integer), left 8 ' ' $ fixed 3 ms)
+    threadDelay 1000000 -- 1 second
 
 cmd2func :: C.LiteCmd -> LiFrac -> TSem -> Bulb -> IO ()
 cmd2func C.CmdList _ = cmdList
@@ -296,7 +310,7 @@ cmd2func C.CmdOff dur = cmdPower False dur
 cmd2func (C.CmdColor ca) dur = cmdColor ca dur
 cmd2func (C.CmdPulse pa) _ = cmdWave Pulse pa
 cmd2func (C.CmdBreathe pa) _ = cmdWave Sine pa
-cmd2func C.Ping _ = cmdPing
+cmd2func C.CmdPing _ = cmdPing
 
 lsHeader :: IO ()
 lsHeader = do

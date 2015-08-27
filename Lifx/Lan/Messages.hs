@@ -17,11 +17,13 @@ module Lifx.Lan.Messages
       getLight,
       getGroup,
       getLocation,
+      echoRequest,
       setColor,
       setWaveform ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Concurrent.STM ( atomically )
+import Control.Monad
 import Data.Binary
     ( Binary(..), putWord8, getWord8 )
 import Data.Binary.Put
@@ -63,7 +65,7 @@ instance Binary GetHostInfo where
   get = return GetHostInfo
 
 getHostInfo :: Bulb -> (StateHostInfo -> IO ()) -> IO ()
-getHostInfo bulb@(Bulb st _ _) cb = do
+getHostInfo bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetHostInfo
 
@@ -102,7 +104,7 @@ instance Binary GetHostFirmware where
   get = return GetHostFirmware
 
 getHostFirmware :: Bulb -> (StateHostFirmware -> IO ()) -> IO ()
-getHostFirmware bulb@(Bulb st _ _) cb = do
+getHostFirmware bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetHostFirmware
 
@@ -142,7 +144,7 @@ instance Binary GetWifiFirmware where
   get = return GetWifiFirmware
 
 getWifiFirmware :: Bulb -> (StateWifiFirmware -> IO ()) -> IO ()
-getWifiFirmware bulb@(Bulb st _ _) cb = do
+getWifiFirmware bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetWifiFirmware
 
@@ -189,7 +191,7 @@ instance Binary SetPower where
   get = SetPower <$> getWord16le <*> getWord32le
 
 setPower :: Bulb -> Bool -> Word32 -> IO () -> IO ()
-setPower bulb@(Bulb st _ _) pwr duration cb = do
+setPower bulb@(Bulb st _ _ ) pwr duration cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
   sendMsg bulb (needAck hdr) (SetPower (f pwr) duration)
   where f True = 0xffff
@@ -207,7 +209,7 @@ instance Binary GetVersion where
   get = return GetVersion
 
 getVersion :: Bulb -> (StateVersion -> IO ()) -> IO ()
-getVersion bulb@(Bulb st _ _) cb = do
+getVersion bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetVersion
 
@@ -243,7 +245,7 @@ instance Binary GetInfo where
   get = return GetInfo
 
 getInfo :: Bulb -> (StateInfo -> IO ()) -> IO ()
-getInfo bulb@(Bulb st _ _) cb = do
+getInfo bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetInfo
 
@@ -290,7 +292,7 @@ instance Binary GetLocation where
   get = return GetLocation
 
 getLocation :: Bulb -> (StateLocation -> IO ()) -> IO ()
-getLocation bulb @(Bulb st _ _) cb = do
+getLocation bulb @(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetLocation
 
@@ -330,7 +332,7 @@ instance Binary GetGroup where
   get = return GetGroup
 
 getGroup :: Bulb -> (StateGroup -> IO ()) -> IO ()
-getGroup bulb @(Bulb st _ _) cb = do
+getGroup bulb @(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetGroup
 
@@ -360,17 +362,39 @@ instance Binary StateGroup where
 
 ----------------------------------------------------------
 
-data EchoRequest
+echoLen = 64
+
+data EchoRequest =
   EchoRequest
   { erqPayload :: B.ByteString
   } deriving Show
 
+instance MessageType EchoRequest where
+  msgType _ = 58
+
+instance Binary EchoRequest where
+  put x = putByteString $ padByteString echoLen $ erqPayload x
+  get = EchoRequest <$> getByteString echoLen
+
+echoRequest :: Bulb -> B.ByteString -> (B.ByteString -> IO ()) -> IO ()
+echoRequest bulb @(Bulb st _ _ ) bs cb = do
+  hdr <- atomically $ newHdrAndCallback st wrapCb
+  sendMsg bulb hdr $ EchoRequest bs
+  where wrapCb _ (EchoResponse bs') = cb bs'
+
 ----------------------------------------------------------
 
-data EchoResponse
+data EchoResponse =
   EchoResponse
   { erspPayload :: B.ByteString
   } deriving Show
+
+instance MessageType EchoResponse where
+  msgType _ = 59
+
+instance Binary EchoResponse where
+  put x = putByteString $ padByteString echoLen $ erspPayload x
+  get = EchoResponse <$> getByteString echoLen
 
 ----------------------------------------------------------
 
@@ -384,7 +408,7 @@ instance Binary GetLight where
   get = return GetLight
 
 getLight :: Bulb -> (StateLight -> IO ()) -> IO ()
-getLight bulb @(Bulb st _ _) cb = do
+getLight bulb @(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetLight
 
@@ -441,7 +465,7 @@ instance Binary SetColor where
     SetColor <$> get <*> getWord32le
 
 setColor :: Bulb -> HSBK16 -> Word32 -> IO () -> IO ()
-setColor bulb@(Bulb st _ _) color duration cb = do
+setColor bulb@(Bulb st _ _ ) color duration cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
   sendMsg bulb (needAck hdr) (SetColor color duration)
 
@@ -481,6 +505,6 @@ instance Binary SetWaveform where
     return (x $ toEnum $ fromIntegral w)
 
 setWaveform :: Bulb -> SetWaveform -> IO () -> IO ()
-setWaveform bulb@(Bulb st _ _) swf cb = do
+setWaveform bulb@(Bulb st _ _ ) swf cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
   sendMsg bulb (needAck hdr) swf

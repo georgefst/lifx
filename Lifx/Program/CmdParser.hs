@@ -31,6 +31,7 @@ data LiteCmd = CmdNone
              | CmdColor   ColorArg
              | CmdPulse   PulseArg
              | CmdBreathe PulseArg
+             | CmdPing
                deriving (Show, Eq, Ord)
 
 data PulseArg =
@@ -83,6 +84,7 @@ defOff     = defList { aCmd = CmdOff }
 defColor   = defList { aCmd = CmdColor   (CNamed White) }
 defPulse   = defList { aCmd = CmdPulse   defPulseArg }
 defBreathe = defList { aCmd = CmdBreathe defPulseArg }
+defPing    = defList { aCmd = CmdPing }
 
 gFlags = [iFlag, helpFlag]
 
@@ -233,6 +235,7 @@ arguments =
    , mode "color"   defColor "Set bulb color"    selArg (durFlag : cFlags ++ gFlags)
    , mode "pulse"   defPulse "Square wave blink" selArg (pFlags ++ gFlags)
    , mode "breathe" defPulse "Sine wave blink"   selArg (pFlags ++ gFlags)
+   , mode "ping"    defPing  "Check connectivity" selArg gFlags
    ]) { modeGroupFlags = toGroup gFlags }
 
 handleHelp :: Maybe (HelpFormat, TextFormat) -> IO ()

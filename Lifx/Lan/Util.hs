@@ -13,9 +13,6 @@ import Data.Binary ( Put, Get )
 import Data.Binary.Put ( putWord32le, putWord16le )
 import Data.Binary.Get ( getWord32le, getWord16le )
 import Data.Bits ( Bits((.&.), bit, shiftR, clearBit {- zeroBits -}) )
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as L
-    ( ByteString, append, length, take, replicate )
 import Data.Int ( Int16, Int64 )
 import Data.ReinterpretCast ( wordToFloat, floatToWord )
 import qualified Data.Text as T
