@@ -5,7 +5,7 @@ import Data.List
 import Data.Text (Text)
 import qualified Data.Text as T
 import System.Console.CmdArgs.Explicit
-import System.Console.CmdArgs.Text (TextFormat(..), showText)
+import System.Console.CmdArgs.Text (TextFormat(..), showText, defaultWrap)
 import qualified System.Console.CmdArgs.Text as TXT (Text(..))
 import System.Exit
 import Text.ParserCombinators.ReadP (skipSpaces)
@@ -24,7 +24,8 @@ data LiteArgs =
   , aDuration :: LiFrac
   } deriving (Show, Eq, Ord)
 
-data LiteCmd = CmdList
+data LiteCmd = CmdNone
+             | CmdList
              | CmdOn
              | CmdOff
              | CmdColor   ColorArg
@@ -68,14 +69,15 @@ readEither' s =
        lift skipSpaces
        return x
 
-defList :: LiteArgs
-defList = LiteArgs { aInterface = Nothing
+defNone :: LiteArgs
+defNone = LiteArgs { aInterface = Nothing
                    , aTarget = SelAll
-                   , aCmd = CmdList
-                   , aHelp = Nothing
+                   , aCmd = CmdNone
+                   , aHelp = Just (HelpFormatOne, defaultWrap)
                    , aDuration = 1
                    }
 
+defList    = defNone { aCmd = CmdList, aHelp = Nothing }
 defOn      = defList { aCmd = CmdOn }
 defOff     = defList { aCmd = CmdOff }
 defColor   = defList { aCmd = CmdColor   (CNamed White) }
@@ -224,13 +226,13 @@ durFlagUpdate arg args = do
 
 arguments :: Mode LiteArgs
 arguments =
-  (modes  "lifx"    defList  "Control LIFX light bulbs"
-   [ mode "list"    defList  "List bulbs"        selArg []
-   , mode "on"      defOn    "Turn bulb on"      selArg [durFlag]
-   , mode "off"     defOff   "Turn bulb off"     selArg [durFlag]
-   , mode "color"   defColor "Set bulb color"    selArg (durFlag : cFlags)
-   , mode "pulse"   defPulse "Square wave blink" selArg pFlags
-   , mode "breathe" defPulse "Sine wave blink"   selArg pFlags
+  (modes  "lifx"    defNone  "Control LIFX light bulbs"
+   [ mode "list"    defList  "List bulbs"        selArg gFlags
+   , mode "on"      defOn    "Turn bulb on"      selArg (durFlag : gFlags)
+   , mode "off"     defOff   "Turn bulb off"     selArg (durFlag : gFlags)
+   , mode "color"   defColor "Set bulb color"    selArg (durFlag : cFlags ++ gFlags)
+   , mode "pulse"   defPulse "Square wave blink" selArg (pFlags ++ gFlags)
+   , mode "breathe" defPulse "Sine wave blink"   selArg (pFlags ++ gFlags)
    ]) { modeGroupFlags = toGroup gFlags }
 
 handleHelp :: Maybe (HelpFormat, TextFormat) -> IO ()
