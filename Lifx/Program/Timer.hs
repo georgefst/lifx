@@ -31,9 +31,6 @@ data Event =
   , evColor :: MaybeColor
   } deriving (Eq, Ord, Show, Read)
 
-parseCommand :: T.Text -> Either String Command
-parseCommand txt = C.readEither' $ C.capitalize $ T.unpack txt
-
 command :: Parser Command
 command = choice
           [ asciiCI "on"    >> return On
@@ -42,19 +39,15 @@ command = choice
           , asciiCI "cycle" >> return Cycle
           ]
 
-parseWeekDays :: T.Text -> Either String (S.Set WeekDay)
-parseWeekDays txt = do
-  daze <- mapM (wd . toLower) (T.unpack txt)
-  return $ S.fromList daze
-  where
-    wd 'u' = return Sunday
-    wd 'm' = return Monday
-    wd 't' = return Tuesday
-    wd 'w' = return Wednesday
-    wd 'r' = return Thursday
-    wd 'f' = return Friday
-    wd 's' = return Saturday
-    wd c = Left $ '\'' : c : "' is not in \"umtwrfs\""
+{-
+onCmd :: Parser Event
+onCmd = do
+  asciiCI "on"
+  selectors
+  timeOfDayRange
+  weekDays
+  color
+-}
 
 ciChar :: Char -> Parser Char
 ciChar c1 = satisfy $ \c2 -> toLower c2 == c1
