@@ -1,4 +1,4 @@
-{-# LANGUAGE StandaloneDeriving, NoMonomorphismRestriction, OverloadedStrings #-}
+{-# LANGUAGE NoMonomorphismRestriction, OverloadedStrings #-}
 
 import Control.Concurrent
 import Control.Concurrent.STM
@@ -73,7 +73,7 @@ myCb bulb = do
                     putStrLn "done!"
 -}
 
-deriving instance Show Duration
+-- deriving instance Show Duration
 
 nsToDuration :: NanoSeconds -> (Int64, Duration)
 nsToDuration (NanoSeconds ns) =

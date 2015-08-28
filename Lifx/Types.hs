@@ -203,7 +203,7 @@ data Selector = SelAll
               | SelGroupId GroupId
               | SelLocation Text
               | SelLocationId LocationId
-                deriving (Show, Eq, Ord)
+                deriving (Show, Read, Eq, Ord)
 
 data ColorArg = CNamed  NamedColor
               | CCustom MaybeColor

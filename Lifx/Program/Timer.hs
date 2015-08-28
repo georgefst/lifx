@@ -37,7 +37,7 @@ parseCommand txt = C.readEither' $ C.capitalize $ T.unpack txt
 parseWeekDays :: T.Text -> Either String (S.Set WeekDay)
 parseWeekDays txt = do
   daze <- mapM (wd . toLower) (T.unpack txt)
-  return S.fromList daze
+  return $ S.fromList daze
   where
     wd 'u' = return Sunday
     wd 'm' = return Monday
@@ -46,7 +46,7 @@ parseWeekDays txt = do
     wd 'r' = return Thursday
     wd 'f' = return Friday
     wd 's' = return Saturday
-    wd c = Left $ "'" ++ c ++ "' is not in \"umtwrfs\""
+    wd c = Left $ '\'' : c : "' is not in \"umtwrfs\""
 
 duration :: Parser Duration
 duration = do
@@ -68,8 +68,8 @@ duration = do
     char 's'
     skipSpace
     return s
-  return Duration (Hours hours)     (Minutes minutes)
-                  (Seconds seconds) (NanoSeconds 0)
+  return $ Duration (Hours hours)     (Minutes minutes)
+                    (Seconds seconds) (NanoSeconds 0)
 
 durationRange :: Parser (Duration, Duration)
 durationRange = fromTo <|> plusMinus <|> singleTime
@@ -96,7 +96,7 @@ durAdd = durOp (+)
 durSub = durOp (-)
 
 durOp :: TimeInterval i
-         => (Int64 -> Int64 -> Int64)
+         => (Seconds -> Seconds -> Seconds)
          -> i -> i -> i
 durOp op d1 d2 =
   let newSecs = toSeconds d1 `op` toSeconds d2
@@ -114,14 +114,15 @@ timeOfDay = do
     skipSpace
     ap <- satisfy (inClass "AaPp")
     satisfy (inClass "Mm")
-    when (hour < 1) fail "hour cannot be less than 1"
-    when (hour > 12) fail "hour cannot be more than 12"
+    when (hour < 1) $ fail "hour cannot be less than 1"
+    when (hour > 12) $ fail "hour cannot be more than 12"
     let hour' = if hour == 12 then 0 else hour
     return $ if inClass "Pp" ap then hour' + 12 else hour'
-  when (adjHour > 23) fail "hour cannot be more than 23"
-  when (minute > 59) fail "minute cannot be more than 59"
-  when (second > 59) fail "second cannot be more than 59"
-  return TimeOfDay adjHour minute second 0
+  when (adjHour > 23) $ fail "hour cannot be more than 23"
+  when (minute > 59) $ fail "minute cannot be more than 59"
+  when (second > 59) $ fail "second cannot be more than 59"
+  return $ TimeOfDay (Hours adjHour)  (Minutes minute)
+                     (Seconds second) (NanoSeconds 0)
 
 timeOfDayRange :: Parser (TimeOfDay, TimeOfDay)
 timeOfDayRange = fromTo <|> plusMinus <|> singleTime
@@ -152,7 +153,7 @@ todOp :: TimeInterval i
          -> TimeOfDay
          -> i
          -> TimeOfDay
-todOp op (TimeOfDay h m s ns) ti =
+todOp op (TimeOfDay (Hours h) (Minutes m) (Seconds s) (NanoSeconds ns)) ti =
   let todSecs = h * 3600 + m * 60 + s
       (Seconds iSecs) = toSeconds ti
       newSecs = todSecs `op` iSecs
@@ -162,4 +163,4 @@ todOp op (TimeOfDay h m s ns) ti =
                 else if newSecs >= secInDay then secInDay - 1 else newSecs
       (q, s') = satSecs `quotRem` 60
       (h', m') = q `quotRem` 60
-  in TimeOfDay h' m' s' ns
+  in TimeOfDay (Hours h') (Minutes m') (Seconds s') (NanoSeconds ns)
