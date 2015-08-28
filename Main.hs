@@ -300,8 +300,10 @@ cmdPing _ bulb = forkIO_ $ do
       finish <- timeCurrentP
       let (Seconds s, NanoSeconds ns) = finish `timeDiffP` start
           ms = fromIntegral ns / 1000000 + fromIntegral s * 1000
-      TIO.putStrLn $ fmt "({}) #{} {}ms"
-        (Shown bulb, right 3 ' ' (i :: Integer), left 8 ' ' $ fixed 3 ms)
+      TIO.putStrLn $ fmt "({}) {} {}ms"
+        ( Shown bulb
+        , left 4 ' ' $ '#' : show (i :: Integer)
+        , left 8 ' ' $ fixed 3 ms )
     threadDelay 1000000 -- 1 second
 
 cmd2func :: C.LiteCmd -> LiFrac -> TSem -> Bulb -> IO ()
