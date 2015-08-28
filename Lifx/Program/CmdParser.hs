@@ -34,6 +34,13 @@ data LiteCmd = CmdNone
              | CmdPing
                deriving (Show, Eq, Ord)
 
+data TargetMatch = TmLabel      T.Text
+                 | TmDevId      T.Text
+                 | TmGroup      T.Text
+                 | TmGroupId    T.Text
+                 | TmLocation   T.Text
+                 | TmLocationId T.Text
+
 data PulseArg =
   PulseArg
   { paColor     :: ColorArg

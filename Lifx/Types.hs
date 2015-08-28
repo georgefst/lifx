@@ -13,6 +13,7 @@ import qualified Data.ByteString.Base16 as B16
 -- import Data.Hashable
 import Data.List (find)
 import Data.Monoid (Monoid(..))
+import qualified Data.Set as S
 import Data.Text (Text(..))
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -196,12 +197,14 @@ instance Binary Label where
   get = Label <$> getByteString labelLen
 
 
-data Selector = SelAll
-              | SelLabel Text
+data Selectors = SelAll
+               | SelSome (S.Set Selector)
+
+data Selector = SelLabel Label
               | SelDevId DeviceId
-              | SelGroup Text
+              | SelGroup Label
               | SelGroupId GroupId
-              | SelLocation Text
+              | SelLocation Label
               | SelLocationId LocationId
                 deriving (Show, Read, Eq, Ord)
 
