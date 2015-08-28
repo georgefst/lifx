@@ -1,4 +1,4 @@
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StandaloneDeriving, OverloadedStrings #-}
 
 module Lifx.Program.Timer where
 
@@ -34,6 +34,14 @@ data Event =
 parseCommand :: T.Text -> Either String Command
 parseCommand txt = C.readEither' $ C.capitalize $ T.unpack txt
 
+command :: Parser Command
+command = choice
+          [ asciiCI "on"    >> return On
+          , asciiCI "off"   >> return Off
+          , asciiCI "onoff" >> return OnOff
+          , asciiCI "cycle" >> return Cycle
+          ]
+
 parseWeekDays :: T.Text -> Either String (S.Set WeekDay)
 parseWeekDays txt = do
   daze <- mapM (wd . toLower) (T.unpack txt)
@@ -47,6 +55,22 @@ parseWeekDays txt = do
     wd 'f' = return Friday
     wd 's' = return Saturday
     wd c = Left $ '\'' : c : "' is not in \"umtwrfs\""
+
+ciChar :: Char -> Parser Char
+ciChar c1 = satisfy $ \c2 -> toLower c2 == c1
+
+weekDays :: Parser (S.Set WeekDay)
+weekDays = S.fromList <$> (wdAll <|> wdSome)
+  where wdAll = asciiCI "daily" >> return [Sunday .. Saturday]
+        wdSome = many1 $ choice
+                         [ ciChar 'u' >> return Sunday
+                         , ciChar 'm' >> return Monday
+                         , ciChar 't' >> return Tuesday
+                         , ciChar 'w' >> return Wednesday
+                         , ciChar 'r' >> return Thursday
+                         , ciChar 'f' >> return Friday
+                         , ciChar 's' >> return Saturday
+                         ]
 
 duration :: Parser Duration
 duration = do
