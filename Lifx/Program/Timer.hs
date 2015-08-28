@@ -12,7 +12,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 
 import Lifx.Types
-import Lifx.Program.CmdParser as C
+-- import Lifx.Program.CmdParser as C
 
 deriving instance Show Duration
 deriving instance Read TimeOfDay

@@ -18,7 +18,7 @@ import Lifx.Types
 data LiteArgs =
   LiteArgs
   { aInterface :: Maybe Text
-  , aTarget :: Selector
+  , aTarget :: Maybe Text
   , aCmd :: LiteCmd
   , aHelp :: Maybe (HelpFormat, TextFormat)
   , aDuration :: LiFrac
@@ -72,7 +72,7 @@ readEither' s =
 
 defNone :: LiteArgs
 defNone = LiteArgs { aInterface = Nothing
-                   , aTarget = SelAll
+                   , aTarget = Nothing
                    , aCmd = CmdNone
                    , aHelp = Just (HelpFormatOne, defaultWrap)
                    , aDuration = 1
@@ -208,9 +208,7 @@ updPulse2 f (CmdBreathe p) = Right $ CmdBreathe (f p)
 updPulse2 _ _ = Left "Pulse arguments not applicable to this command"
 
 updArg :: String -> LiteArgs -> Either String LiteArgs
-updArg arg args = Right $ args { aTarget = sel arg }
-  where sel "all" = SelAll
-        sel label = SelLabel $ T.pack label
+updArg arg args = Right $ args { aTarget = Just $ T.pack arg }
 
 selArg = Arg
   { argValue = updArg
