@@ -25,7 +25,7 @@ data LiteArgs =
   } deriving (Show, Eq, Ord)
 
 data LiteCmd = CmdNone
-             | CmdList
+             | CmdList    Int
              | CmdOn
              | CmdOff
              | CmdColor   ColorArg
@@ -78,7 +78,7 @@ defNone = LiteArgs { aInterface = Nothing
                    , aDuration = 1
                    }
 
-defList    = defNone { aCmd = CmdList, aHelp = Nothing }
+defList    = defNone { aCmd = CmdList 80, aHelp = Nothing }
 defOn      = defList { aCmd = CmdOn }
 defOff     = defList { aCmd = CmdOff }
 defColor   = defList { aCmd = CmdColor   (CNamed White) }
@@ -90,16 +90,17 @@ gFlags = iFlag : helpFlag : targFlags
 
 helpFlag = flagHelpFormat $ \hf tf args -> args { aHelp = Just (hf, tf) }
 
-iFlag = Flag
-  { flagNames = ["I", "interface"]
-  , flagInfo = FlagReq
-  , flagValue = ifaceUpdate
-  , flagType = "STRING"
-  , flagHelp = "Name of network interface to use"
-  }
+iFlag = flagReq ["I", "interface"] ifaceUpdate "STRING"
+        "Name of network interface to use"
 
 ifaceUpdate :: String -> LiteArgs -> Either String LiteArgs
 ifaceUpdate arg args = Right $ args { aInterface = Just $ T.pack arg }
+
+widthFlag = flagReq ["w", "width"] updWidth "INTEGER"
+            "Width in columns for listing."
+  where updWidth arg args = do
+          w <- readEither' arg
+          return $ args { aCmd = CmdList w }
 
 cFlags = [hFlag, sFlag, bFlag, kFlag, nFlag]
 
@@ -221,8 +222,8 @@ targFlags =
   , flagReq ["g", "group"] updGroup "STRING" (helpLab "Group" "Lounge")
   , flagReq ["G", "group-id"] updGroupId "HEX-STRING"
     (helpId "Group" "1c8de82b81f445e7cfaafae49b259c71")
-  , flagReq ["w", "location"] updLocation "STRING" (helpLab "Location" "Home")
-  , flagReq ["W", "location-id"] updLocationId "HEX-STRING"
+  , flagReq ["a", "location"] updLocation "STRING" (helpLab "Location" "Home")
+  , flagReq ["A", "location-id"] updLocationId "HEX-STRING"
     (helpId "Location" "1d6fe8ef0fde4c6d77b0012dc736662c")
   ]
   where updLabel      = updTM TmLabel
@@ -261,7 +262,7 @@ targFlags =
 arguments :: Mode LiteArgs
 arguments =
   (modes  "lifx"    defNone  "Control LIFX light bulbs"
-   [ myMode "list"    defList  "List bulbs"         gFlags
+   [ myMode "list"    defList  "List bulbs"         (widthFlag : gFlags)
    , myMode "on"      defOn    "Turn bulb on"       (durFlag : gFlags)
    , myMode "off"     defOff   "Turn bulb off"      (durFlag : gFlags)
    , myMode "color"   defColor "Set bulb color"     (durFlag : cFlags ++ gFlags)

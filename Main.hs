@@ -180,10 +180,10 @@ columns =
   , Column Lft Lft  8 32  34 ["Location"]            lrLocation
   ]
 
-fixedCols = fixColumns 80 columns
+fixedCols w = fixColumns w columns
 
-prRow :: LightRow -> T.Text
-prRow = displayRow' fixedCols
+prRow :: Int -> LightRow -> T.Text
+prRow w = displayRow' $ fixedCols w
 
 mkRow :: Bulb
          -> StateHostInfo
@@ -219,8 +219,8 @@ myAction sem bulb op q cb =
     putStrLn $ show bulb ++ " not responding to " ++ op
     atomically $ signalTSem sem
 
-cmdList :: TSem -> Bulb -> IO ()
-cmdList sem bulb = do
+cmdList :: Int -> TSem -> Bulb -> IO ()
+cmdList w sem bulb = do
   let rq = myQuery sem bulb
   rq "getHostInfo" (getHostInfo bulb) $ \shi ->
     rq "getLight" (getLight bulb) $ \sl ->
@@ -229,7 +229,7 @@ cmdList sem bulb = do
           rq "getInfo" (getInfo bulb) $ \si ->
             rq "getGroup" (getGroup bulb) $ \sg ->
               rq "getLocation" (getLocation bulb) $ \slo -> do
-                tr $ prRow $ mkRow bulb shi sl shf sv si sg slo
+                tr $ prRow w $ mkRow bulb shi sl shf sv si sg slo
                 atomically $ signalTSem sem
 
 f2ms :: LiFrac -> Word32
@@ -319,7 +319,7 @@ cmdPing _ bulb = forkIO_ $ do
     threadDelay 1000000 -- 1 second
 
 cmd2func :: C.LiteCmd -> LiFrac -> TSem -> Bulb -> IO ()
-cmd2func C.CmdList _ = cmdList
+cmd2func (C.CmdList w) _ = cmdList w
 cmd2func C.CmdOn dur = cmdPower True dur
 cmd2func C.CmdOff dur = cmdPower False dur
 cmd2func (C.CmdColor ca) dur = cmdColor ca dur
@@ -327,13 +327,13 @@ cmd2func (C.CmdPulse pa) _ = cmdWave Pulse pa
 cmd2func (C.CmdBreathe pa) _ = cmdWave Sine pa
 cmd2func C.CmdPing _ = cmdPing
 
-lsHeader :: IO ()
-lsHeader = do
-  tr $ displayHeader fixedCols
-  tr $ displaySep fixedCols
+lsHeader :: Int -> IO ()
+lsHeader w = do
+  tr $ displayHeader $ fixedCols w
+  tr $ displaySep    $ fixedCols w
 
 hdrIfNeeded :: C.LiteCmd -> IO ()
-hdrIfNeeded C.CmdList = lsHeader
+hdrIfNeeded (C.CmdList w) = lsHeader w
 hdrIfNeeded _ = return ()
 
 data NeedQuery = NeedLight | NeedGroup | NeedLoc | NeedNothing
