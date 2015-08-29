@@ -2,6 +2,7 @@ module Lifx.Program.CmdParser where
 
 import Data.Char
 import Data.List
+import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 import System.Console.CmdArgs.Explicit
@@ -14,11 +15,12 @@ import Text.Read
 
 import Lifx.Types
 
+data Targets = TargAll | TargSome (S.Set TargetMatch) deriving (Show, Eq, Ord)
 
 data LiteArgs =
   LiteArgs
   { aInterface :: Maybe Text
-  , aTarget :: Maybe Text
+  , aTarget :: Targets
   , aCmd :: LiteCmd
   , aHelp :: Maybe (HelpFormat, TextFormat)
   , aDuration :: LiFrac
@@ -72,7 +74,7 @@ readEither' s =
 
 defNone :: LiteArgs
 defNone = LiteArgs { aInterface = Nothing
-                   , aTarget = Nothing
+                   , aTarget = TargAll
                    , aCmd = CmdNone
                    , aHelp = Just (HelpFormatOne, defaultWrap)
                    , aDuration = 1
@@ -86,12 +88,12 @@ defPulse   = defList { aCmd = CmdPulse   defPulseArg }
 defBreathe = defList { aCmd = CmdBreathe defPulseArg }
 defPing    = defList { aCmd = CmdPing }
 
-gFlags = [iFlag, helpFlag]
+gFlags = iFlag : helpFlag : targFlags
 
 helpFlag = flagHelpFormat $ \hf tf args -> args { aHelp = Just (hf, tf) }
 
 iFlag = Flag
-  { flagNames = ["i", "interface"]
+  { flagNames = ["I", "interface"]
   , flagInfo = FlagReq
   , flagValue = ifaceUpdate
   , flagType = "STRING"
@@ -207,15 +209,6 @@ updPulse2 f (CmdPulse p) = Right $ CmdPulse (f p)
 updPulse2 f (CmdBreathe p) = Right $ CmdBreathe (f p)
 updPulse2 _ _ = Left "Pulse arguments not applicable to this command"
 
-updArg :: String -> LiteArgs -> Either String LiteArgs
-updArg arg args = Right $ args { aTarget = Just $ T.pack arg }
-
-selArg = Arg
-  { argValue = updArg
-  , argType = "[LABEL|DEVID]"
-  , argRequire = False
-  }
-
 durFlag = flagReq ["d", "duration"] durFlagUpdate "FLOAT"
           "Number of seconds that change should occur over"
 
@@ -224,17 +217,62 @@ durFlagUpdate arg args = do
   x <- readEither' arg
   return $ args { aDuration = x }
 
+targFlags =
+  [ flagReq ["l", "label"] updLabel "STRING" (helpLab "Label" "Left Lamp")
+  , flagReq ["i", "id"] updDevId "HEX-STRING" (helpId "Device" "d3b2f2d97452")
+  , flagReq ["g", "group"] updGroup "STRING" (helpLab "Group" "Lounge")
+  , flagReq ["G", "group-id"] updGroupId "HEX-STRING"
+    (helpId "Group" "1c8de82b81f445e7cfaafae49b259c71")
+  , flagReq ["w", "location"] updLocation "STRING" (helpLab "Location" "Home")
+  , flagReq ["W", "location-id"] updLocationId "HEX-STRING"
+    (helpId "Location" "1d6fe8ef0fde4c6d77b0012dc736662c")
+  ]
+  where updLabel      = updTM TmLabel
+        updDevId      = updTM TmDevId
+        updGroup      = updTM TmGroup
+        updGroupId    = updTM TmGroupId
+        updLocation   = updTM TmLocation
+        updLocationId = updTM TmLocationId
+
+        updTM con arg args =
+          Right $ args { aTarget = updTM' (aTarget args) (con $ T.pack arg) }
+        updTM' TargAll tm = TargSome $ S.singleton tm
+        updTM' (TargSome s) tm = TargSome $ S.insert tm s
+
+        helpLab name example = concat
+          [ name
+          , " name.  May be abbreviated as a unique prefix of the "
+          , downcase name
+          , ".  For example, \""
+          , take (length example `div` 2) example
+          , "\" instead of \""
+          , example
+          , "\"."
+          ]
+
+        helpId name example = concat
+          [ name
+          , " ID.  May be abbreviated as a unique suffix of the"
+          , " ID.  For example, \""
+          , drop (length example - 4) example
+          , "\" instead of \""
+          , example
+          , "\"."
+          ]
+
 arguments :: Mode LiteArgs
 arguments =
   (modes  "lifx"    defNone  "Control LIFX light bulbs"
-   [ mode "list"    defList  "List bulbs"        selArg gFlags
-   , mode "on"      defOn    "Turn bulb on"      selArg (durFlag : gFlags)
-   , mode "off"     defOff   "Turn bulb off"     selArg (durFlag : gFlags)
-   , mode "color"   defColor "Set bulb color"    selArg (durFlag : cFlags ++ gFlags)
-   , mode "pulse"   defPulse "Square wave blink" selArg (pFlags ++ gFlags)
-   , mode "breathe" defPulse "Sine wave blink"   selArg (pFlags ++ gFlags)
-   , mode "ping"    defPing  "Check connectivity" selArg gFlags
+   [ myMode "list"    defList  "List bulbs"         gFlags
+   , myMode "on"      defOn    "Turn bulb on"       (durFlag : gFlags)
+   , myMode "off"     defOff   "Turn bulb off"      (durFlag : gFlags)
+   , myMode "color"   defColor "Set bulb color"     (durFlag : cFlags ++ gFlags)
+   , myMode "pulse"   defPulse "Square wave blink"  (pFlags ++ gFlags)
+   , myMode "breathe" defPulse "Sine wave blink"    (pFlags ++ gFlags)
+   , myMode "ping"    defPing  "Check connectivity" gFlags
    ]) { modeGroupFlags = toGroup gFlags }
+  where myMode name value help flags =
+          (mode name value help undefined flags) { modeArgs=([], Nothing) }
 
 handleHelp :: Maybe (HelpFormat, TextFormat) -> IO ()
 handleHelp Nothing = return ()

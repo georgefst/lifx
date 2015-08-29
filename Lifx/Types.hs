@@ -262,6 +262,7 @@ data TargetMatch = TmLabel      T.Text
                  | TmGroupId    T.Text
                  | TmLocation   T.Text
                  | TmLocationId T.Text
+                   deriving (Show, Eq, Ord)
 
 data LiteIds =
   LiteIds
@@ -271,7 +272,7 @@ data LiteIds =
   , liGroup    :: Maybe Label
   , liLocId    :: Maybe LocationId
   , liLoc      :: Maybe Label
-  }
+  } deriving (Show, Eq, Ord)
 
 mkLiteIds :: DeviceId -> LiteIds
 mkLiteIds d = LiteIds
