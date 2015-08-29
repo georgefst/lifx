@@ -256,6 +256,8 @@ productFromShortName :: Text -> Maybe Product
 productFromShortName sn = find f products
   where f (Product _ _ _ sn') = sn == sn'
 
+data Targets = TargAll | TargSome (S.Set TargetMatch) deriving (Show, Eq, Ord)
+
 data TargetMatch = TmLabel      T.Text
                  | TmDevId      T.Text
                  | TmGroup      T.Text

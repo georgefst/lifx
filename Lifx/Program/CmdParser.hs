@@ -15,8 +15,6 @@ import Text.Read
 
 import Lifx.Types
 
-data Targets = TargAll | TargSome (S.Set TargetMatch) deriving (Show, Eq, Ord)
-
 data LiteArgs =
   LiteArgs
   { aInterface :: Maybe Text

@@ -347,9 +347,9 @@ needQuery (TmGroupId    _ ) = NeedGroup
 needQuery (TmLocation   _ ) = NeedLoc
 needQuery (TmLocationId _ ) = NeedLoc
 
-needQueries :: C.Targets -> S.Set NeedQuery
-needQueries C.TargAll = S.empty
-needQueries (C.TargSome s) = S.map needQuery s
+needQueries :: Targets -> S.Set NeedQuery
+needQueries TargAll = S.empty
+needQueries (TargSome s) = S.map needQuery s
 
 foo :: ((a -> IO ()) -> IO ())
        -> NeedQuery
@@ -363,7 +363,7 @@ foo query supplies needed lids updLids cb
   | otherwise = cb lids
 
 -- only call realCb if bulb is in targs
-filterCb :: C.Targets -> (Bulb -> IO ()) -> Bulb -> IO ()
+filterCb :: Targets -> (Bulb -> IO ()) -> Bulb -> IO ()
 filterCb targs realCb bulb = do
   let lids1 = mkLiteIds (deviceId bulb)
       needed = needQueries targs
@@ -372,8 +372,8 @@ filterCb targs realCb bulb = do
     foo (getLocation bulb) NeedLoc needed lids3 addStateLocation $ \lids4 ->
     when (satisfied targs lids4) (realCb bulb)
   where
-    satisfied C.TargAll _ = True
-    satisfied (C.TargSome s) lids = True `S.member` S.map (`tmatch` lids) s
+    satisfied TargAll _ = True
+    satisfied (TargSome s) lids = True `S.member` S.map (`tmatch` lids) s
 
 discCb :: TVar (Set DevID) -> (Bulb -> IO ()) -> Bulb -> IO ()
 discCb done realCb bulb = do
