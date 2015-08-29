@@ -22,7 +22,7 @@ data Command = On | Off | OnOff | Cycle deriving (Eq, Ord, Show, Read)
 data Event =
   Event
   { evCommand :: !Command
-  , evTarget :: Selector
+  , evTarget :: Targets
   , evTime :: (TimeOfDay, TimeOfDay)
   , evDay :: S.Set WeekDay
   , evDuration :: (Duration, Duration)
@@ -39,15 +39,73 @@ command = choice
           , asciiCI "cycle" >> return Cycle
           ]
 
-{-
 onCmd :: Parser Event
 onCmd = do
   asciiCI "on"
-  selectors
-  timeOfDayRange
-  weekDays
-  color
--}
+  skipSpace
+  t <- targets
+  skipSpace
+  tod <- timeOfDayRange
+  skipSpace
+  wk <- weekDays
+  skipSpace
+  c <- color
+  skipSpace
+  return $ Event On t tod wk undefined undefined undefined c
+
+color :: Parser MaybeColor
+color = do
+  h <- option Nothing $ do
+    asciiCI "hue"
+    skipSpace
+    Just <$> double
+  skipSpace
+  s <- option Nothing $ do
+    asciiCI "saturation"
+    skipSpace
+    Just <$> double
+  skipSpace
+  b <- option Nothing $ do
+    asciiCI "brightness"
+    skipSpace
+    Just <$> double
+  skipSpace
+  k <- option Nothing $ do
+    asciiCI "kelvin"
+    skipSpace
+    Just <$> double
+  skipSpace
+  return $ HSBK h s b k
+
+targets :: Parser Targets
+targets = targAll <|> targSome
+  where targAll = asciiCI "all" >> return TargAll
+        targSome = do
+          targs <- many1 $ choice
+                   [ asciiCI "label"       >> TmLabel      <$> qStr
+                   , asciiCI "id"          >> TmDevId      <$> hStr
+                   , asciiCI "group"       >> TmGroup      <$> qStr
+                   , asciiCI "group-id"    >> TmGroupId    <$> hStr
+                   , asciiCI "location"    >> TmLocation   <$> qStr
+                   , asciiCI "location-id" >> TmLocationId <$> hStr
+                   ]
+          return $ TargSome $ S.fromList targs
+
+hStr :: Parser T.Text
+hStr = do
+  skipSpace
+  str <- takeWhile1 isHexDigit
+  skipSpace
+  return str
+
+qStr :: Parser T.Text
+qStr = do
+  skipSpace
+  char '"'
+  str <- takeWhile1 (/= '"')
+  char '"'
+  skipSpace
+  return str
 
 ciChar :: Char -> Parser Char
 ciChar c1 = satisfy $ \c2 -> toLower c2 == c1

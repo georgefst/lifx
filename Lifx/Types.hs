@@ -256,7 +256,8 @@ productFromShortName :: Text -> Maybe Product
 productFromShortName sn = find f products
   where f (Product _ _ _ sn') = sn == sn'
 
-data Targets = TargAll | TargSome (S.Set TargetMatch) deriving (Show, Eq, Ord)
+data Targets = TargAll | TargSome (S.Set TargetMatch)
+               deriving (Show, Read, Eq, Ord)
 
 data TargetMatch = TmLabel      T.Text
                  | TmDevId      T.Text
@@ -264,7 +265,7 @@ data TargetMatch = TmLabel      T.Text
                  | TmGroupId    T.Text
                  | TmLocation   T.Text
                  | TmLocationId T.Text
-                   deriving (Show, Eq, Ord)
+                   deriving (Show, Read, Eq, Ord)
 
 data LiteIds =
   LiteIds
@@ -274,7 +275,7 @@ data LiteIds =
   , liGroup    :: Maybe Label
   , liLocId    :: Maybe LocationId
   , liLoc      :: Maybe Label
-  } deriving (Show, Eq, Ord)
+  } deriving (Show, Read, Eq, Ord)
 
 mkLiteIds :: DeviceId -> LiteIds
 mkLiteIds d = LiteIds
