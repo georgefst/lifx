@@ -53,6 +53,61 @@ onCmd = do
   skipSpace
   return $ Event On t tod wk undefined undefined undefined c
 
+offCmd :: Parser Event
+offCmd = do
+  asciiCI "off"
+  skipSpace
+  t <- targets
+  skipSpace
+  tod <- timeOfDayRange
+  skipSpace
+  wk <- weekDays
+  skipSpace
+  return $ Event Off t tod wk undefined undefined undefined undefined
+
+onOffCmd :: Parser Event
+onOffCmd = do
+  asciiCI "onoff"
+  skipSpace
+  t <- targets
+  skipSpace
+  tod <- timeOfDayRange
+  skipSpace
+  wk <- weekDays
+  skipSpace
+  asciiCI "duration"
+  dur <- durationRange
+  skipSpace
+  c <- color
+  skipSpace
+  return $ Event OnOff t tod wk dur undefined undefined c
+
+cycleCmd :: Parser Event
+cycleCmd = do
+  asciiCI "cycle"
+  skipSpace
+  t <- targets
+  skipSpace
+  tod <- timeOfDayRange
+  skipSpace
+  wk <- weekDays
+  skipSpace
+  asciiCI "duration"
+  skipSpace
+  dur <- durationRange
+  skipSpace
+  asciiCI "on-for"
+  skipSpace
+  onp <- durationRange
+  skipSpace
+  asciiCI "off-for"
+  skipSpace
+  offp <- durationRange
+  skipSpace
+  c <- color
+  skipSpace
+  return $ Event Cycle t tod wk dur onp offp c
+
 color :: Parser MaybeColor
 color = do
   h <- option Nothing $ do
