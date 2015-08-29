@@ -427,6 +427,6 @@ main = do
   hdrIfNeeded cmd
   s <- newTVarIO empty
   sem <- atomically $ newTSem 0
-  forever $ do
+  forM_ [1..20] $ \_ -> do
     discoverBulbs lan (discCb s $ filterCb (C.aTarget args) (func sem))
     threadDelay 500000
