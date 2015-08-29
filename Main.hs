@@ -141,6 +141,17 @@ prVersion sv = addVers $ f $ productFromId vend prod
 tr :: T.Text -> IO ()
 tr = TIO.putStrLn . T.stripEnd
 
+addStateLight :: LiteIds -> StateLight -> LiteIds
+addStateLight li sl = li { liLabel = Just (slLabel sl) }
+
+addStateGroup :: LiteIds -> StateGroup -> LiteIds
+addStateGroup li sg =
+  li { liGroupId = Just (sgGroup sg) , liGroup = Just (sgLabel sg) }
+
+addStateLocation :: LiteIds -> StateLocation -> LiteIds
+addStateLocation li slo =
+  li { liLocId = Just (sloLocation slo) , liLoc = Just (sloLabel slo) }
+
 data LightRow =
   LightRow
   { lrLabel    :: [T.Text]
