@@ -14,6 +14,7 @@ import Data.List hiding (insert)
 import Data.Maybe
 import Data.Monoid
 import Data.Set hiding (map, filter)
+import qualified Data.Set as S
 import Data.String
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -335,6 +336,45 @@ hdrIfNeeded :: C.LiteCmd -> IO ()
 hdrIfNeeded C.CmdList = lsHeader
 hdrIfNeeded _ = return ()
 
+data NeedQuery = NeedLight | NeedGroup | NeedLoc | NeedNothing
+                 deriving (Eq, Ord, Show)
+
+needQuery :: TargetMatch -> NeedQuery
+needQuery (TmLabel      _ ) = NeedLight
+needQuery (TmDevId      _ ) = NeedNothing
+needQuery (TmGroup      _ ) = NeedGroup
+needQuery (TmGroupId    _ ) = NeedGroup
+needQuery (TmLocation   _ ) = NeedLoc
+needQuery (TmLocationId _ ) = NeedLoc
+
+needQueries :: C.Targets -> S.Set NeedQuery
+needQueries C.TargAll = S.empty
+needQueries (C.TargSome s) = S.map needQuery s
+
+foo :: ((a -> IO ()) -> IO ())
+       -> NeedQuery
+       -> (S.Set NeedQuery)
+       -> LiteIds
+       -> (LiteIds -> a -> LiteIds)
+       -> (LiteIds -> IO ())
+       -> IO ()
+foo query supplies needed lids updLids cb
+  | supplies `S.member` needed = query $ \response -> cb $ updLids lids response
+  | otherwise = cb lids
+
+-- only call realCb if bulb is in targs
+filterCb :: C.Targets -> (Bulb -> IO ()) -> Bulb -> IO ()
+filterCb targs realCb bulb = do
+  let lids1 = mkLiteIds (deviceId bulb)
+      needed = needQueries targs
+  foo (getLight bulb) NeedLight needed lids1 addStateLight $ \lids2 ->
+    foo (getGroup bulb) NeedGroup needed lids2 addStateGroup $ \lids3 ->
+    foo (getLocation bulb) NeedLoc needed lids3 addStateLocation $ \lids4 ->
+    when (satisfied targs lids4) (realCb bulb)
+  where
+    satisfied C.TargAll _ = True
+    satisfied (C.TargSome s) lids = True `S.member` S.map (`tmatch` lids) s
+
 discCb :: TVar (Set DevID) -> (Bulb -> IO ()) -> Bulb -> IO ()
 discCb done realCb bulb = do
   let dev = deviceId bulb
@@ -388,5 +428,5 @@ main = do
   s <- newTVarIO empty
   sem <- atomically $ newTSem 0
   forever $ do
-    discoverBulbs lan (discCb s $ func sem)
+    discoverBulbs lan (discCb s $ filterCb (C.aTarget args) (func sem))
     threadDelay 500000
