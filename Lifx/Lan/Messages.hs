@@ -174,29 +174,6 @@ instance Binary StateWifiFirmware where
 
 ----------------------------------------------------------
 
-data SetPower =
-  SetPower
-  { spLevel :: !Bool
-  , spDuration :: !Word32
-  }
-
-instance MessageType SetPower where
-  msgType _ = 117
-
-instance Binary SetPower where
-  put x = do
-    putBool16 $ spLevel x
-    putWord32le $ spDuration x
-
-  get = SetPower <$> getBool16 <*> getWord32le
-
-setPower :: Bulb -> Bool -> Word32 -> IO () -> IO ()
-setPower bulb@(Bulb st _ _ ) pwr duration cb = do
-  hdr <- atomically $ newHdrAndCallback st (ackCb cb)
-  sendMsg bulb (needAck hdr) (SetPower pwr duration)
-
-----------------------------------------------------------
-
 data GetVersion = GetVersion
 
 instance MessageType GetVersion where
@@ -412,36 +389,6 @@ getLight bulb @(Bulb st _ _ ) cb = do
 
 ----------------------------------------------------------
 
-data StateLight =
-  StateLight
-  { slColor :: HSBK16
-    -- Reserved16 (dim)
-  , slPower :: !Bool
-  , slLabel :: Label
-    -- Reserved64 (tags)
-  } deriving Show
-
-instance MessageType StateLight where
-  msgType _ = 107
-
-instance Binary StateLight where
-  put x = do
-    put $ slColor x
-    putWord16le 0 -- Reserved16 (dim)
-    putBool16 $ slPower x
-    put $ slLabel x
-    putWord64le 0 -- Reserved64 (tags)
-
-  get = do
-    color <- get
-    skip 2 -- Reserved16 (dim)
-    power <- getBool16
-    label <- get
-    skip 8 -- Reserved64 (tags)
-    return $ StateLight color power label
-
-----------------------------------------------------------
-
 data SetColor =
   SetColor
   { -- Reserved8 (stream)
@@ -506,3 +453,55 @@ setWaveform :: Bulb -> SetWaveform -> IO () -> IO ()
 setWaveform bulb@(Bulb st _ _ ) swf cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
   sendMsg bulb (needAck hdr) swf
+data SetPower =
+  SetPower
+  { spLevel :: !Bool
+  , spDuration :: !Word32
+  }
+
+----------------------------------------------------------
+
+data StateLight =
+  StateLight
+  { slColor :: HSBK16
+    -- Reserved16 (dim)
+  , slPower :: !Bool
+  , slLabel :: Label
+    -- Reserved64 (tags)
+  } deriving Show
+
+instance MessageType StateLight where
+  msgType _ = 107
+
+instance Binary StateLight where
+  put x = do
+    put $ slColor x
+    putWord16le 0 -- Reserved16 (dim)
+    putBool16 $ slPower x
+    put $ slLabel x
+    putWord64le 0 -- Reserved64 (tags)
+
+  get = do
+    color <- get
+    skip 2 -- Reserved16 (dim)
+    power <- getBool16
+    label <- get
+    skip 8 -- Reserved64 (tags)
+    return $ StateLight color power label
+
+----------------------------------------------------------
+
+instance MessageType SetPower where
+  msgType _ = 117
+
+instance Binary SetPower where
+  put x = do
+    putBool16 $ spLevel x
+    putWord32le $ spDuration x
+
+  get = SetPower <$> getBool16 <*> getWord32le
+
+setPower :: Bulb -> Bool -> Word32 -> IO () -> IO ()
+setPower bulb@(Bulb st _ _ ) pwr duration cb = do
+  hdr <- atomically $ newHdrAndCallback st (ackCb cb)
+  sendMsg bulb (needAck hdr) (SetPower pwr duration)
