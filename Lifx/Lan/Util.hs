@@ -3,6 +3,8 @@ module Lifx.Lan.Util
       getFloat32le,
       putInt16le,
       getInt16le,
+      putBool16,
+      getBool16,
       bounds,
       bitBool,
       extract ) where
@@ -43,3 +45,12 @@ putInt16le i = putWord16le $ fromIntegral i
 
 getInt16le :: Get Int16
 getInt16le = fromIntegral <$> getWord16le
+
+putBool16 :: Bool -> Put
+putBool16 True = putWord16le 0xffff
+putBool16 False = putWord16le 0
+
+getBool16 :: Get Bool
+getBool16 = do
+  x <- getWord16le
+  return $ x /= 0
