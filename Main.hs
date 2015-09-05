@@ -1,4 +1,4 @@
-{-# LANGUAGE NoMonomorphismRestriction, OverloadedStrings #-}
+{-# LANGUAGE NoMonomorphismRestriction, OverloadedStrings, StandaloneDeriving #-}
 
 import Control.Concurrent
 import Control.Concurrent.STM
@@ -34,7 +34,6 @@ import Lifx.Lan.LowLevel
 import Lifx.Types
 import qualified Lifx.Program.CmdParser as C
 import Lifx.Program.Column
-import Lifx.Program.Timer as FOO
 
 {-
 myTime :: Word64 -> String
@@ -74,7 +73,8 @@ myCb bulb = do
                     putStrLn "done!"
 -}
 
--- deriving instance Show Duration
+deriving instance Show Duration
+deriving instance Read TimeOfDay
 
 nsToDuration :: NanoSeconds -> (Int64, Duration)
 nsToDuration (NanoSeconds ns) =
