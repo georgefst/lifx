@@ -18,6 +18,7 @@ module Lifx.Lan.Messages
       getGroup,
       getLocation,
       echoRequest,
+      setLabel,
       setColor,
       setWaveform ) where
 
@@ -171,6 +172,26 @@ instance Binary StateWifiFirmware where
     skip 8 -- Reserved64
     version <- getWord32le
     return $ StateWifiFirmware build version
+
+----------------------------------------------------------
+
+data SetLabel
+  = SetLabel
+    { slaLabel :: Label
+    } deriving Show
+
+instance MessageType SetLabel where
+  msgType _ = 24
+
+instance Binary SetLabel where
+  put x = put $ slaLabel x
+
+  get = SetLabel <$> get
+
+setLabel :: Bulb -> Label -> IO () -> IO ()
+setLabel bulb@(Bulb st _ _ ) lbl cb = do
+  hdr <- atomically $ newHdrAndCallback st (ackCb cb)
+  sendMsg bulb (needAck hdr) (SetLabel lbl)
 
 ----------------------------------------------------------
 

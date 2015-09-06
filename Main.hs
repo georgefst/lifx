@@ -299,6 +299,12 @@ cmdWave wf pa sem bulb = do
                             }
       in ra "setWaveform" (setWaveform bulb swf) (atomically $ signalTSem sem)
 
+cmdSetLabel :: T.Text -> TSem -> Bulb -> IO ()
+cmdSetLabel txt sem bulb = do
+  let lbl = fromText txt
+      ra = myAction sem bulb
+  ra "setLabel" (setLabel bulb lbl) (atomically $ signalTSem sem)
+
 forkIO_ f = do
   forkIO f
   return ()
@@ -326,6 +332,7 @@ cmd2func (C.CmdColor ca) dur = cmdColor ca dur
 cmd2func (C.CmdPulse pa) _ = cmdWave Pulse pa
 cmd2func (C.CmdBreathe pa) _ = cmdWave Sine pa
 cmd2func C.CmdPing _ = cmdPing
+cmd2func (C.CmdSetLabel lbl) _ = cmdSetLabel lbl
 
 lsHeader :: Int -> IO ()
 lsHeader w = do

@@ -32,6 +32,7 @@ data LiteCmd = CmdNone
              | CmdPulse   PulseArg
              | CmdBreathe PulseArg
              | CmdPing
+             | CmdSetLabel Text
                deriving (Show, Eq, Ord)
 
 data PulseArg =
@@ -85,6 +86,9 @@ defColor   = defList { aCmd = CmdColor   (CNamed White) }
 defPulse   = defList { aCmd = CmdPulse   defPulseArg }
 defBreathe = defList { aCmd = CmdBreathe defPulseArg }
 defPing    = defList { aCmd = CmdPing }
+defSetLabel =
+  defList { aCmd = CmdSetLabel
+                   $ error "Use the -L argument to set the new label" }
 
 gFlags = iFlag : helpFlag : targFlags
 
@@ -101,6 +105,10 @@ widthFlag = flagReq ["w", "width"] updWidth "INTEGER"
   where updWidth arg args = do
           w <- readEither' arg
           return $ args { aCmd = CmdList w }
+
+labFlag = flagReq ["L", "new-label"] updLabel "STRING" "New label."
+  where updLabel arg args =
+          return $ args { aCmd = CmdSetLabel $ T.pack arg }
 
 cFlags = [hFlag, sFlag, bFlag, kFlag, nFlag]
 
@@ -269,6 +277,7 @@ arguments =
    , myMode "pulse"   defPulse "Square wave blink"  (pFlags ++ gFlags)
    , myMode "breathe" defPulse "Sine wave blink"    (pFlags ++ gFlags)
    , myMode "ping"    defPing  "Check connectivity" gFlags
+   , myMode "set-label" defSetLabel "Set bulb's label" (labFlag : gFlags)
    ]) { modeGroupFlags = toGroup gFlags }
   where myMode name value help flags =
           (mode name value help undefined flags) { modeArgs=([], Nothing) }

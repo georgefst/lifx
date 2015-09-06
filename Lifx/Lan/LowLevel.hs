@@ -18,6 +18,7 @@ module Lifx.Lan.LowLevel
       getGroup,
       getLocation,
       echoRequest,
+      setLabel,
       setColor,
       setWaveform,
       Waveform(..),
