@@ -486,7 +486,15 @@ prLifxException (NoSuchInterface ifname _ ) = do
   exitFailure
 
 pingStatsTxt :: Bulb -> PingStats -> T.Text
-pingStatsTxt bulb ps = "Hello, World!\n"
+pingStatsTxt bulb (PingStats mn mx su tx rx) =
+  T.unlines
+  [ fmt "--- {} ping statistics ---" (Only $ Shown bulb)
+  , fmt "{} packets transmitted, {} packets received, {}% packet loss"
+    (tx, rx, fixed 1 $ 100 * (ftx - frx) / ftx)
+  , fmt "round-trip min/avg/max = {}/{}/{} ms" (mn, su / frx, mx)
+  ]
+  where ftx = fromIntegral tx
+        frx = fromIntegral rx
 
 handleControlC :: TVar (M.Map Bulb PingStats) -> E.AsyncException -> IO a
 handleControlC pingMap E.UserInterrupt = do
