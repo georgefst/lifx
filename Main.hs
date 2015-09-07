@@ -491,7 +491,8 @@ pingStatsTxt bulb (PingStats mn mx su tx rx) =
   [ fmt "--- {} ping statistics ---" (Only $ Shown bulb)
   , fmt "{} packets transmitted, {} packets received, {}% packet loss"
     (tx, rx, fixed 1 $ 100 * (ftx - frx) / ftx)
-  , fmt "round-trip min/avg/max = {}/{}/{} ms" (mn, su / frx, mx)
+  , fmt "round-trip min/avg/max = {}/{}/{} ms"
+    (fixed 3 mn, fixed 3 (su / frx), fixed 3 mx)
   ]
   where ftx = fromIntegral tx
         frx = fromIntegral rx
@@ -499,6 +500,7 @@ pingStatsTxt bulb (PingStats mn mx su tx rx) =
 handleControlC :: TVar (M.Map Bulb PingStats) -> E.AsyncException -> IO a
 handleControlC pingMap E.UserInterrupt = do
   pm <- atomically $ readTVar pingMap
+  putStrLn "" -- newline after "^C"
   forM_ (M.toAscList pm) $ \(k, v) -> TIO.putStr (pingStatsTxt k v)
   exitSuccess
 handleControlC _ somethingElse = E.throw somethingElse
