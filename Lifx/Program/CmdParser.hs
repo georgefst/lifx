@@ -112,16 +112,12 @@ labFlag = flagReq ["L", "new-label"] updLabel "STRING" "New label."
   where updLabel arg args =
           return $ args { aCmd = CmdSetLabel $ T.pack arg }
 
-cFlags = [hFlag, sFlag, bFlag, kFlag]
-
-hFlag = mkCFlag "hue"        "0-360"
-        (\c x -> c { hue = Just x })
-sFlag = mkCFlag "saturation" "0-100"
-        (\c x -> c { saturation = Just $ x / 100 })
-bFlag = mkCFlag "brightness" "0-100"
-        (\c x -> c { brightness = Just $ x / 100 })
-kFlag = mkCFlag "kelvin"     "2500-9000"
-        (\c x -> c { kelvin = Just x })
+cFlags =
+  [ mkCFlag "hue"        "0-360" (\c x -> c { hue = Just x })
+  , mkCFlag "saturation" "0-100" (\c x -> c { saturation = Just $ x / 100 })
+  , mkCFlag "brightness" "0-100" (\c x -> c { brightness = Just $ x / 100 })
+  , mkCFlag "kelvin"     "2500-9000" (\c x -> c { kelvin = Just x })
+  ]
 
 mkCFlag :: String -> String -> (MaybeColor -> LiFrac -> MaybeColor)
            -> Flag LiteArgs
@@ -136,19 +132,20 @@ mkCFlag name range f =
           let newCmd = updColor (`f` num) (aCmd args)
           return $ args { aCmd = newCmd }
 
-pFlags = cFlags ++ [pFlag, cFlag, tFlag, oFlag, eFlag]
-
-pFlag = flagReq ["p", "period"] updPeriod "FLOAT" "Time of one cycle in seconds"
-cFlag = flagReq ["c", "cycles"] updCycles "FLOAT" "Number of cycles"
-tFlag = flagReq ["t", "persist"] updPersist "BOOL" "Remain with new color if true"
-oFlag = flagReq ["o", "poweron"] updPowerOn "BOOL" "Power light on if currently off"
-eFlag = flagReq ["e", "peak"] updPeak "FLOAT" "Is this different than duty cycle?"
-
-updPeriod = updFrac (\n p -> p { paPeriod = n })
-updCycles = updFrac (\n p -> p { paCycles = n })
-updPersist = updBool (\b p -> p { paPersist = b })
-updPowerOn = updBool (\b p -> p { paPowerOn = b })
-updPeak = updFrac (\n p -> p { paPeak = n })
+pFlags =
+  cFlags ++
+  [ flagReq ["p", "period"] updPeriod "FLOAT" "Time of one cycle in seconds"
+  , flagReq ["c", "cycles"] updCycles "FLOAT" "Number of cycles"
+  , flagReq ["t", "persist"] updPersist "BOOL" "Remain with new color if true"
+  , flagReq ["o", "poweron"] updPowerOn "BOOL" "Power light on if currently off"
+  , flagReq ["e", "peak"] updPeak "FLOAT" "Is this different than duty cycle?"
+  ]
+  where
+    updPeriod = updFrac (\n p -> p { paPeriod = n })
+    updCycles = updFrac (\n p -> p { paCycles = n })
+    updPersist = updBool (\b p -> p { paPersist = b })
+    updPowerOn = updBool (\b p -> p { paPowerOn = b })
+    updPeak = updFrac (\n p -> p { paPeak = n })
 
 updFrac :: (LiFrac -> PulseArg -> PulseArg)
            -> String
