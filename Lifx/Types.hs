@@ -208,6 +208,7 @@ data Selector = SelLabel Label
               | SelLocationId LocationId
                 deriving (Show, Read, Eq, Ord)
 
+{-
 data ColorArg = CNamed  NamedColor
               | CCustom MaybeColor
                 deriving (Show, Eq, Ord)
@@ -215,19 +216,21 @@ data ColorArg = CNamed  NamedColor
 data NamedColor = White | Red | Orange | Yellow
                 | Cyan | Green | Blue | Purple | Pink
                 deriving (Show, Read, Ord, Eq, Enum, Bounded)
+-}
 
-emptyColor = CCustom $ HSBK Nothing Nothing Nothing Nothing
+emptyColor = HSBK Nothing Nothing Nothing Nothing
 
-isEmptyColor (CCustom (HSBK Nothing Nothing Nothing Nothing)) = True
+isEmptyColor (HSBK Nothing Nothing Nothing Nothing) = True
 isEmptyColor _ = False
 
-isCompleteColor (CNamed _) = True
-isCompleteColor (CCustom (HSBK (Just _ ) (Just _ ) (Just _ ) (Just _ ))) = True
+isCompleteColor (HSBK (Just _ ) (Just _ ) (Just _ ) (Just _ )) = True
 isCompleteColor _ = False
 
+{-
 customColor :: ColorArg -> MaybeColor
 customColor (CNamed _ ) = HSBK Nothing Nothing Nothing Nothing
 customColor (CCustom x) = x
+-}
 
 data Product =
   Product

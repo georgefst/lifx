@@ -25,21 +25,19 @@ data LiteArgs =
   } deriving (Show, Eq, Ord)
 
 data LiteCmd = CmdNone
-             | CmdList    Int
+             | CmdList    !Int
              | CmdOn
              | CmdOff
-             | CmdColor   ColorArg
-             | CmdPulse   PulseArg
-             | CmdBreathe PulseArg
+             | CmdColor   { lcColor :: MaybeColor }
+             | CmdPulse   { lcColor :: MaybeColor, lcPulse :: PulseArg }
+             | CmdBreathe { lcColor :: MaybeColor, lcPulse :: PulseArg }
              | CmdPing
              | CmdSetLabel Text
                deriving (Show, Eq, Ord)
 
 data PulseArg =
   PulseArg
-  { paColor     :: ColorArg
-  , paFromColor :: ColorArg
-  , paPeriod    :: LiFrac
+  { paPeriod    :: LiFrac
   , paCycles    :: LiFrac
   , paPersist   :: Bool
   , paPowerOn   :: Bool
@@ -47,9 +45,7 @@ data PulseArg =
   } deriving (Show, Eq, Ord)
 
 defPulseArg = PulseArg
-  { paColor     = emptyColor
-  , paFromColor = emptyColor
-  , paPeriod    = 1.0
+  { paPeriod    = 1.0
   , paCycles    = 1.0
   , paPersist   = False
   , paPowerOn   = True
