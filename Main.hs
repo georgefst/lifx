@@ -485,11 +485,15 @@ prLifxException (NoSuchInterface ifname _ ) = do
   prInterfaces
   exitFailure
 
-handleControlC :: E.AsyncException -> IO a
-handleControlC E.UserInterrupt = do
-  putStrLn "You hit Control-C"
+pingStatsTxt :: Bulb -> PingStats -> T.Text
+pingStatsTxt bulb ps = "Hello, World!\n"
+
+handleControlC :: TVar (M.Map Bulb PingStats) -> E.AsyncException -> IO a
+handleControlC pingMap E.UserInterrupt = do
+  pm <- atomically $ readTVar pingMap
+  forM_ (M.toAscList pm) $ \(k, v) -> TIO.putStr (pingStatsTxt k v)
   exitSuccess
-handleControlC somethingElse = E.throw somethingElse
+handleControlC _ somethingElse = E.throw somethingElse
 
 main = do
   args <- C.parseCmdLine
@@ -502,7 +506,7 @@ moreMain C.CmdPing lan args = do
   s <- newTVarIO S.empty
   pingMap <- newTVarIO M.empty
   discoverBulbs lan $ discCb s $ filterCb (C.aTarget args) (cmdPing pingMap)
-  forever (threadDelay 900000000) `E.catch` handleControlC
+  forever (threadDelay 900000000) `E.catch` (handleControlC pingMap)
 
 moreMain cmd lan args = do
   let func = cmd2func cmd (C.aDuration args)

@@ -39,6 +39,7 @@ import qualified Data.ByteString.Lazy as L
 import Data.Int ( Int64 )
 import Data.List
 import Data.Maybe
+import Data.Monoid
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Typeable
@@ -123,10 +124,12 @@ instance Show Lan where
   show (Lan { stIfName = ifname }) = T.unpack ifname
 
 instance Eq Lan where
-  x1 == x2 = (stIfName x1) == (stIfName x2)
+  x1 == x2 = x1 `compare` x2 == EQ
 
 instance Ord Lan where
-  x1 `compare` x2 = (stIfName x1) `compare` (stIfName x2)
+  x1 `compare` x2 =
+    (stIfName x1) `compare` (stIfName x2)
+    <> (stSource x1) `compare` (stSource x2)
 
 data Bulb = Bulb Lan SockAddr DeviceId deriving (Show, Eq, Ord)
 
