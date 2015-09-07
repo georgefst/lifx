@@ -4,7 +4,7 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TSem
 import Control.Monad ( when, forever, forM_ )
-import qualified Control.Exception as E (catch)
+import qualified Control.Exception as E (catch, throw, AsyncException(..))
 import Data.Bits
 import qualified Data.ByteString as B
 import Data.Char
@@ -324,8 +324,8 @@ forkIO_ f = do
   forkIO f
   return ()
 
-cmdPing :: TSem -> Bulb -> IO ()
-cmdPing _ bulb = forkIO_ $ do
+cmdPing :: Bulb -> IO ()
+cmdPing bulb = forkIO_ $ do
   let payload = B.pack [0..63]
   forM_ [0..] $ \i -> do
     start <- timeCurrentP
@@ -346,7 +346,6 @@ cmd2func C.CmdOff dur = cmdPower False dur
 cmd2func (C.CmdColor ca) dur = cmdColor ca dur
 cmd2func (C.CmdPulse ca pa) _ = cmdWave Pulse ca pa
 cmd2func (C.CmdBreathe ca pa) _ = cmdWave Sine ca pa
-cmd2func C.CmdPing _ = cmdPing
 cmd2func (C.CmdSetLabel lbl) _ = cmdSetLabel lbl
 
 lsHeader :: Int -> IO ()
@@ -445,12 +444,26 @@ prLifxException (NoSuchInterface ifname _ ) = do
   prInterfaces
   exitFailure
 
+handleControlC :: E.AsyncException -> IO a
+handleControlC E.UserInterrupt = do
+  putStrLn "You hit Control-C"
+  exitSuccess
+handleControlC somethingElse = E.throw somethingElse
+
 main = do
   args <- C.parseCmdLine
   let ifname = fromMaybe (T.pack "en1") $ C.aInterface args
       cmd = C.aCmd args
-      func = cmd2func cmd (C.aDuration args)
   lan <- openLan ifname `E.catch` prLifxException
+  moreMain cmd lan args
+
+moreMain C.CmdPing lan args = do
+  s <- newTVarIO empty
+  discoverBulbs lan (discCb s $ filterCb (C.aTarget args) cmdPing)
+  forever (threadDelay 900000000) `E.catch` handleControlC
+
+moreMain cmd lan args = do
+  let func = cmd2func cmd (C.aDuration args)
   hdrIfNeeded cmd
   s <- newTVarIO empty
   sem <- atomically $ newTSem 0
