@@ -108,12 +108,14 @@ labFlag = flagReq ["L", "new-label"] updLabel "STRING" "New label."
 
 cFlags = [hFlag, sFlag, bFlag, kFlag]
 
--- TODO: 0-100 instead of 0.0-1.0?
-
-hFlag = mkCFlag "hue"        "0-360"     (\c x -> c { hue = x })
-sFlag = mkCFlag "saturation" "0.0-1.0"   (\c x -> c { saturation = x })
-bFlag = mkCFlag "brightness" "0.0-1.0"   (\c x -> c { brightness = x })
-kFlag = mkCFlag "kelvin"     "2500-9000" (\c x -> c { kelvin = x })
+hFlag = mkCFlag "hue"        "0-360"
+        (\c x -> c { hue = Just x })
+sFlag = mkCFlag "saturation" "0-100"
+        (\c x -> c { saturation = Just $ x / 100 })
+bFlag = mkCFlag "brightness" "0-100"
+        (\c x -> c { brightness = Just $ x / 100 })
+kFlag = mkCFlag "kelvin"     "2500-9000"
+        (\c x -> c { kelvin = Just x })
 
 upcase :: String -> String
 upcase = map toUpper
@@ -125,19 +127,21 @@ capitalize :: String -> String
 capitalize [] = []
 capitalize (x:xs) = toUpper x : downcase xs
 
-mkCFlag :: String -> String -> (MaybeColor -> Maybe LiFrac -> MaybeColor)
+mkCFlag :: String -> String -> (MaybeColor -> LiFrac -> MaybeColor)
            -> Flag LiteArgs
 mkCFlag name range f =
   flagReq [[head name], name] (cflagUpdate f) "FLOAT"
-  ("Set " ++ name ++ " of light's color (" ++ range ++ ")")
+  ("Set light's " ++ whatIs name ++ " (" ++ range ++ ")")
+  where whatIs "kelvin" = "color temperature"
+        whatIs x = x
 
-cflagUpdate :: (MaybeColor -> Maybe LiFrac -> MaybeColor)
+cflagUpdate :: (MaybeColor -> LiFrac -> MaybeColor)
                -> String
                -> LiteArgs
                -> Either String LiteArgs
 cflagUpdate f arg args = do
   num <- readEither' arg
-  let newCmd = updColor (`f` Just num) (aCmd args)
+  let newCmd = updColor (`f` num) (aCmd args)
   return $ args { aCmd = newCmd }
 
 updColor :: (MaybeColor -> MaybeColor) -> LiteCmd -> LiteCmd
