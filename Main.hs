@@ -384,6 +384,11 @@ foo query supplies needed lids updLids cb
   | supplies `S.member` needed = query $ \response -> cb $ updLids lids response
   | otherwise = cb lids
 
+countCb :: TVar Integer -> (Bulb -> IO ()) -> Bulb -> IO ()
+countCb counter realCb bulb = do
+  atomically $ modifyTVar' counter (+ 1)
+  realCb bulb
+
 -- only call realCb if bulb is in targs
 filterCb :: Targets -> (Bulb -> IO ()) -> Bulb -> IO ()
 filterCb targs realCb bulb = do
@@ -449,6 +454,11 @@ main = do
   hdrIfNeeded cmd
   s <- newTVarIO empty
   sem <- atomically $ newTSem 0
-  forM_ [1..20] $ \_ -> do
-    discoverBulbs lan (discCb s $ filterCb (C.aTarget args) (func sem))
-    threadDelay 500000
+  counter <- newTVarIO 0
+  forM_ [1..10] $ \_ -> do
+    discoverBulbs lan (discCb s $ filterCb (C.aTarget args)
+                                  (countCb counter $ func sem))
+    threadDelay 100000
+  atomically $ do
+    c <- readTVar counter
+    forM_ [1..c] $ \_ -> waitTSem sem
