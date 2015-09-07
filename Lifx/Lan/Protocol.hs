@@ -122,7 +122,13 @@ data Lan
 instance Show Lan where
   show (Lan { stIfName = ifname }) = T.unpack ifname
 
-data Bulb = Bulb Lan SockAddr DeviceId deriving Show
+instance Eq Lan where
+  x1 == x2 = (stIfName x1) == (stIfName x2)
+
+instance Ord Lan where
+  x1 `compare` x2 = (stIfName x1) `compare` (stIfName x2)
+
+data Bulb = Bulb Lan SockAddr DeviceId deriving (Show, Eq, Ord)
 
 deviceId :: Bulb -> DeviceId
 deviceId (Bulb _ _ di) = di

@@ -11,6 +11,7 @@ import Data.Char
 import Data.Hourglass
 import Data.Int ( Int64 )
 import Data.List hiding (insert)
+import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid
 import Data.Set hiding (map, filter)
@@ -324,11 +325,47 @@ forkIO_ f = do
   forkIO f
   return ()
 
-cmdPing :: Bulb -> IO ()
-cmdPing bulb = forkIO_ $ do
+data PingStats =
+  PingStats
+  { psMin :: !Double
+  , psMax :: !Double
+  , psSum :: !Double
+  , psTx  :: !Int
+  , psRx  :: !Int
+  }
+
+emptyPS = PingStats
+  { psMin = read "Infinity"
+  , psMax = 0
+  , psSum = 0
+  , psTx = 0
+  , psRx = 0
+  }
+
+incTx :: PingStats -> PingStats
+incTx ps = ps { psTx = 1 + psTx ps }
+
+adjPS :: Double -> PingStats -> PingStats
+adjPS ms ps@(PingStats mn mx su _ rx) =
+  ps { psMin = min mn ms
+     , psMax = max mx ms
+     , psSum = su + ms
+     , psRx = rx + 1
+     }
+
+cmdPing :: TVar (M.Map Bulb PingStats) -> Bulb -> IO ()
+cmdPing pingMap bulb = forkIO_ $ do
   let payload = B.pack [0..63]
+  atomically $ do
+    pm <- readTVar pingMap
+    let pm' = M.insert bulb emptyPS pm
+    writeTVar pingMap pm'
   forM_ [0..] $ \i -> do
     start <- timeCurrentP
+    atomically $ do
+      pm <- readTVar pingMap
+      let pm' = M.adjust incTx bulb pm
+      writeTVar pingMap pm'
     echoRequest bulb payload $ \_ -> do
       finish <- timeCurrentP
       let (Seconds s, NanoSeconds ns) = finish `timeDiffP` start
@@ -337,6 +374,10 @@ cmdPing bulb = forkIO_ $ do
         ( Shown bulb
         , left 4 ' ' $ '#' : show (i :: Integer)
         , left 8 ' ' $ fixed 3 ms )
+      atomically $ do
+        pm <- readTVar pingMap
+        let pm' = M.adjust (adjPS ms) bulb pm
+        writeTVar pingMap pm'
     threadDelay 1000000 -- 1 second
 
 cmd2func :: C.LiteCmd -> LiFrac -> TSem -> Bulb -> IO ()
@@ -458,14 +499,15 @@ main = do
   moreMain cmd lan args
 
 moreMain C.CmdPing lan args = do
-  s <- newTVarIO empty
-  discoverBulbs lan (discCb s $ filterCb (C.aTarget args) cmdPing)
+  s <- newTVarIO S.empty
+  pingMap <- newTVarIO M.empty
+  discoverBulbs lan $ discCb s $ filterCb (C.aTarget args) (cmdPing pingMap)
   forever (threadDelay 900000000) `E.catch` handleControlC
 
 moreMain cmd lan args = do
   let func = cmd2func cmd (C.aDuration args)
   hdrIfNeeded cmd
-  s <- newTVarIO empty
+  s <- newTVarIO S.empty
   sem <- atomically $ newTSem 0
   counter <- newTVarIO 0
   forM_ [1..10] $ \_ -> do
