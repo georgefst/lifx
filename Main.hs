@@ -263,28 +263,27 @@ colorFracTo16 c = HSBK
   }
 
 
-cmdColor :: ColorArg -> LiFrac -> TSem -> Bulb -> IO ()
+cmdColor :: MaybeColor -> LiFrac -> TSem -> Bulb -> IO ()
 cmdColor ca dur sem bulb = do
   let rq = myQuery sem bulb
   if isCompleteColor ca
-    then setColor' $ customColor ca -- FIXME: handle named colors
+    then setColor' ca
     else rq "getLight" (getLight bulb) $ \sl -> do
     let orig = justColor $ color16toFrac $ slColor sl
-        newC = orig `combineColors` customColor ca
+        newC = orig `combineColors` ca
     setColor' newC
   where
     ra = myAction sem bulb
     setColor' newC = ra "setColor" (setColor bulb (colorFracTo16 $ definitelyColor newC) $ f2ms dur) (atomically $ signalTSem sem)
 
-cmdWave :: Waveform -> C.PulseArg -> TSem -> Bulb -> IO ()
-cmdWave wf pa sem bulb = do
+cmdWave :: Waveform -> MaybeColor -> C.PulseArg -> TSem -> Bulb -> IO ()
+cmdWave wf ca pa sem bulb = do
   let rq = myQuery sem bulb
-      ca = C.paColor pa
   if isCompleteColor ca
-    then setColor' $ customColor ca -- FIXME: handle named colors
+    then setColor' ca
     else rq "getLight" (getLight bulb) $ \sl -> do
     let orig = justColor $ color16toFrac $ slColor sl
-        newC = orig `combineColors` customColor ca
+        newC = orig `combineColors` ca
     setColor' newC
   where
     ra = myAction sem bulb
@@ -329,8 +328,8 @@ cmd2func (C.CmdList w) _ = cmdList w
 cmd2func C.CmdOn dur = cmdPower True dur
 cmd2func C.CmdOff dur = cmdPower False dur
 cmd2func (C.CmdColor ca) dur = cmdColor ca dur
-cmd2func (C.CmdPulse pa) _ = cmdWave Pulse pa
-cmd2func (C.CmdBreathe pa) _ = cmdWave Sine pa
+cmd2func (C.CmdPulse ca pa) _ = cmdWave Pulse ca pa
+cmd2func (C.CmdBreathe ca pa) _ = cmdWave Sine ca pa
 cmd2func C.CmdPing _ = cmdPing
 cmd2func (C.CmdSetLabel lbl) _ = cmdSetLabel lbl
 

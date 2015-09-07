@@ -78,9 +78,9 @@ defNone = LiteArgs { aInterface = Nothing
 defList    = defNone { aCmd = CmdList 80, aHelp = Nothing }
 defOn      = defList { aCmd = CmdOn }
 defOff     = defList { aCmd = CmdOff }
-defColor   = defList { aCmd = CmdColor   (CNamed White) }
-defPulse   = defList { aCmd = CmdPulse   defPulseArg }
-defBreathe = defList { aCmd = CmdBreathe defPulseArg }
+defColor   = defList { aCmd = CmdColor   emptyColor }
+defPulse   = defList { aCmd = CmdPulse   emptyColor defPulseArg }
+defBreathe = defList { aCmd = CmdBreathe emptyColor defPulseArg }
 defPing    = defList { aCmd = CmdPing }
 defSetLabel =
   defList { aCmd = CmdSetLabel
@@ -106,7 +106,7 @@ labFlag = flagReq ["L", "new-label"] updLabel "STRING" "New label."
   where updLabel arg args =
           return $ args { aCmd = CmdSetLabel $ T.pack arg }
 
-cFlags = [hFlag, sFlag, bFlag, kFlag, nFlag]
+cFlags = [hFlag, sFlag, bFlag, kFlag]
 
 -- TODO: 0-100 instead of 0.0-1.0?
 
@@ -137,38 +137,11 @@ cflagUpdate :: (MaybeColor -> Maybe LiFrac -> MaybeColor)
                -> Either String LiteArgs
 cflagUpdate f arg args = do
   num <- readEither' arg
-  newCmd <- updColor (`f` Just num) (aCmd args)
+  let newCmd = updColor (`f` Just num) (aCmd args)
   return $ args { aCmd = newCmd }
 
-updColor :: (MaybeColor -> MaybeColor) -> LiteCmd -> Either String LiteCmd
-updColor f (CmdColor c) = Right $ CmdColor $ CCustom $ f $ customColor c
-updColor f (CmdPulse p) = Right $ CmdPulse $ updPulseColor f p
-updColor f (CmdBreathe p) = Right $ CmdPulse $ updPulseColor f p
-updColor _ _ = Left "Color arguments not applicable to this command"
-
-updPulseColor :: (MaybeColor -> MaybeColor) -> PulseArg -> PulseArg
-updPulseColor f p = p { paColor = CCustom $ f $ customColor $ paColor p }
-
-nFlag = flagReq ["n", "color"] updNamed "COLOR-NAME"
-        ("Specify color by name (" ++ nameColors ++ ")")
-
-nameColors = intercalate ", " $ map show colors
-  where colors = (enumFromTo minBound maxBound) :: [NamedColor]
-
-updNamed :: String -> LiteArgs -> Either String LiteArgs
-updNamed arg args = do
-  color <- readEither' $ capitalize arg
-  newCmd <- updColorNamed (CNamed color) (aCmd args)
-  return $ args { aCmd = newCmd }
-
-updColorNamed :: ColorArg -> LiteCmd -> Either String LiteCmd
-updColorNamed ca (CmdColor c) = Right $ CmdColor ca
-updColorNamed ca (CmdPulse p) = Right $ CmdPulse $ updPulseColorNamed ca p
-updColorNamed ca (CmdBreathe p) = Right $ CmdPulse $ updPulseColorNamed ca p
-updColorNamed _ _ = Left "Color arguments not applicable to this command"
-
-updPulseColorNamed :: ColorArg -> PulseArg -> PulseArg
-updPulseColorNamed ca p = p { paColor = ca }
+updColor :: (MaybeColor -> MaybeColor) -> LiteCmd -> LiteCmd
+updColor f lc = lc { lcColor = f $ lcColor lc }
 
 pFlags = cFlags ++ [pFlag, cFlag, tFlag, oFlag, eFlag]
 
@@ -204,13 +177,11 @@ updPulse :: Read a
             -> Either String LiteArgs
 updPulse f1 f2 arg args = do
   x <- readEither' (f1 arg)
-  newCmd <- updPulse2 (f2 x) (aCmd args)
+  let newCmd = updPulse2 (f2 x) (aCmd args)
   return $ args { aCmd = newCmd }
 
-updPulse2 :: (PulseArg -> PulseArg) -> LiteCmd -> Either String LiteCmd
-updPulse2 f (CmdPulse p) = Right $ CmdPulse (f p)
-updPulse2 f (CmdBreathe p) = Right $ CmdBreathe (f p)
-updPulse2 _ _ = Left "Pulse arguments not applicable to this command"
+updPulse2 :: (PulseArg -> PulseArg) -> LiteCmd -> LiteCmd
+updPulse2 f lc = lc { lcPulse = f $ lcPulse lc }
 
 durFlag = flagReq ["d", "duration"] durFlagUpdate "FLOAT"
           "Number of seconds that change should occur over"
