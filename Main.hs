@@ -270,7 +270,7 @@ cmdColor ca dur sem bulb = do
     then setColor' ca
     else rq "getLight" (getLight bulb) $ \sl -> do
     let orig = justColor $ color16toFrac $ slColor sl
-        newC = orig `combineColors` ca
+        newC = orig `combineColors2` ca
     setColor' newC
   where
     ra = myAction sem bulb
@@ -283,7 +283,7 @@ cmdWave wf ca pa sem bulb = do
     then setColor' ca
     else rq "getLight" (getLight bulb) $ \sl -> do
     let orig = justColor $ color16toFrac $ slColor sl
-        newC = orig `combineColors` ca
+        newC = orig `combineColors2` ca
     setColor' newC
   where
     ra = myAction sem bulb
@@ -297,6 +297,22 @@ cmdWave wf ca pa sem bulb = do
                             , swWaveform = wf
                             }
       in ra "setWaveform" (setWaveform bulb swf) (atomically $ signalTSem sem)
+
+-- as long as c2 is not empty, acts like combineColors
+-- if c2 is empty, find a color "opposite" c1
+combineColors2 :: MaybeColor -> MaybeColor -> MaybeColor
+combineColors2 c1 c2
+  | isEmptyColor c2 = c1 `combineColors` contrastingColor
+  | otherwise = c1 `combineColors` c2
+  where contrastingColor =
+          HSBK { hue = contrastingHue $ hue c1
+               , saturation = Just 1
+               , brightness = Just 1
+               , kelvin = Nothing
+               }
+        contrastingHue Nothing = Nothing
+        contrastingHue (Just h) =
+          Just $ fromIntegral $ (round h + 180) `rem` 360
 
 cmdSetLabel :: T.Text -> TSem -> Bulb -> IO ()
 cmdSetLabel txt sem bulb = do
