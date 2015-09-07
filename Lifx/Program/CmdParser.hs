@@ -52,6 +52,13 @@ defPulseArg = PulseArg
   , paPeak      = 0.5
   }
 
+downcase :: String -> String
+downcase = map toLower
+
+capitalize :: String -> String
+capitalize [] = []
+capitalize (x:xs) = toUpper x : downcase xs
+
 -- readEither has been in Text.Read since base 4.6,
 -- but we have our own copy here to work with base 4.5.
 -- BSD3, (c) The University of Glasgow 2001
@@ -92,9 +99,8 @@ helpFlag = flagHelpFormat $ \hf tf args -> args { aHelp = Just (hf, tf) }
 
 iFlag = flagReq ["I", "interface"] ifaceUpdate "STRING"
         "Name of network interface to use"
-
-ifaceUpdate :: String -> LiteArgs -> Either String LiteArgs
-ifaceUpdate arg args = Right $ args { aInterface = Just $ T.pack arg }
+  where
+    ifaceUpdate arg args = Right $ args { aInterface = Just $ T.pack arg }
 
 widthFlag = flagReq ["w", "width"] updWidth "INTEGER"
             "Width in columns for listing."
@@ -117,35 +123,18 @@ bFlag = mkCFlag "brightness" "0-100"
 kFlag = mkCFlag "kelvin"     "2500-9000"
         (\c x -> c { kelvin = Just x })
 
-upcase :: String -> String
-upcase = map toUpper
-
-downcase :: String -> String
-downcase = map toLower
-
-capitalize :: String -> String
-capitalize [] = []
-capitalize (x:xs) = toUpper x : downcase xs
-
 mkCFlag :: String -> String -> (MaybeColor -> LiFrac -> MaybeColor)
            -> Flag LiteArgs
 mkCFlag name range f =
-  flagReq [[head name], name] (cflagUpdate f) "FLOAT"
+  flagReq [[head name], name] cflagUpdate "FLOAT"
   ("Set light's " ++ whatIs name ++ " (" ++ range ++ ")")
   where whatIs "kelvin" = "color temperature"
         whatIs x = x
-
-cflagUpdate :: (MaybeColor -> LiFrac -> MaybeColor)
-               -> String
-               -> LiteArgs
-               -> Either String LiteArgs
-cflagUpdate f arg args = do
-  num <- readEither' arg
-  let newCmd = updColor (`f` num) (aCmd args)
-  return $ args { aCmd = newCmd }
-
-updColor :: (MaybeColor -> MaybeColor) -> LiteCmd -> LiteCmd
-updColor f lc = lc { lcColor = f $ lcColor lc }
+        updColor f' lc = lc { lcColor = f' $ lcColor lc }
+        cflagUpdate arg args = do
+          num <- readEither' arg
+          let newCmd = updColor (`f` num) (aCmd args)
+          return $ args { aCmd = newCmd }
 
 pFlags = cFlags ++ [pFlag, cFlag, tFlag, oFlag, eFlag]
 
@@ -181,19 +170,16 @@ updPulse :: Read a
             -> Either String LiteArgs
 updPulse f1 f2 arg args = do
   x <- readEither' (f1 arg)
-  let newCmd = updPulse2 (f2 x) (aCmd args)
+  let updPulse2 f lc = lc { lcPulse = f $ lcPulse lc }
+      newCmd = updPulse2 (f2 x) (aCmd args)
   return $ args { aCmd = newCmd }
-
-updPulse2 :: (PulseArg -> PulseArg) -> LiteCmd -> LiteCmd
-updPulse2 f lc = lc { lcPulse = f $ lcPulse lc }
 
 durFlag = flagReq ["d", "duration"] durFlagUpdate "FLOAT"
           "Number of seconds that change should occur over"
-
-durFlagUpdate :: String -> LiteArgs -> Either String LiteArgs
-durFlagUpdate arg args = do
-  x <- readEither' arg
-  return $ args { aDuration = x }
+  where
+    durFlagUpdate arg args = do
+      x <- readEither' arg
+      return $ args { aDuration = x }
 
 targFlags =
   [ flagReq ["l", "label"] updLabel "STRING" (helpLab "Label" "Left Lamp")
