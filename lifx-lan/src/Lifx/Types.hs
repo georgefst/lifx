@@ -21,6 +21,8 @@ import qualified Data.Text.Encoding.Error as TEE
 import Data.Word
 import Debug.Trace
 
+data Power = Off | On deriving (Show, Read, Eq, Ord)
+
 data HSBK a =
   HSBK
   { hue :: a

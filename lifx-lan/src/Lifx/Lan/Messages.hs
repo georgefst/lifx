@@ -50,6 +50,14 @@ ackCb cb hdr ack = cb
 needAck :: Header -> Header
 needAck hdr = hdr { hdrAckRequired = True }
 
+instance Binary Power where
+  put On  = putWord16le 0xffff
+  put Off = putWord16le 0
+
+  get = do
+    x <- getWord16le
+    return $ if x == 0 then Off else On
+
 ----------------------------------------------------------
 
 -- (GetService and StateService are in Protocol.hs)
@@ -476,7 +484,7 @@ setWaveform bulb@(Bulb st _ _ ) swf cb = do
   sendMsg bulb (needAck hdr) swf
 data SetPower =
   SetPower
-  { spLevel :: !Bool
+  { spLevel :: !Power
   , spDuration :: !Word32
   }
 
@@ -486,7 +494,7 @@ data StateLight =
   StateLight
   { slColor :: HSBK16
     -- Reserved16 (dim)
-  , slPower :: !Bool
+  , slPower :: !Power
   , slLabel :: Label
     -- Reserved64 (tags)
   } deriving Show
@@ -498,14 +506,14 @@ instance Binary StateLight where
   put x = do
     put $ slColor x
     putWord16le 0 -- Reserved16 (dim)
-    putBool16 $ slPower x
+    put $ slPower x
     put $ slLabel x
     putWord64le 0 -- Reserved64 (tags)
 
   get = do
     color <- get
     skip 2 -- Reserved16 (dim)
-    power <- getBool16
+    power <- get
     label <- get
     skip 8 -- Reserved64 (tags)
     return $ StateLight color power label
@@ -517,12 +525,12 @@ instance MessageType SetPower where
 
 instance Binary SetPower where
   put x = do
-    putBool16 $ spLevel x
+    put $ spLevel x
     putWord32le $ spDuration x
 
-  get = SetPower <$> getBool16 <*> getWord32le
+  get = SetPower <$> get <*> getWord32le
 
-setPower :: Bulb -> Bool -> Word32 -> IO () -> IO ()
+setPower :: Bulb -> Power -> Word32 -> IO () -> IO ()
 setPower bulb@(Bulb st _ _ ) pwr duration cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
   sendMsg bulb (needAck hdr) (SetPower pwr duration)

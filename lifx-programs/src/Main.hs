@@ -97,7 +97,7 @@ l5 = left 5 ' '
 prLight :: StateLight -> (T.Text, T.Text, T.Text) -- label, power, color
 prLight sl = (label, power, color)
   where label = toText $ slLabel sl
-        power = if slPower sl then "On" else "Off"
+        power = if slPower sl == On then "On" else "Off"
         color = fmt "{} {} {} {}K" (l3 h, l3 s, l3 b, l4 k)
         hsbk = slColor sl
         h = scale (hue hsbk) 360
@@ -236,7 +236,7 @@ cmdList w sem bulb = do
 f2ms :: LiFrac -> Word32
 f2ms x = round $ 1000 * x
 
-cmdPower :: Bool -> LiFrac -> TSem -> Bulb -> IO ()
+cmdPower :: Power -> LiFrac -> TSem -> Bulb -> IO ()
 cmdPower pwr dur sem bulb = do
   let ra = myAction sem bulb
   ra "setPower" (setPower bulb pwr $ f2ms dur) $ atomically $ signalTSem sem
@@ -382,8 +382,8 @@ cmdPing pingMap bulb = forkIO_ $ do
 
 cmd2func :: C.LiteCmd -> LiFrac -> TSem -> Bulb -> IO ()
 cmd2func (C.CmdList w) _ = cmdList w
-cmd2func C.CmdOn dur = cmdPower True dur
-cmd2func C.CmdOff dur = cmdPower False dur
+cmd2func C.CmdOn dur = cmdPower On dur
+cmd2func C.CmdOff dur = cmdPower Off dur
 cmd2func (C.CmdColor ca) dur = cmdColor ca dur
 cmd2func (C.CmdPulse ca pa) _ = cmdWave Pulse ca pa
 cmd2func (C.CmdBreathe ca pa) _ = cmdWave Sine ca pa
