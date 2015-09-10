@@ -12,12 +12,14 @@ import Data.List
 import Data.Maybe
 import System.IO
 
+cstat _ _ _ = Nothing
+
 main = do
   lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
   let lifxToken = B8.pack $ takeWhile (not . isSpace) lifxTokenStr
   mgr <- newManager tlsManagerSettings
   req <- parseUrl "https://api.lifx.com/v1beta1/lights/all"
-  let req' = applyBasicAuth lifxToken "" req
+  let req' = applyBasicAuth lifxToken "" $ req { checkStatus = cstat }
   resp <- httpLbs req' mgr
   let lbs = responseBody resp
       val = (fromJust $ decode lbs) :: Value
