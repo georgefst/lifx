@@ -15,7 +15,7 @@ import Data.List
 import Data.Maybe
 import Data.Monoid
 import qualified Data.Text as T
-import Data.Vector hiding (takeWhile)
+import Data.Vector hiding (takeWhile, mapM_)
 import Data.Version
 import System.IO
 
@@ -74,15 +74,18 @@ setColor mgr lifxToken c = do
   req <- parseUrl "https://api.lifx.com/v1.0-beta1/lights/states"
   let body = RequestBodyLBS $ encode $ statesFromColor c
       req' = (addHeaders lifxToken req) { requestBody = body }
-  resp <- httpLbs (jsonPut req') mgr
+  httpLbs (jsonPut req') mgr
+  return ()
+{-
   let lbs = responseBody resp
       val = (fromJust $ decode lbs) :: Value
       pretty = encPretty val
   L.putStr pretty
   putStrLn ""
+-}
 
-getColor :: Manager -> B.ByteString -> IO T.Text
-getColor mgr lifxToken = do
+getColor :: Manager -> B.ByteString -> T.Text -> IO ()
+getColor mgr lifxToken c = do
   req <- parseUrl "https://api.lifx.com/v1beta1/lights/id:d073d50225cd"
   let req' = addHeaders lifxToken req
   resp <- httpLbs req' mgr
@@ -90,15 +93,25 @@ getColor mgr lifxToken = do
       (Object val) = (fromJust $ decode lbs) :: Value
       (Just color) = H.lookup "color" val
       (Just brightness) = H.lookup "brightness" val
-      pretty = encPretty $ object [("color", color), ("brightness", brightness)]
+      pretty = encPretty $ object [
+        ("named-color", String c),
+        ("color", color),
+        ("brightness", brightness)
+        ]
   L.putStr pretty
   putStrLn ""
-  return "foo"
+
+doColor :: Manager -> B.ByteString -> T.Text -> IO ()
+doColor mgr lifxToken c = do
+  setColor mgr lifxToken c
+  threadDelay 2000000
+  getColor mgr lifxToken c
 
 main = do
   lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
   let lifxToken = B8.pack $ takeWhile (not . isSpace) lifxTokenStr
   mgr <- newManager tlsManagerSettings
+{-
   req <- parseUrl "https://api.lifx.com/v1beta1/lights/all"
   let req' = addHeaders lifxToken req
   resp <- httpLbs req' mgr
@@ -107,6 +120,7 @@ main = do
       pretty = encPretty val
   L.putStr pretty
   putStrLn ""
-  setColor mgr lifxToken "red"
-  threadDelay 2000000
-  getColor mgr lifxToken
+-}
+  mapM_ (doColor mgr lifxToken)
+    ["white", "red", "orange", "yellow", "cyan",
+     "green", "blue", "purple", "pink"]
