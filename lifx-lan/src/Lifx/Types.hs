@@ -80,31 +80,31 @@ newtype Label      = Label B.ByteString      deriving (Eq, Ord)
 
 class LifxId t where
   toByteString :: t -> B.ByteString
-  fromByteString :: B.ByteString -> t
+  fromByteString :: B.ByteString -> Either String t
   toText :: t -> Text
-  fromText :: Text -> t
+  fromText :: Text -> Either String t
 
-checkLength :: String -> Int -> B.ByteString -> B.ByteString
+checkLength :: String -> Int -> B.ByteString -> Either String B.ByteString
 checkLength tname len bs
-  | bslen == len = bs
+  | bslen == len = Right bs
   | otherwise =
-      error ("when constructing " ++ tname
-             ++ " from ByteString, expected "
-             ++ show len ++ " bytes, but got " ++ show bslen)
+      Left ("when constructing " ++ tname
+            ++ " from ByteString, expected "
+            ++ show len ++ " bytes, but got " ++ show bslen)
   where bslen = B.length bs
 
 idToText :: B.ByteString -> Text
 idToText bs = TE.decodeUtf8 $ B16.encode bs
 
-textToId :: String -> Int -> Text -> B.ByteString
+textToId :: String -> Int -> Text -> Either String B.ByteString
 textToId tname len txt
   | extralen /= 0 =
-      error ("Got crud " ++ show extra ++ " after " ++ tname)
-  | bslen == len = bs
+      Left ("Got crud " ++ show extra ++ " after " ++ tname)
+  | bslen == len = Right bs
   | otherwise =
-      error ("when constructing " ++ tname
-             ++ " from Text, expected "
-             ++ show len ++ " bytes, but got " ++ show bslen)
+      Left ("when constructing " ++ tname
+            ++ " from Text, expected "
+            ++ show len ++ " bytes, but got " ++ show bslen)
   where bslen = B.length bs
         (bs, extra) = B16.decode $ TE.encodeUtf8 txt
         extralen = B.length extra
@@ -126,9 +126,9 @@ deviceIdLen = 6
 
 instance LifxId DeviceId where
   toByteString (DeviceId bs) = bs
-  fromByteString bs = DeviceId $ checkLength "DeviceId" deviceIdLen bs
+  fromByteString bs = DeviceId <$> checkLength "DeviceId" deviceIdLen bs
   toText (DeviceId bs) = idToText bs
-  fromText txt = DeviceId $ textToId "DeviceId" deviceIdLen txt
+  fromText txt = DeviceId <$> textToId "DeviceId" deviceIdLen txt
 
 instance Show DeviceId where
   showsPrec _ (DeviceId bs) pre = implShow bs pre
@@ -145,9 +145,9 @@ groupIdLen = 16
 
 instance LifxId GroupId where
   toByteString (GroupId bs) = bs
-  fromByteString bs = GroupId $ checkLength "GroupId" groupIdLen bs
+  fromByteString bs = GroupId <$> checkLength "GroupId" groupIdLen bs
   toText (GroupId bs) = idToText bs
-  fromText txt = GroupId $ textToId "GroupId" groupIdLen txt
+  fromText txt = GroupId <$> textToId "GroupId" groupIdLen txt
 
 instance Show GroupId where
   showsPrec _ (GroupId bs) pre = implShow bs pre
@@ -164,9 +164,9 @@ locationIdLen = 16
 
 instance LifxId LocationId where
   toByteString (LocationId bs) = bs
-  fromByteString bs = LocationId $ checkLength "LocationId" locationIdLen bs
+  fromByteString bs = LocationId <$> checkLength "LocationId" locationIdLen bs
   toText (LocationId bs) = idToText bs
-  fromText txt = LocationId $ textToId "LocationId" locationIdLen txt
+  fromText txt = LocationId <$> textToId "LocationId" locationIdLen txt
 
 instance Show LocationId where
   showsPrec _ (LocationId bs) pre = implShow bs pre
@@ -181,18 +181,20 @@ instance Binary LocationId where
 
 labelLen = 32
 
+labelFromText txt = Label $ textToPaddedByteString labelLen txt
+
 instance LifxId Label where
   toByteString (Label bs) = bs
-  fromByteString bs = Label $ checkLength "Label" labelLen bs
+  fromByteString bs = Label <$> checkLength "Label" labelLen bs
   toText (Label bs) =
     TE.decodeUtf8With TEE.lenientDecode $ B.takeWhile (/= 0) bs
-  fromText txt = Label $ textToPaddedByteString labelLen txt
+  fromText txt = Right $ labelFromText txt
 
 instance Show Label where
   showsPrec p lbl pre = showsPrec p (toText lbl) pre
 
 instance Read Label where
-  readsPrec p s = map (first fromText) $ readsPrec p s
+  readsPrec p s = map (first labelFromText) $ readsPrec p s
 
 instance Binary Label where
   put (Label bs) = putByteString bs

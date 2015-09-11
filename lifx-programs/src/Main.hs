@@ -317,7 +317,7 @@ combineColors2 c1 c2
 
 cmdSetLabel :: T.Text -> TSem -> Bulb -> IO ()
 cmdSetLabel txt sem bulb = do
-  let lbl = fromText txt
+  let lbl = either error id $ fromText txt
       ra = myAction sem bulb
   ra "setLabel" (setLabel bulb lbl) (atomically $ signalTSem sem)
 
