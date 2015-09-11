@@ -77,6 +77,7 @@ newtype DeviceId   = DeviceId B.ByteString   deriving (Eq, Ord)
 newtype GroupId    = GroupId B.ByteString    deriving (Eq, Ord)
 newtype LocationId = LocationId B.ByteString deriving (Eq, Ord)
 newtype Label      = Label B.ByteString      deriving (Eq, Ord)
+newtype AuthToken  = AuthToken B.ByteString  deriving (Eq, Ord)
 
 class LifxId t where
   toByteString :: t -> B.ByteString
@@ -199,6 +200,25 @@ instance Read Label where
 instance Binary Label where
   put (Label bs) = putByteString bs
   get = Label <$> getByteString labelLen
+
+
+authTokenLen = 32
+
+instance LifxId AuthToken where
+  toByteString (AuthToken bs) = bs
+  fromByteString bs = AuthToken <$> checkLength "AuthToken" locationIdLen bs
+  toText (AuthToken bs) = idToText bs
+  fromText txt = AuthToken <$> textToId "AuthToken" locationIdLen txt
+
+instance Show AuthToken where
+  showsPrec _ (AuthToken bs) pre = implShow bs pre
+
+instance Read AuthToken where
+  readsPrec _ s = implRead AuthToken locationIdLen s
+
+instance Binary AuthToken where
+  put (AuthToken bs) = putByteString bs
+  get = AuthToken <$> getByteString locationIdLen
 
 
 data Selectors = SelAll
