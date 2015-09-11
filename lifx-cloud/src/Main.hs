@@ -24,15 +24,17 @@ cstat _ _ _ = Nothing
 
 encPretty = encodePretty' (defConfig { confCompare = cmp })
   where cmp = keyOrder ko <> compare
-        ko = [ "id", "name"
+        ko = [ "id", "name", "selector"
              , "uuid", "label", "connected", "power"
-             , "color", "brightness", "group", "location"
+             , "color"
+             , "hue", "saturation", "brightness", "kelvin"
+             , "group", "location"
              , "last_seen", "seconds_since_seen"
              , "product_name", "capabilities"
-             , "status"
+             , "duration", "status"
              , "updated_at", "created_at", "account", "devices"
-             , "hue", "saturation", "kelvin"
              , "has_color", "has_variable_color_temp"
+             , "operation", "results"
              ]
 
 userAgent = (hUserAgent, B.concat ua)
