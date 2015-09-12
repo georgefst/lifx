@@ -69,16 +69,16 @@ addHeaders lifxToken req =
     }
   where accept = (hAccept, appJson)
 
-{-
 addConType :: B.ByteString -> Request -> Request
 addConType ct req = req
   { requestHeaders = contentType : requestHeaders req }
   where contentType = (hContentType, ct)
 
-jsonPut :: Request -> Request
-jsonPut req = addConType appJson req'
-  where req' = req { method = methodPut }
+jsonPut :: Request -> L.ByteString -> Request
+jsonPut req body = addConType appJson req'
+  where req' = req { method = methodPut, requestBody = RequestBodyLBS body }
 
+{-
 statesFromColor :: T.Text -> Value
 statesFromColor c =
   object [ ("states",
@@ -119,15 +119,53 @@ doColor mgr lifxToken c = do
   getColor mgr lifxToken c
 -}
 
+listLights :: CloudConnection -> T.Text -> IO L.ByteString
+listLights cc sel = do
+  req <- endpoint cc ("lights/" <> sel)
+  resp <- httpLbs req (ccManager cc)
+  return $ responseBody resp
+
+setStates :: CloudConnection -> L.ByteString -> IO L.ByteString
+setStates cc states = do
+  req <- endpoint cc "lights/states"
+  let req' = jsonPut req states
+  resp <- httpLbs req' (ccManager cc)
+  return $ responseBody resp
+
+doEffect :: CloudConnection
+            -> T.Text
+            -> T.Text
+            -> [(B.ByteString, B.ByteString)]
+            -> IO L.ByteString
+doEffect cc sel eff params = do
+  req <- endpoint cc ("lights/" <> sel <> "/effects/" <> eff)
+  let req' = urlEncodedBody params req
+  resp <- httpLbs req' (ccManager cc)
+  return $ responseBody resp
+
+listScenes :: CloudConnection -> IO L.ByteString
+listScenes cc = do
+  req <- endpoint cc "scenes"
+  resp <- httpLbs req (ccManager cc)
+  return $ responseBody resp
+
+activateScene :: CloudConnection
+                 -> T.Text
+                 -> [(B.ByteString, B.ByteString)]
+                 -> IO L.ByteString
+activateScene cc scene params = do
+  req <- endpoint cc ("scenes/scene_id:" <> scene <> "/activate")
+  let req' = (urlEncodedBody params req) { method = methodPut }
+  resp <- httpLbs req' (ccManager cc)
+  return $ responseBody resp
+
 main = do
   lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
   let lifxToken = B8.pack $ takeWhile (not . isSpace) lifxTokenStr
   mgr <- newManager tlsManagerSettings
   let cc = CloudConnection mgr lifxToken "https://api.lifx.com/v1.0-beta1/"
-  req <- endpoint cc "lights/all"
-  resp <- httpLbs req mgr
-  let lbs = responseBody resp
-      val = (fromJust $ decode lbs) :: Value
+  lbs <- listLights cc "all"
+  let val = (fromJust $ decode lbs) :: Value
       pretty = encPretty val
   L.putStr pretty
   putStrLn ""
