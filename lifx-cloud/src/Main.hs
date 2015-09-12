@@ -24,9 +24,21 @@ import Paths_lifx_cloud
 pkg_name :: B.ByteString
 pkg_name = "lifx-cloud"
 
+data CloudConnection =
+  CloudConnection
+  { ccManager :: Manager
+  , ccToken :: B.ByteString
+  , ccRoot :: T.Text
+  }
+
+endpoint :: CloudConnection -> T.Text -> IO Request
+endpoint cc ep = do
+  let url = T.unpack $ ccRoot cc <> ep
+  req <- parseUrl url
+  return $ addHeaders (ccToken cc) req
+
 cstat _ _ _ = Nothing
 
-{-
 encPretty = encodePretty' (defConfig { confCompare = cmp })
   where cmp = keyOrder ko <> compare
         ko = [ "id", "name", "selector"
@@ -41,27 +53,30 @@ encPretty = encodePretty' (defConfig { confCompare = cmp })
              , "has_color", "has_variable_color_temp"
              , "operation", "results"
              ]
--}
 
 userAgent = (hUserAgent, B.concat ua)
   where ua = [ pkg_name, "/", B8.pack (showVersion version)
              , " (+https://community.lifx.com/t/what-are-you-building/26/39)"
              ]
 
+appJson = "application/json"
+
 addHeaders :: B.ByteString -> Request -> Request
 addHeaders lifxToken req =
   applyBasicAuth lifxToken "" $ req
     { checkStatus = cstat
-    , requestHeaders = userAgent : requestHeaders req
+    , requestHeaders = userAgent : accept : requestHeaders req
     }
+  where accept = (hAccept, appJson)
 
+{-
 addConType :: B.ByteString -> Request -> Request
 addConType ct req = req
   { requestHeaders = contentType : requestHeaders req }
   where contentType = (hContentType, ct)
 
 jsonPut :: Request -> Request
-jsonPut req = addConType "application/json" req'
+jsonPut req = addConType appJson req'
   where req' = req { method = methodPut }
 
 statesFromColor :: T.Text -> Value
@@ -78,13 +93,11 @@ setColor mgr lifxToken c = do
       req' = (addHeaders lifxToken req) { requestBody = body }
   httpLbs (jsonPut req') mgr
   return ()
-{-
   let lbs = responseBody resp
       val = (fromJust $ decode lbs) :: Value
       pretty = encPretty val
   L.putStr pretty
   putStrLn ""
--}
 
 getColor :: Manager -> B.ByteString -> T.Text -> IO ()
 getColor mgr lifxToken c = do
@@ -104,21 +117,22 @@ doColor mgr lifxToken c = do
   setColor mgr lifxToken c
   threadDelay 2000000
   getColor mgr lifxToken c
+-}
 
 main = do
   lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
   let lifxToken = B8.pack $ takeWhile (not . isSpace) lifxTokenStr
   mgr <- newManager tlsManagerSettings
-{-
-  req <- parseUrl "https://api.lifx.com/v1beta1/lights/all"
-  let req' = addHeaders lifxToken req
-  resp <- httpLbs req' mgr
+  let cc = CloudConnection mgr lifxToken "https://api.lifx.com/v1.0-beta1/"
+  req <- endpoint cc "lights/all"
+  resp <- httpLbs req mgr
   let lbs = responseBody resp
       val = (fromJust $ decode lbs) :: Value
       pretty = encPretty val
   L.putStr pretty
   putStrLn ""
--}
+{-
   mapM_ (doColor mgr lifxToken)
     ["white", "red", "orange", "yellow", "cyan",
      "green", "blue", "purple", "pink"]
+-}
