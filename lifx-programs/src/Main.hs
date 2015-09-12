@@ -105,8 +105,8 @@ prLight sl = (label, power, color)
         b = scale (brightness hsbk) 100
         k = kelvin hsbk
         m = maxBound :: Word16
-        asInt x = fromIntegral x :: Int
-        scale x mul = asInt x * asInt mul `div` asInt m
+        asDbl x = fromIntegral x :: Double
+        scale x mul = (round $ asDbl x * asDbl mul / asDbl m) :: Int
 
 prHostInfo :: StateHostInfo -> [T.Text] -- temp
 prHostInfo shi = [ fmt "{}°C" (Only $ l2 $ fixed 0 temp)
