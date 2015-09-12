@@ -3,7 +3,7 @@
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TSem
-import Control.Monad ( when, forever, forM_ )
+import Control.Monad ( when, forever, forM_, unless )
 import qualified Control.Exception as E (catch, throw, AsyncException(..))
 import Data.Bits
 import qualified Data.ByteString as B
@@ -113,7 +113,7 @@ prHostInfo shi = [ fmt "{}°C" (Only $ l2 $ fixed 0 temp)
                  , fmt "{}°C" (Only $ l4 $ fixed 1 temp)
                  , fmt "{}°C" (Only $ l5 $ fixed 2 temp)
                  ]
-  where temp = ((fromIntegral $ shiMcuTemperature shi) / 100) :: Double
+  where temp = (fromIntegral (shiMcuTemperature shi) / 100) :: Double
 
 prInfo :: StateInfo -> [T.Text] -- uptime
 prInfo si = fmtDur $ nsToDuration $ fromIntegral $ siUptime si
@@ -415,7 +415,7 @@ needQueries (TargSome s) = S.map needQuery s
 
 foo :: ((a -> IO ()) -> IO ())
        -> NeedQuery
-       -> (S.Set NeedQuery)
+       -> S.Set NeedQuery
        -> LiteIds
        -> (LiteIds -> a -> LiteIds)
        -> (LiteIds -> IO ())
@@ -448,9 +448,9 @@ discCb done realCb bulb = do
   dup <- atomically $ do
     s <- readTVar done
     let d = dev `member` s
-    when (not d) $ writeTVar done $ dev `insert` s
+    unless d $ writeTVar done $ dev `insert` s
     return d
-  when (not dup) $ realCb bulb
+  unless dup $ realCb bulb
 
 ifaceColumns =
   [ Column Lft Lft  4 10 50 ["Iface", "Interface"] (\n -> [T.pack $ NI.name n])
@@ -516,7 +516,7 @@ moreMain C.CmdPing lan args = do
   s <- newTVarIO S.empty
   pingMap <- newTVarIO M.empty
   discoverBulbs lan $ discCb s $ filterCb (C.aTarget args) (cmdPing pingMap)
-  forever (threadDelay 900000000) `E.catch` (handleControlC pingMap)
+  forever (threadDelay 900000000) `E.catch` handleControlC pingMap
 
 moreMain cmd lan args = do
   let func = cmd2func cmd (C.aDuration args)
