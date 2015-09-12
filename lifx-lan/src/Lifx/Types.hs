@@ -60,13 +60,13 @@ type HSBK16 = HSBK Word16
 type Color = HSBK LiFrac
 type MaybeColor = HSBK (Maybe LiFrac)
 
-white, red, orange, yellow, cyan, green, blue, purple, pink :: MaybeColor
+white, red, orange, yellow, green, cyan, blue, purple, pink :: MaybeColor
 white  = HSBK Nothing    (Just 0) Nothing Nothing
 red    = HSBK (Just 0)   (Just 1) Nothing Nothing
 orange = HSBK (Just 36)  (Just 1) Nothing Nothing
 yellow = HSBK (Just 60)  (Just 1) Nothing Nothing
-cyan   = HSBK (Just 180) (Just 1) Nothing Nothing
 green  = HSBK (Just 120) (Just 1) Nothing Nothing
+cyan   = HSBK (Just 180) (Just 1) Nothing Nothing
 blue   = HSBK (Just 250) (Just 1) Nothing Nothing
 purple = HSBK (Just 280) (Just 1) Nothing Nothing
 pink   = HSBK (Just 325) (Just 1) Nothing Nothing
