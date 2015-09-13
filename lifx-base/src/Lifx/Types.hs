@@ -10,7 +10,6 @@ import Data.Binary.Put
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Base16 as B16
--- import Data.Hashable
 import Data.List (find)
 import Data.Monoid (Monoid(..))
 import qualified Data.Set as S
@@ -39,20 +38,6 @@ instance Functor HSBK where
                   , kelvin = f $ kelvin x
                   }
 
-{-
-instance (Monoid a) => Monoid (HSBK a) where
-  mempty = HSBK { hue = mempty
-                , saturation = mempty
-                , brightness = mempty
-                , kelvin = mempty
-                }
-
-  mappend x y = HSBK { hue = hue x `mappend` hue y
-                     , saturation = saturation x `mappend` saturation y
-                     , brightness = brightness x `mappend` brightness y
-                     , kelvin = kelvin x `mappend` kelvin y
-                     }
--}
 
 type LiFrac = Double
 
@@ -242,15 +227,6 @@ data Selector = SelLabel Label
               | SelLocationId LocationId
                 deriving (Show, Read, Eq, Ord)
 
-{-
-data ColorArg = CNamed  NamedColor
-              | CCustom MaybeColor
-                deriving (Show, Eq, Ord)
-
-data NamedColor = White | Red | Orange | Yellow
-                | Cyan | Green | Blue | Purple | Pink
-                deriving (Show, Read, Ord, Eq, Enum, Bounded)
--}
 
 emptyColor = HSBK Nothing Nothing Nothing Nothing
 
@@ -260,11 +236,6 @@ isEmptyColor _ = False
 isCompleteColor (HSBK (Just _ ) (Just _ ) (Just _ ) (Just _ )) = True
 isCompleteColor _ = False
 
-{-
-customColor :: ColorArg -> MaybeColor
-customColor (CNamed _ ) = HSBK Nothing Nothing Nothing Nothing
-customColor (CCustom x) = x
--}
 
 data Product =
   Product
