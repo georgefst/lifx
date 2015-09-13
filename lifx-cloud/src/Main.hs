@@ -164,7 +164,12 @@ main = do
   let lifxToken = B8.pack $ takeWhile (not . isSpace) lifxTokenStr
   mgr <- newManager tlsManagerSettings
   let cc = CloudConnection mgr lifxToken "https://api.lifx.com/v1.0-beta1/"
-  lbs <- listLights cc "all"
+  lbs <- doEffect cc "id:d073d50225cd" "pulse"
+         [ ("color", "red")
+         , ("cycles", "5") ]
+  -- lbs <- listScenes cc
+  -- lbs <- activateScene cc "ffae25ad-f74d-458f-af37-73b958921b18" [("duration", "5")]
+  -- lbs <- listLights cc "all"
   let val = (fromJust $ decode lbs) :: Value
       pretty = encPretty val
   L.putStr pretty
