@@ -19,6 +19,8 @@ import Data.Vector hiding (takeWhile, mapM_, (++))
 import Data.Version
 import System.IO
 
+import Lifx.Types
+
 import Paths_lifx_cloud
 
 pkg_name :: B.ByteString
