@@ -217,19 +217,19 @@ authTokenLen = 32
 
 instance LifxId AuthToken where
   toByteString (AuthToken bs) = bs
-  fromByteString bs = AuthToken <$> checkLength "AuthToken" locationIdLen bs
+  fromByteString bs = AuthToken <$> checkLength "AuthToken" authTokenLen bs
   toText (AuthToken bs) = idToText bs
-  fromText txt = AuthToken <$> textToId "AuthToken" locationIdLen txt
+  fromText txt = AuthToken <$> textToId "AuthToken" authTokenLen txt
 
 instance Show AuthToken where
   showsPrec _ (AuthToken bs) pre = implShow bs pre
 
 instance Read AuthToken where
-  readsPrec _ s = implRead AuthToken locationIdLen s
+  readsPrec _ s = implRead AuthToken authTokenLen s
 
 instance Binary AuthToken where
   put (AuthToken bs) = putByteString bs
-  get = AuthToken <$> getByteString locationIdLen
+  get = AuthToken <$> getByteString authTokenLen
 
 
 data Selectors = SelAll

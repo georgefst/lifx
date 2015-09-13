@@ -15,6 +15,7 @@ import Data.List
 import Data.Maybe
 import Data.Monoid
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import Data.Vector hiding (takeWhile, mapM_, (++))
 import Data.Version
 import System.IO
@@ -29,7 +30,7 @@ pkg_name = "lifx-cloud"
 data CloudConnection =
   CloudConnection
   { ccManager :: Manager
-  , ccToken :: B.ByteString
+  , ccToken :: AuthToken
   , ccRoot :: T.Text
   }
 
@@ -37,7 +38,7 @@ endpoint :: CloudConnection -> T.Text -> IO Request
 endpoint cc ep = do
   let url = T.unpack $ ccRoot cc <> ep
   req <- parseUrl url
-  return $ addHeaders (ccToken cc) req
+  return $ addHeaders (TE.encodeUtf8 $ toText $ ccToken cc) req
 
 cstat _ _ _ = Nothing
 
@@ -161,9 +162,11 @@ activateScene cc scene params = do
   resp <- httpLbs req' (ccManager cc)
   return $ responseBody resp
 
+fromRight = either error id
+
 main = do
   lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
-  let lifxToken = B8.pack $ takeWhile (not . isSpace) lifxTokenStr
+  let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
   mgr <- newManager tlsManagerSettings
   let cc = CloudConnection mgr lifxToken "https://api.lifx.com/v1.0-beta1/"
   lbs <- doEffect cc "id:d073d50225cd" "pulse"
