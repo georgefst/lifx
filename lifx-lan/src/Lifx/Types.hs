@@ -39,7 +39,7 @@ instance Functor HSBK where
                   , kelvin = f $ kelvin x
                   }
 
-
+{-
 instance (Monoid a) => Monoid (HSBK a) where
   mempty = HSBK { hue = mempty
                 , saturation = mempty
@@ -52,6 +52,7 @@ instance (Monoid a) => Monoid (HSBK a) where
                      , brightness = brightness x `mappend` brightness y
                      , kelvin = kelvin x `mappend` kelvin y
                      }
+-}
 
 type LiFrac = Double
 type Interface = Text
