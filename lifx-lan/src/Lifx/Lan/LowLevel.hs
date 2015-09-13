@@ -32,7 +32,9 @@ module Lifx.Lan.LowLevel
       deviceId,
       defaultRetryParams,
       reliableAction,
-      reliableQuery
+      reliableQuery,
+      Interface,
+      HSBK16
       ) where
 
 import Lifx.Lan.Util

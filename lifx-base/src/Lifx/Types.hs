@@ -55,9 +55,7 @@ instance (Monoid a) => Monoid (HSBK a) where
 -}
 
 type LiFrac = Double
-type Interface = Text
 
-type HSBK16 = HSBK Word16
 type Color = HSBK LiFrac
 type MaybeColor = HSBK (Maybe LiFrac)
 

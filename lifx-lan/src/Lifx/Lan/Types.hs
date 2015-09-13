@@ -5,7 +5,9 @@ module Lifx.Lan.Types
       Header(..),
       dfltHdr,
       dfltHdrSize,
-      Waveform(..)) where
+      Waveform(..),
+      Interface,
+      HSBK16 ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Data.Binary
@@ -18,10 +20,14 @@ import Data.Binary.Get
     ( getWord64be, getWord64le, getWord32le, getWord16le, skip )
 import Data.Bits ( Bits(shiftL, testBit) )
 import qualified Data.ByteString.Lazy as L ( length )
+import qualified Data.Text as T
 import Data.Word ( Word8, Word16, Word32, Word64 )
 
 import Lifx.Types
 import Lifx.Lan.Util
+
+type Interface = T.Text
+type HSBK16 = HSBK Word16
 
 instance Binary HSBK16 where
   put x = do
