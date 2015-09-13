@@ -1,6 +1,22 @@
 {-# LANGUAGE OverloadedStrings, GeneralizedNewtypeDeriving #-}
 
-module Lifx.Types where
+module Lifx.Types
+       ( Power (..)
+       , HSBK (..)
+       , LiFrac , Color , MaybeColor
+       , white, red, orange, yellow, green, cyan, blue, purple, pink
+       , combineColors, emptyColor , isEmptyColor, isCompleteColor
+       , DeviceId, GroupId, LocationId, Label, AuthToken
+       , LifxId (..)
+       , Product (..)
+       , products, productFromId, productFromLongName, productFromShortName
+       , Targets (..)
+       , TargetMatch (..)
+       , LiteIds (..)
+       , mkLiteIds
+       , tmatch
+       , padByteString
+       ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Arrow (first)
