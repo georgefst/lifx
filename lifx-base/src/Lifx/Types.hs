@@ -26,13 +26,21 @@ import Data.Binary.Put
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Base16 as B16
+import qualified Data.ByteString.Lazy as L
+import Data.Hourglass
 import Data.List (find)
+import Data.Maybe
 import Data.Monoid (Monoid(..))
 import qualified Data.Set as S
 import Data.Text (Text(..))
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
+import Data.Text.Format
+import Data.Text.Format.Params
+import qualified Data.Text.Lazy as LT
+import qualified Data.UUID.Types as U
+import Data.Version
 import Data.Word
 import Debug.Trace
 
@@ -232,8 +240,10 @@ instance Binary AuthToken where
   get = AuthToken <$> getByteString authTokenLen
 
 
+{-
 data Selectors = SelAll
                | SelSome (S.Set Selector)
+-}
 
 data Selector = SelLabel Label
               | SelDevId DeviceId
@@ -330,6 +340,9 @@ matchLab t1 x = t1 `T.isPrefixOf` t2
 
 ---- Utilities: move elsewhere?
 
+fmt :: Params ps => Format -> ps -> T.Text
+fmt f p = LT.toStrict $ format f p
+
 -- pad (with 0) or truncate a bytestring to make it exactly the specified length
 padByteString :: Int -> B.ByteString -> B.ByteString
 padByteString goal bs = f (l `compare` goal)
@@ -358,3 +371,135 @@ textToByteString maxBytes txt = t2bs (maxBytes `div` 4)
 textToPaddedByteString :: Int -> T.Text -> B.ByteString
 textToPaddedByteString maxBytes txt =
   padByteString maxBytes $ textToByteString maxBytes txt
+
+----------------------------------------------------------------------
+
+class Connection t where
+  listLights :: t -> Selector -> IO [LightInfo]
+  setStates :: t -> [(Selector, StateTransition)] -> IO [StateTransitionResult]
+  effect :: t -> Selector -> Effect -> IO [Result]
+  listScenes :: t -> IO [Scene]
+  activateScene :: t -> SceneId -> FracSeconds -> IO [Result]
+  cycle :: t -> Selector -> [StateTransition] -> IO [Result]
+  terminate :: t -> IO ()
+
+selectAll        :: Selector
+selectLabel      :: Label      -> Selector
+selectDeviceId   :: DeviceId   -> Selector
+selectGroup      :: Label      -> Selector
+selectGroupId    :: GroupId    -> Selector
+selectLocation   :: Label      -> Selector
+selectLocationId :: LocationId -> Selector
+
+selectAll        = undefined
+selectLabel      = undefined
+selectDeviceId   = undefined
+selectGroup      = undefined
+selectGroupId    = undefined
+selectLocation   = undefined
+selectLocationId = undefined
+
+type FracSeconds = Double -- or Milli
+
+data LightInfo =
+  LightInfo
+  { lId :: DeviceId
+  , lUuid :: Maybe U.UUID
+  , lLabel :: Maybe Label
+  , lConnected :: Bool
+  , lPower :: Maybe Power
+  , lColor :: Maybe Color
+  , lGroupId :: Maybe GroupId
+  , lGroup :: Maybe Label
+  , lLocationId :: Maybe LocationId
+  , lLocation :: Maybe Label
+  , lLastSeen :: DateTime
+  , lSecondsSinceSeen :: FracSeconds
+  , lProductInfo :: ProductInfo
+  , lTemperature :: Maybe Double -- or Centi
+  , lUptime :: Maybe FracSeconds
+  } deriving (Eq, Ord, Show, Read)
+
+data ProductInfo =
+  ProductInfo
+  { pProductName :: Maybe T.Text
+  , pHasColor :: Maybe Bool
+  , pHasVariableColorTemp :: Maybe Bool
+  , pFirmwareVersion :: Maybe Version
+  , pHardwareVersion :: Maybe Int
+  } deriving (Eq, Ord, Show, Read)
+
+data StateTransition =
+  StateTransition
+  { sPower :: Maybe Power
+  , sColor :: MaybeColor
+  , sDuration :: FracSeconds
+  } deriving (Eq, Ord, Show, Read)
+
+data Result =
+  Result
+  { rId :: DeviceId
+  , rLabel :: Maybe Label
+  , rStatus :: Status
+  } deriving (Eq, Ord, Show, Read)
+
+data Status = Ok | TimedOut | Offline deriving (Eq, Ord, Show, Read)
+
+data StateTransitionResult =
+  StateTransitionResult
+  { tOperation :: (Selector, StateTransition)
+  , tResults :: [Result]
+  } deriving (Eq, Ord, Show, Read)
+
+data EffectType = Pulse | Breathe deriving (Eq, Ord, Show, Read)
+
+data Effect =
+  Effect
+  { eType :: EffectType
+  , eColor :: MaybeColor
+  , eFromColor :: MaybeColor
+  , ePeriod :: FracSeconds
+  , eCycles :: Double
+  , ePersist :: Bool
+  , ePowerOn :: Bool
+  , ePeak :: Double
+  } deriving (Eq, Ord, Show, Read)
+
+data Scene =
+  Scene
+  { scUpdatedAt :: DateTime
+  , scCreatedAt :: DateTime
+  , scDevices :: [SceneDevice]
+  , scAccount :: Maybe U.UUID
+  , scName :: T.Text
+  , scId :: SceneId
+  } deriving (Eq, Ord, Show, Read)
+
+data SceneDevice =
+  SceneDevice
+  { sdId :: DeviceId
+  , sdPower :: Maybe Power
+  , sdColor :: MaybeColor
+  } deriving (Eq, Ord, Show, Read)
+
+newtype SceneId = SceneId { unSceneId :: U.UUID }
+                deriving (Eq, Ord, Show, Read {- , Hashable -})
+
+sceneFromUuid :: Maybe U.UUID -> Either String SceneId
+sceneFromUuid u = maybe (Left "Can't parse UUID") (Right . SceneId) u
+
+instance LifxId SceneId where
+  toByteString (SceneId uu) = L.toStrict $ U.toByteString uu
+  fromByteString bs = sceneFromUuid $ U.fromByteString $ L.fromStrict bs
+  toText (SceneId uu) = U.toText uu
+  fromText bs = sceneFromUuid $ U.fromText bs
+
+textualize :: (T.Text, Maybe Double) -> Maybe T.Text
+textualize (_, Nothing) = Nothing
+textualize (key, Just value) = Just $ fmt "{}:{}" (key, value)
+
+colorToText :: MaybeColor -> T.Text
+colorToText (HSBK h s b k) =
+  let hsbk = zip ["hue", "saturation", "brightness", "kelvin"] [h, s, b, k]
+      components = mapMaybe textualize hsbk
+  in T.intercalate " " components
