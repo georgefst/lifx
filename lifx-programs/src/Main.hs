@@ -1,4 +1,4 @@
-{-# LANGUAGE NoMonomorphismRestriction, OverloadedStrings, StandaloneDeriving #-}
+{-# LANGUAGE NoMonomorphismRestriction, OverloadedStrings #-}
 
 import Control.Concurrent
 import Control.Concurrent.STM
@@ -32,7 +32,7 @@ import System.Exit
 import System.Hourglass
 
 import Lifx.Lan.LowLevel
-import Lifx.Types
+import Lifx.Types hiding (Pulse)
 import qualified Lifx.Program.CmdParser as C
 import Lifx.Program.Column
 
@@ -72,10 +72,10 @@ myCb bulb = do
                     print $ nsToDuration $ fromIntegral $ siUptime si
                     print $ nsToDuration $ fromIntegral $ siDowntime si
                     putStrLn "done!"
--}
 
 deriving instance Show Duration
 deriving instance Read TimeOfDay
+-}
 
 nsToDuration :: NanoSeconds -> (Int64, Duration)
 nsToDuration (NanoSeconds ns) =
