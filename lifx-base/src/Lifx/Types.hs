@@ -16,6 +16,23 @@ module Lifx.Types
        , mkLiteIds
        , tmatch
        , padByteString
+       , Selector
+       , selectAll, selectLabel, selectDeviceId
+       , selectGroup, selectGroupId, selectLocation, selectLocationId
+       , Connection (..)
+       , FracSeconds
+       , LightInfo (..)
+       , ProductInfo (..)
+       , StateTransition (..)
+       , Result (..)
+       , Status (..)
+       , StateTransitionResult (..)
+       , EffectType (..)
+       , Effect (..)
+       , Scene (..)
+       , SceneDevice (..)
+       , SceneId (..)
+       , colorToText
        ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
@@ -240,12 +257,8 @@ instance Binary AuthToken where
   get = AuthToken <$> getByteString authTokenLen
 
 
-{-
-data Selectors = SelAll
-               | SelSome (S.Set Selector)
--}
-
-data Selector = SelLabel Label
+data Selector = SelAll
+              | SelLabel Label
               | SelDevId DeviceId
               | SelGroup Label
               | SelGroupId GroupId
@@ -391,15 +404,15 @@ selectGroupId    :: GroupId    -> Selector
 selectLocation   :: Label      -> Selector
 selectLocationId :: LocationId -> Selector
 
-selectAll        = undefined
-selectLabel      = undefined
-selectDeviceId   = undefined
-selectGroup      = undefined
-selectGroupId    = undefined
-selectLocation   = undefined
-selectLocationId = undefined
+selectAll        = SelAll
+selectLabel      = SelLabel
+selectDeviceId   = SelDevId
+selectGroup      = SelGroup
+selectGroupId    = SelGroupId
+selectLocation   = SelLocation
+selectLocationId = SelLocationId
 
-type FracSeconds = Double -- or Milli
+type FracSeconds = Double
 
 data LightInfo =
   LightInfo
