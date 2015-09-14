@@ -443,7 +443,7 @@ parseIdStruct (Just (Object v)) = do
   n <- v .:? "name"
   return (perhaps i, perhaps n)
   where perhaps Nothing = Nothing
-        perhaps (Just x) = either Nothing Just $ fromText x
+        perhaps (Just x) = either (const Nothing) Just $ fromText x
 parseIdStruct _ = return (Nothing, Nothing)
 
 combineColorBrightness = undefined
