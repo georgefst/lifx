@@ -429,9 +429,68 @@ data LightInfo =
   , lLastSeen :: DateTime
   , lSecondsSinceSeen :: FracSeconds
   , lProductInfo :: ProductInfo
-  , lTemperature :: Maybe Double -- or Centi
+  , lTemperature :: Maybe Double
   , lUptime :: Maybe FracSeconds
   } deriving (Eq, Ord, Show, Read)
+
+parseIdStruct :: LifxId a => Maybe Value -> Parser (Maybe a, Maybe Label)
+parseIdStruct (Just (Object v)) = do
+  -- FIXME: FromJSON instances for these already?
+  i <- v .:? "id"
+  n <- v .:? "name"
+  return (perhaps i, perhaps n)
+  where perhaps Nothing = Nothing
+        perhaps (Just x) = either Nothing Just $ fromText x
+parseIdStruct _ = return (Nothing, Nothing)
+
+instance FromJSON LightInfo where
+  parseJSON (Object v) = do
+    myId               <- v .:  "id"
+    myUuid             <- v .:? "uuid"
+    myLabel            <- v .:? "label"
+    myConnected        <- v .:  "connected"
+    myPower            <- v .:? "power"
+    myColor            <- v .:? "color"
+    myBrightness       <- v .:? "brightness"
+    myGroupStruct      <- v .:? "group"
+    myLocationStruct   <- v .:? "location"
+    myLastSeenStr      <- v .:  "last_seen"
+    mySecondsSinceSeen <- v .:  "seconds_since_seen"
+    {-
+    myProductName      <- v .:? "product_name"
+    myCapabilities     <- v .:? "capabilities"
+    myFirmwareVersion  <- v .:? "firmware_version"
+    myHardwareVersion  <- v .:? "hardware_version"
+    -}
+    myTemperature      <- v .:? "temperature"
+    myUptime           <- v .:? "uptime"
+
+    (myGroupId, myGroup)       <- parseIdStruct myGroupStruct
+    (myLocationId, myLocation) <- parseIdStruct myLocationStruct
+
+    myLastSeen <- case timeParse ISO8601_DateAndTime myLastSeenStr of
+                   Just x -> return x
+                   Nothing -> fail "could not parse last_seen as ISO8601 date"
+
+    return $ LightInfo
+           { lId               = myId
+           , lUuid             = myUuid
+           , lLabel            = myLabel
+           , lConnected        = myConnected
+           , lPower            = myPower
+           , lColor            = combineColorBrightness myColor myBrightness
+           , lGroupId          = myGroupId
+           , lGroup            = myGroup
+           , lLocationId       = myLocationId
+           , lLocation         = myLocation
+           , lLastSeen         = myLastSeen
+           , lSecondsSinceSeen = mySecondsSinceSeen
+           , lProductInfo      = undefined
+           , lTemperature      = myTemperature
+           , lUptime           = myUptime
+           }
+
+  parseJSON _ = mzero
 
 data ProductInfo =
   ProductInfo
