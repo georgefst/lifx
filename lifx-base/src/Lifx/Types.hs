@@ -37,6 +37,9 @@ module Lifx.Types
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Arrow (first)
+import Control.Monad
+import Data.Aeson hiding (Result)
+import Data.Aeson.Types (Parser)
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
@@ -442,6 +445,8 @@ parseIdStruct (Just (Object v)) = do
   where perhaps Nothing = Nothing
         perhaps (Just x) = either Nothing Just $ fromText x
 parseIdStruct _ = return (Nothing, Nothing)
+
+combineColorBrightness = undefined
 
 instance FromJSON LightInfo where
   parseJSON (Object v) = do
