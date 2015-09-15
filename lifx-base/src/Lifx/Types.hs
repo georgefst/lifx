@@ -469,8 +469,20 @@ parseIdStruct (Just (Object v)) = do
   return (i, n)
 parseIdStruct _ = return (Nothing, Nothing)
 
-combineColorBrightness :: Maybe Value -> Maybe Double -> MaybeColor
-combineColorBrightness c b = undefined
+combineColorBrightness :: Maybe Value -> Maybe Double -> Parser MaybeColor
+combineColorBrightness c b = do
+  c' <- parseColor c
+  return $ addBrightness c' b
+  where addBrightness cc Nothing = cc
+        addBrightness cc br@(Just _ ) = cc { brightness = br }
+        parseColor Nothing = return emptyColor
+        parseColor (Just (Object v)) = do
+          myHue        <- v .:? "hue"
+          mySaturation <- v .:? "saturation"
+          myBrightness <- v .:? "brightness"
+          myKelvin     <- v .:? "kelvin"
+          return $ HSBK myHue mySaturation myBrightness myKelvin
+        parseColor _ = fail "expected a JSON object"
 
 instance FromJSON LightInfo where
   parseJSON (Object v) = do
@@ -479,7 +491,7 @@ instance FromJSON LightInfo where
     myLabel            <- v .:? "label"
     myConnected        <- v .:  "connected"
     myPower            <- v .:? "power"
-    myColor            <- v .:? "color"
+    myColorObj         <- v .:? "color"
     myBrightness       <- v .:? "brightness"
     myGroupStruct      <- v .:? "group"
     myLocationStruct   <- v .:? "location"
@@ -507,13 +519,15 @@ instance FromJSON LightInfo where
                               Just x -> return $ Just x
                               Nothing -> fail "could not parse uuid as a UUID"
 
+    myColor <- combineColorBrightness myColorObj myBrightness
+
     return $ LightInfo
            { lId               = myId
            , lUuid             = myUuid
            , lLabel            = myLabel
            , lConnected        = myConnected
            , lPower            = myPower
-           , lColor            = combineColorBrightness myColor myBrightness
+           , lColor            = myColor
            , lGroupId          = myGroupId
            , lGroup            = myGroup
            , lLocationId       = myLocationId
