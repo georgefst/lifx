@@ -66,6 +66,11 @@ import Debug.Trace
 
 data Power = Off | On deriving (Show, Read, Eq, Ord)
 
+instance FromJSON Power where
+  parseJSON (String "on") = return On
+  parseJSON (String "off") = return Off
+  parseJSON _ = fail "could not parse power"
+
 data HSBK a =
   HSBK
   { hue :: a
@@ -161,6 +166,12 @@ implRead c len s =
      then [(c bs, drop digs s)]
      else []
 
+implParseJson :: LifxId a => Value -> Parser a
+implParseJson (String txt) = chkSuccess (fromText txt)
+  where chkSuccess (Right x) = return x
+        chkSuccess (Left x) = fail x
+implParseJson _ = fail "expected a JSON string"
+
 
 deviceIdLen = 6
 
@@ -179,6 +190,9 @@ instance Read DeviceId where
 instance Binary DeviceId where
   put (DeviceId bs) = putByteString bs
   get = DeviceId <$> getByteString deviceIdLen
+
+instance FromJSON DeviceId where
+  parseJSON = implParseJson
 
 
 groupIdLen = 16
@@ -199,6 +213,9 @@ instance Binary GroupId where
   put (GroupId bs) = putByteString bs
   get = GroupId <$> getByteString groupIdLen
 
+instance FromJSON GroupId where
+  parseJSON = implParseJson
+
 
 locationIdLen = 16
 
@@ -217,6 +234,9 @@ instance Read LocationId where
 instance Binary LocationId where
   put (LocationId bs) = putByteString bs
   get = LocationId <$> getByteString locationIdLen
+
+instance FromJSON LocationId where
+  parseJSON = implParseJson
 
 
 labelLen = 32
@@ -240,6 +260,9 @@ instance Binary Label where
   put (Label bs) = putByteString bs
   get = Label <$> getByteString labelLen
 
+instance FromJSON Label where
+  parseJSON = implParseJson
+
 
 authTokenLen = 32
 
@@ -258,6 +281,9 @@ instance Read AuthToken where
 instance Binary AuthToken where
   put (AuthToken bs) = putByteString bs
   get = AuthToken <$> getByteString authTokenLen
+
+instance FromJSON AuthToken where
+  parseJSON = implParseJson
 
 
 data Selector = SelAll
@@ -436,14 +462,11 @@ data LightInfo =
   , lUptime :: Maybe FracSeconds
   } deriving (Eq, Ord, Show, Read)
 
-parseIdStruct :: LifxId a => Maybe Value -> Parser (Maybe a, Maybe Label)
+parseIdStruct :: FromJSON a => Maybe Value -> Parser (Maybe a, Maybe Label)
 parseIdStruct (Just (Object v)) = do
-  -- FIXME: FromJSON instances for these already?
   i <- v .:? "id"
   n <- v .:? "name"
-  return (perhaps i, perhaps n)
-  where perhaps Nothing = Nothing
-        perhaps (Just x) = either (const Nothing) Just $ fromText x
+  return (i, n)
 parseIdStruct _ = return (Nothing, Nothing)
 
 combineColorBrightness = undefined
@@ -451,7 +474,7 @@ combineColorBrightness = undefined
 instance FromJSON LightInfo where
   parseJSON (Object v) = do
     myId               <- v .:  "id"
-    myUuid             <- v .:? "uuid"
+    myUuidTxt          <- v .:? "uuid"
     myLabel            <- v .:? "label"
     myConnected        <- v .:  "connected"
     myPower            <- v .:? "power"
@@ -477,6 +500,12 @@ instance FromJSON LightInfo where
                    Just x -> return x
                    Nothing -> fail "could not parse last_seen as ISO8601 date"
 
+    myUuid <- case myUuidTxt of
+               Nothing -> return Nothing
+               Just (txt) -> case U.fromText txt of
+                              Just x -> return $ Just x
+                              Nothing -> fail "could not parse uuid as a UUID"
+
     return $ LightInfo
            { lId               = myId
            , lUuid             = myUuid
@@ -495,7 +524,7 @@ instance FromJSON LightInfo where
            , lUptime           = myUptime
            }
 
-  parseJSON _ = mzero
+  parseJSON _ = fail "expected a JSON object"
 
 data ProductInfo =
   ProductInfo
