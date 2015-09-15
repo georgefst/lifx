@@ -662,13 +662,19 @@ data Effect =
 
 data Scene =
   Scene
-  { scUpdatedAt :: DateTime
-  , scCreatedAt :: DateTime
-  , scDevices :: [SceneDevice]
-  , scAccount :: Maybe U.UUID
+  { scId :: SceneId
   , scName :: T.Text
-  , scId :: SceneId
+  , scUpdatedAt :: DateTime
+  , scCreatedAt :: DateTime
+  , scAccount :: Maybe U.UUID
+  , scDevices :: [SceneDevice]
   } deriving (Eq, Ord, Show, Read)
+
+{-
+instance FromJSON Scene where
+  parseJSON (Object v) = do
+    myUpAt <- v .: "updated_at"
+-}
 
 data SceneDevice =
   SceneDevice
@@ -676,6 +682,14 @@ data SceneDevice =
   , sdPower :: Maybe Power
   , sdColor :: MaybeColor
   } deriving (Eq, Ord, Show, Read)
+
+instance FromJSON SceneDevice where
+  parseJSON (Object v) = do
+    myId <- v .: "serial_number"
+    myPower <- v .:? "power"
+    myColor <- parseColorBrightness v
+    return $ SceneDevice myId myPower myColor
+  parseJSON _ = fail "expected a JSON object for device in scene"
 
 newtype SceneId = SceneId { unSceneId :: U.UUID }
                 deriving (Eq, Ord, Show, Read {- , Hashable -})
