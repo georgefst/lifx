@@ -509,6 +509,12 @@ combineColorBrightness c b = do
           return $ HSBK myHue mySaturation myBrightness myKelvin
         parseColor _ = fail "expected a JSON object for color"
 
+parseColorBrightness :: Object -> Parser MaybeColor
+parseColorBrightness v = do
+    myColorObj         <- v .:? "color"
+    myBrightness       <- v .:? "brightness"
+    combineColorBrightness myColorObj myBrightness
+
 parseCaps :: Value -> Parser [Capabilities]
 parseCaps (Object v) = do
   hasColor  <- v .: "has_color"
@@ -552,8 +558,6 @@ instance FromJSON LightInfo where
     myLabel            <- v .:? "label"
     myConnected        <- v .:  "connected"
     myPower            <- v .:? "power"
-    myColorObj         <- v .:? "color"
-    myBrightness       <- v .:? "brightness"
     myGroupStruct      <- v .:? "group"
     myLocationStruct   <- v .:? "location"
     myLastSeenStr      <- v .:  "last_seen"
@@ -582,7 +586,7 @@ instance FromJSON LightInfo where
                             Just x -> return $ Just x
                             Nothing -> fail "could not parse uuid as a UUID"
 
-    myColor <- combineColorBrightness myColorObj myBrightness
+    myColor <- parseColorBrightness v
 
     myFirmwareVersion <- case myFirmwareVersStr of
                           Nothing -> return Nothing
