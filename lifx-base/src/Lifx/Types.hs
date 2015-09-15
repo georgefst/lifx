@@ -507,7 +507,7 @@ combineColorBrightness c b = do
           myBrightness <- v .:? "brightness"
           myKelvin     <- v .:? "kelvin"
           return $ HSBK myHue mySaturation myBrightness myKelvin
-        parseColor _ = fail "expected a JSON object"
+        parseColor _ = fail "expected a JSON object for color"
 
 parseCaps :: Value -> Parser [Capabilities]
 parseCaps (Object v) = do
@@ -516,7 +516,7 @@ parseCaps (Object v) = do
   let hc   = if hasColor  then [HasColor]             else []
       hvct = if hasVCTemp then [HasVariableColorTemp] else []
   return $ hc ++ hvct
-parseCaps _ = fail "expected a JSON object"
+parseCaps _ = fail "expected a JSON object for capabilities"
 
 combineProd :: T.Text -> Maybe [Capabilities] -> Product
 combineProd pname (Just caps) =
@@ -558,7 +558,7 @@ instance FromJSON LightInfo where
 
     myLastSeen <- case timeParse ISO8601_DateAndTime myLastSeenStr of
                    Just x -> return x
-                   Nothing -> fail "could not parse last_seen as ISO8601 date"
+                   Nothing -> fail $ "could not parse last_seen '" ++ myLastSeenStr ++ "' as ISO8601 date"
 
     myUuid <- case myUuidTxt of
                Nothing -> return Nothing
@@ -602,7 +602,7 @@ instance FromJSON LightInfo where
            , lHardwareVersion  = myHardwareVersion
            }
 
-  parseJSON _ = fail "expected a JSON object"
+  parseJSON _ = fail "expected a JSON object for light"
 
 data StateTransition =
   StateTransition

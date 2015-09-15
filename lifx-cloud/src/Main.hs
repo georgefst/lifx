@@ -20,7 +20,7 @@ import Data.Vector hiding (takeWhile, mapM_, (++))
 import Data.Version
 import System.IO
 
-import Lifx.Types
+import Lifx.Types hiding (listLights)
 
 import Paths_lifx_cloud
 
@@ -42,6 +42,7 @@ endpoint cc ep = do
 
 cstat _ _ _ = Nothing
 
+{-
 encPretty = encodePretty' (defConfig { confCompare = cmp })
   where cmp = keyOrder ko <> compare
         ko = [ "id", "name", "selector"
@@ -56,6 +57,7 @@ encPretty = encodePretty' (defConfig { confCompare = cmp })
              , "has_color", "has_variable_color_temp"
              , "operation", "results"
              ]
+-}
 
 userAgent = (hUserAgent, B.concat ua)
   where ua = [ pkg_name, "/", B8.pack (showVersion version)
@@ -169,16 +171,18 @@ main = do
   let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
   mgr <- newManager tlsManagerSettings
   let cc = CloudConnection mgr lifxToken "https://api.lifx.com/v1.0-beta1/"
-  lbs <- doEffect cc "id:d073d50225cd" "pulse"
-         [ ("color", "red")
-         , ("cycles", "5") ]
+  -- lbs <- doEffect cc "id:d073d50225cd" "pulse" [ ("color", "red") , ("cycles", "5") ]
   -- lbs <- listScenes cc
   -- lbs <- activateScene cc "ffae25ad-f74d-458f-af37-73b958921b18" [("duration", "5")]
-  -- lbs <- listLights cc "all"
+  lbs <- listLights cc "all"
+  let lites = (eitherDecode lbs) :: Either String [LightInfo]
+  print lites
+  {-
   let val = (fromJust $ decode lbs) :: Value
       pretty = encPretty val
   L.putStr pretty
   putStrLn ""
+  -}
 {-
   mapM_ (doColor mgr lifxToken)
     ["white", "red", "orange", "yellow", "cyan",
