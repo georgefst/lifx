@@ -49,6 +49,7 @@ import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as L
 import Data.Hourglass
+import Data.Int
 import Data.List (find)
 import Data.Maybe
 import Data.Monoid (Monoid(..))
@@ -554,7 +555,7 @@ instance TimeFormat MyISO8601_DateAndTime where
 instance FromJSON LightInfo where
   parseJSON (Object v) = do
     myId               <- v .:  "id"
-    myUuidTxt          <- v .:? "uuid"
+    myUuid             <- parseUuid (Just v)
     myLabel            <- v .:? "label"
     myConnected        <- v .:  "connected"
     myPower            <- v .:? "power"
@@ -562,7 +563,7 @@ instance FromJSON LightInfo where
     myLocationStruct   <- v .:? "location"
     myLastSeenStr      <- v .:  "last_seen"
     mySecondsSinceSeen <- v .:  "seconds_since_seen"
-
+    myColor            <- parseColorBrightness v
     myProductName      <- v .:? "product_name"
     myCapabilities     <- v .:? "capabilities"
     myFirmwareVersStr  <- v .:? "firmware_version"
@@ -579,14 +580,6 @@ instance FromJSON LightInfo where
                    Left (tfe , msg) -> fail
                                      $ msg ++ " when parsing " ++ show tfe
                                      ++ " in '" ++ myLastSeenStr ++ "'"
-
-    myUuid <- case myUuidTxt of
-               Nothing -> return Nothing
-               Just txt -> case U.fromText txt of
-                            Just x -> return $ Just x
-                            Nothing -> fail "could not parse uuid as a UUID"
-
-    myColor <- parseColorBrightness v
 
     myFirmwareVersion <- case myFirmwareVersStr of
                           Nothing -> return Nothing
@@ -670,22 +663,27 @@ data Scene =
   , scDevices :: [SceneDevice]
   } deriving (Eq, Ord, Show, Read)
 
-{-
-parseAccount :: Maybe Object -> Parser (Maybe UUID)
-parseAccount Nothing = return Nothing
-parseAccount (Just v) = do
-  myUuidTxt <- v .: "uuid"
-  my
--}
+parseUuid :: Maybe Object -> Parser (Maybe U.UUID)
+parseUuid Nothing = return Nothing
+parseUuid (Just v) = do
+  myUuidTxt <- v .:? "uuid"
+  case myUuidTxt of
+   Nothing -> return Nothing
+   Just txt -> case U.fromText txt of
+                Just x -> return $ Just x
+                Nothing -> fail "could not parse uuid as a UUID"
+
+ununix :: Int64 -> DateTime
+ununix s = timeFromElapsed $ Elapsed $ Seconds s
 
 instance FromJSON Scene where
   parseJSON (Object v) = do
-    myId <- v .: "uuid"
-    myName <- v .: "name"
-    myUpAt <- v .: "updated_at"
-    myCrAt <- v .: "created_at"
-    myAccount <- v .:? "account" >>= parseAccount
-    myDevices <- v .: "devices"
+    myId      <- v .:  "uuid"
+    myName    <- v .:  "name"
+    myUpAt    <- v .:  "updated_at"
+    myCrAt    <- v .:  "created_at"
+    myAccount <- v .:? "account" >>= parseUuid
+    myDevices <- v .:  "devices"
     return $ Scene myId myName
       (ununix myUpAt) (ununix myCrAt)
       myAccount myDevices
