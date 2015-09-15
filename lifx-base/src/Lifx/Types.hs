@@ -323,9 +323,9 @@ data Product =
 
 products :: [Product]
 products =
-  [ Product 1 1 "LIFX Original 1000" "O1000" [HasColor, HasVariableColorTemp]
-  , Product 1 2 "LIFX Color 650"     "C650"  [HasColor, HasVariableColorTemp]
-  , Product 1 3 "LIFX White 800"     "W800"  [HasVariableColorTemp]
+  [ Product 1 1 "Original 1000" "O1000" [HasColor, HasVariableColorTemp]
+  , Product 1 2 "Color 650"     "C650"  [HasColor, HasVariableColorTemp]
+  , Product 1 3 "White 800"     "W800"  [HasVariableColorTemp]
   ]
 
 productFromId :: Word32 -> Word32 -> Maybe Product
