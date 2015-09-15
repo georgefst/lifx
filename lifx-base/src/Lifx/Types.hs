@@ -671,10 +671,25 @@ data Scene =
   } deriving (Eq, Ord, Show, Read)
 
 {-
+parseAccount :: Maybe Object -> Parser (Maybe UUID)
+parseAccount Nothing = return Nothing
+parseAccount (Just v) = do
+  myUuidTxt <- v .: "uuid"
+  my
+-}
+
 instance FromJSON Scene where
   parseJSON (Object v) = do
+    myId <- v .: "uuid"
+    myName <- v .: "name"
     myUpAt <- v .: "updated_at"
--}
+    myCrAt <- v .: "created_at"
+    myAccount <- v .:? "account" >>= parseAccount
+    myDevices <- v .: "devices"
+    return $ Scene myId myName
+      (ununix myUpAt) (ununix myCrAt)
+      myAccount myDevices
+  parseJSON _ = fail "expected a JSON object for scene"
 
 data SceneDevice =
   SceneDevice
