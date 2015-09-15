@@ -450,7 +450,7 @@ data LightInfo =
   , lLabel :: Maybe Label
   , lConnected :: Bool
   , lPower :: Maybe Power
-  , lColor :: Maybe Color
+  , lColor :: MaybeColor
   , lGroupId :: Maybe GroupId
   , lGroup :: Maybe Label
   , lLocationId :: Maybe LocationId
@@ -469,7 +469,8 @@ parseIdStruct (Just (Object v)) = do
   return (i, n)
 parseIdStruct _ = return (Nothing, Nothing)
 
-combineColorBrightness = undefined
+combineColorBrightness :: Maybe Value -> Maybe Double -> MaybeColor
+combineColorBrightness c b = undefined
 
 instance FromJSON LightInfo where
   parseJSON (Object v) = do
