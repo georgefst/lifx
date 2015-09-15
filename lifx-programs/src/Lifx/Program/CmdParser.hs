@@ -9,9 +9,6 @@ import System.Console.CmdArgs.Explicit
 import System.Console.CmdArgs.Text (TextFormat(..), showText, defaultWrap)
 import qualified System.Console.CmdArgs.Text as TXT (Text(..))
 import System.Exit
-import Text.ParserCombinators.ReadP (skipSpaces)
-import Text.ParserCombinators.ReadPrec (readPrec_to_S)
-import Text.Read
 
 import Lifx.Types
 
@@ -58,21 +55,6 @@ downcase = map toLower
 capitalize :: String -> String
 capitalize [] = []
 capitalize (x:xs) = toUpper x : downcase xs
-
--- readEither has been in Text.Read since base 4.6,
--- but we have our own copy here to work with base 4.5.
--- BSD3, (c) The University of Glasgow 2001
-readEither' :: Read a => String -> Either String a
-readEither' s =
-  case [ x | (x,"") <- readPrec_to_S read' minPrec s ] of
-    [x] -> Right x
-    []  -> Left "Prelude.read: no parse"
-    _   -> Left "Prelude.read: ambiguous parse"
- where
-  read' =
-    do x <- readPrec
-       lift skipSpaces
-       return x
 
 defNone :: LiteArgs
 defNone = LiteArgs { aInterface = Nothing

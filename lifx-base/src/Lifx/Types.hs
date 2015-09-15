@@ -16,13 +16,14 @@ module Lifx.Types
        , mkLiteIds
        , tmatch
        , padByteString
+       , readEither'
        , Selector
        , selectAll, selectLabel, selectDeviceId
        , selectGroup, selectGroupId, selectLocation, selectLocationId
        , Connection (..)
        , FracSeconds
        , LightInfo (..)
-       , ProductInfo (..)
+       , Capabilities (..)
        , StateTransition (..)
        , Result (..)
        , Status (..)
@@ -63,6 +64,9 @@ import qualified Data.UUID.Types as U
 import Data.Version
 import Data.Word
 import Debug.Trace
+import Text.ParserCombinators.ReadP (skipSpaces)
+import Text.ParserCombinators.ReadPrec (readPrec_to_S)
+import Text.Read hiding (String)
 
 data Power = Off | On deriving (Show, Read, Eq, Ord)
 
@@ -305,32 +309,36 @@ isCompleteColor (HSBK (Just _ ) (Just _ ) (Just _ ) (Just _ )) = True
 isCompleteColor _ = False
 
 
+data Capabilities = HasColor | HasVariableColorTemp
+                  deriving (Show, Read, Eq, Ord)
+
 data Product =
   Product
-  { pVendor :: !Word32
-  , pProduct :: !Word32
-  , pLongName :: Text
-  , pShortName :: Text
-  } deriving (Show, Eq, Ord)
+  { pVendor       :: !Word32
+  , pProduct      :: !Word32
+  , pLongName     :: Text
+  , pShortName    :: Text
+  , pCapabilities :: [Capabilities]
+  } deriving (Show, Read, Eq, Ord)
 
 products :: [Product]
 products =
-  [ Product 1 1 "LIFX Original 1000" "O1000"
-  , Product 1 2 "LIFX Color 650"     "C650"
-  , Product 1 3 "LIFX White 800"     "W800"
+  [ Product 1 1 "LIFX Original 1000" "O1000" [HasColor, HasVariableColorTemp]
+  , Product 1 2 "LIFX Color 650"     "C650"  [HasColor, HasVariableColorTemp]
+  , Product 1 3 "LIFX White 800"     "W800"  [HasVariableColorTemp]
   ]
 
 productFromId :: Word32 -> Word32 -> Maybe Product
 productFromId v p = find f products
-  where f (Product v' p' _ _) = v == v' && p == p'
+  where f (Product v' p' _ _ _) = v == v' && p == p'
 
 productFromLongName :: Text -> Maybe Product
 productFromLongName ln = find f products
-  where f (Product _ _ ln' _) = ln == ln'
+  where f (Product _ _ ln' _ _) = ln == ln'
 
 productFromShortName :: Text -> Maybe Product
 productFromShortName sn = find f products
-  where f (Product _ _ _ sn') = sn == sn'
+  where f (Product _ _ _ sn' _) = sn == sn'
 
 data Targets = TargAll | TargSome (S.Set TargetMatch)
                deriving (Show, Read, Eq, Ord)
@@ -381,6 +389,21 @@ matchLab t1 x = t1 `T.isPrefixOf` t2
   where t2 = toText x
 
 ---- Utilities: move elsewhere?
+
+-- readEither has been in Text.Read since base 4.6,
+-- but we have our own copy here to work with base 4.5.
+-- BSD3, (c) The University of Glasgow 2001
+readEither' :: Read a => String -> Either String a
+readEither' s =
+  case [ x | (x,"") <- readPrec_to_S read' minPrec s ] of
+    [x] -> Right x
+    []  -> Left "Prelude.read: no parse"
+    _   -> Left "Prelude.read: ambiguous parse"
+ where
+  read' =
+    do x <- readPrec
+       lift skipSpaces
+       return x
 
 fmt :: Params ps => Format -> ps -> T.Text
 fmt f p = LT.toStrict $ format f p
@@ -457,9 +480,11 @@ data LightInfo =
   , lLocation :: Maybe Label
   , lLastSeen :: DateTime
   , lSecondsSinceSeen :: FracSeconds
-  , lProductInfo :: ProductInfo
+  , lProduct :: Maybe Product
   , lTemperature :: Maybe Double
   , lUptime :: Maybe FracSeconds
+  , lFirmwareVersion :: Maybe Version
+  , lHardwareVersion :: Maybe Int
   } deriving (Eq, Ord, Show, Read)
 
 parseIdStruct :: FromJSON a => Maybe Value -> Parser (Maybe a, Maybe Label)
@@ -484,6 +509,28 @@ combineColorBrightness c b = do
           return $ HSBK myHue mySaturation myBrightness myKelvin
         parseColor _ = fail "expected a JSON object"
 
+parseCaps :: Value -> Parser [Capabilities]
+parseCaps (Object v) = do
+  hasColor  <- v .: "has_color"
+  hasVCTemp <- v .: "has_variable_color_temp"
+  let hc   = if hasColor  then [HasColor]             else []
+      hvct = if hasVCTemp then [HasVariableColorTemp] else []
+  return $ hc ++ hvct
+parseCaps _ = fail "expected a JSON object"
+
+combineProd :: T.Text -> Maybe [Capabilities] -> Product
+combineProd pname (Just caps) =
+  (combineProd pname Nothing) { pCapabilities = caps }
+combineProd pname Nothing = mkProd $ productFromLongName pname
+  where mkProd (Just p) = p
+        mkProd Nothing = Product
+                         { pVendor = 0
+                         , pProduct = 0
+                         , pLongName = pname
+                         , pShortName = pname
+                         , pCapabilities = []
+                         }
+
 instance FromJSON LightInfo where
   parseJSON (Object v) = do
     myId               <- v .:  "id"
@@ -497,12 +544,12 @@ instance FromJSON LightInfo where
     myLocationStruct   <- v .:? "location"
     myLastSeenStr      <- v .:  "last_seen"
     mySecondsSinceSeen <- v .:  "seconds_since_seen"
-    {-
+
     myProductName      <- v .:? "product_name"
     myCapabilities     <- v .:? "capabilities"
-    myFirmwareVersion  <- v .:? "firmware_version"
+    myFirmwareVersStr  <- v .:? "firmware_version"
     myHardwareVersion  <- v .:? "hardware_version"
-    -}
+
     myTemperature      <- v .:? "temperature"
     myUptime           <- v .:? "uptime"
 
@@ -515,11 +562,25 @@ instance FromJSON LightInfo where
 
     myUuid <- case myUuidTxt of
                Nothing -> return Nothing
-               Just (txt) -> case U.fromText txt of
-                              Just x -> return $ Just x
-                              Nothing -> fail "could not parse uuid as a UUID"
+               Just txt -> case U.fromText txt of
+                            Just x -> return $ Just x
+                            Nothing -> fail "could not parse uuid as a UUID"
 
     myColor <- combineColorBrightness myColorObj myBrightness
+
+    myFirmwareVersion <- case myFirmwareVersStr of
+                          Nothing -> return Nothing
+                          Just s -> case readEither' s of
+                                     Left msg -> fail msg
+                                     Right vers -> return $ Just vers
+
+    myCaps <- case myCapabilities of
+               Nothing -> return Nothing
+               Just obj -> Just <$> parseCaps obj
+
+    let myProduct = case myProductName of
+                     Nothing -> Nothing
+                     Just p -> Just $ combineProd p myCaps
 
     return $ LightInfo
            { lId               = myId
@@ -534,21 +595,14 @@ instance FromJSON LightInfo where
            , lLocation         = myLocation
            , lLastSeen         = myLastSeen
            , lSecondsSinceSeen = mySecondsSinceSeen
-           , lProductInfo      = undefined
+           , lProduct          = myProduct
            , lTemperature      = myTemperature
            , lUptime           = myUptime
+           , lFirmwareVersion  = myFirmwareVersion
+           , lHardwareVersion  = myHardwareVersion
            }
 
   parseJSON _ = fail "expected a JSON object"
-
-data ProductInfo =
-  ProductInfo
-  { pProductName :: Maybe T.Text
-  , pHasColor :: Maybe Bool
-  , pHasVariableColorTemp :: Maybe Bool
-  , pFirmwareVersion :: Maybe Version
-  , pHardwareVersion :: Maybe Int
-  } deriving (Eq, Ord, Show, Read)
 
 data StateTransition =
   StateTransition
