@@ -685,6 +685,9 @@ instance LifxId SceneId where
   toText (SceneId uu) = U.toText uu
   fromText bs = sceneFromUuid $ U.fromText bs
 
+instance FromJSON SceneId where
+  parseJSON = implParseJson
+
 textualize :: (T.Text, Maybe Double) -> Maybe T.Text
 textualize (_, Nothing) = Nothing
 textualize (key, Just value) = Just $ fmt "{}:{}" (key, value)
