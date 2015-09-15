@@ -159,7 +159,7 @@ textToId tname len txt
         extralen = B.length extra
 
 implShow :: B.ByteString -> String -> String
-implShow bs pre = pre ++ B8.unpack (B16.encode bs)
+implShow bs post = B8.unpack (B16.encode bs) ++ post
 
 implRead :: (B.ByteString -> a) -> Int -> String -> [(a, String)]
 implRead c len s =
@@ -186,7 +186,7 @@ instance LifxId DeviceId where
   fromText txt = DeviceId <$> textToId "DeviceId" deviceIdLen txt
 
 instance Show DeviceId where
-  showsPrec _ (DeviceId bs) pre = implShow bs pre
+  showsPrec _ (DeviceId bs) post = implShow bs post
 
 instance Read DeviceId where
   readsPrec _ s = implRead DeviceId deviceIdLen s
