@@ -20,7 +20,7 @@ import Data.Vector hiding (takeWhile, mapM_, (++))
 import Data.Version
 import System.IO
 
-import Lifx.Types hiding (listLights, listScenes)
+import Lifx hiding (listLights, listScenes)
 
 import Paths_lifx_cloud
 

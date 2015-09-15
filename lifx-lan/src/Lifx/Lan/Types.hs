@@ -23,7 +23,7 @@ import qualified Data.ByteString.Lazy as L ( length )
 import qualified Data.Text as T
 import Data.Word ( Word8, Word16, Word32, Word64 )
 
-import Lifx.Types
+import Lifx
 import Lifx.Lan.Util
 
 type Interface = T.Text

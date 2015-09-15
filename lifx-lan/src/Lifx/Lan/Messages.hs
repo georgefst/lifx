@@ -39,7 +39,7 @@ import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
 import Data.Word ( Word16, Word32, Word64 )
 
-import Lifx.Types
+import Lifx
 import Lifx.Lan.Util
 import Lifx.Lan.Types
 import Lifx.Lan.Protocol

@@ -67,7 +67,7 @@ import Network.Socket.ByteString ( sendManyTo, recvFrom )
 import System.Mem.Weak
 import Text.Printf ( printf )
 
-import Lifx.Types
+import Lifx
 import Lifx.Lan.Util
 import Lifx.Lan.Types
 

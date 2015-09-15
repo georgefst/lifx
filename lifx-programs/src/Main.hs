@@ -32,7 +32,7 @@ import System.Exit
 import System.Hourglass
 
 import Lifx.Lan.LowLevel
-import Lifx.Types hiding (Pulse)
+import Lifx hiding (Pulse)
 import qualified Lifx.Program.CmdParser as C
 import Lifx.Program.Column
 

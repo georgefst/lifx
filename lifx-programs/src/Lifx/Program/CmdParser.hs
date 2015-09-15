@@ -10,7 +10,7 @@ import System.Console.CmdArgs.Text (TextFormat(..), showText, defaultWrap)
 import qualified System.Console.CmdArgs.Text as TXT (Text(..))
 import System.Exit
 
-import Lifx.Types
+import Lifx
 
 data LiteArgs =
   LiteArgs

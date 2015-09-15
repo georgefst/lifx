@@ -1,40 +1,6 @@
 {-# LANGUAGE OverloadedStrings, GeneralizedNewtypeDeriving #-}
 
-module Lifx.Types
-       ( Power (..)
-       , HSBK (..)
-       , LiFrac , Color , MaybeColor
-       , white, red, orange, yellow, green, cyan, blue, purple, pink
-       , combineColors, emptyColor , isEmptyColor, isCompleteColor
-       , DeviceId, GroupId, LocationId, Label, AuthToken
-       , LifxId (..)
-       , Product (..)
-       , products, productFromId, productFromLongName, productFromShortName
-       , Targets (..)
-       , TargetMatch (..)
-       , LiteIds (..)
-       , mkLiteIds
-       , tmatch
-       , padByteString
-       , readEither'
-       , Selector
-       , selectAll, selectLabel, selectDeviceId
-       , selectGroup, selectGroupId, selectLocation, selectLocationId
-       , Connection (..)
-       , FracSeconds
-       , LightInfo (..)
-       , Capabilities (..)
-       , StateTransition (..)
-       , Result (..)
-       , Status (..)
-       , StateTransitionResult (..)
-       , EffectType (..)
-       , Effect (..)
-       , Scene (..)
-       , SceneDevice (..)
-       , SceneId (..)
-       , colorToText
-       ) where
+module Lifx.Types where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Arrow (first)
@@ -68,6 +34,8 @@ import Debug.Trace
 import Text.ParserCombinators.ReadP (skipSpaces)
 import Text.ParserCombinators.ReadPrec (readPrec_to_S)
 import Text.Read hiding (String)
+
+import Lifx.Util
 
 data Power = Off | On deriving (Show, Read, Eq, Ord)
 
@@ -389,55 +357,6 @@ matchLab :: T.Text -> Label -> Bool;
 matchLab t1 x = t1 `T.isPrefixOf` t2
   where t2 = toText x
 
----- Utilities: move elsewhere?
-
--- readEither has been in Text.Read since base 4.6,
--- but we have our own copy here to work with base 4.5.
--- BSD3, (c) The University of Glasgow 2001
-readEither' :: Read a => String -> Either String a
-readEither' s =
-  case [ x | (x,"") <- readPrec_to_S read' minPrec s ] of
-    [x] -> Right x
-    []  -> Left "Prelude.read: no parse"
-    _   -> Left "Prelude.read: ambiguous parse"
- where
-  read' =
-    do x <- readPrec
-       lift skipSpaces
-       return x
-
-fmt :: Params ps => Format -> ps -> T.Text
-fmt f p = LT.toStrict $ format f p
-
--- pad (with 0) or truncate a bytestring to make it exactly the specified length
-padByteString :: Int -> B.ByteString -> B.ByteString
-padByteString goal bs = f (l `compare` goal)
-  where l = B.length bs
-        f LT = bs `B.append` pad
-        f EQ = bs
-        f GT = B.take goal bs
-        pad = B.replicate (goal - l) 0
-
--- truncate a Text to fit in the specific number of bytes, encoded as UTF-8,
--- but without truncating in the middle of a character
-textToByteString :: Int -> T.Text -> B.ByteString
-textToByteString maxBytes txt = t2bs (maxBytes `div` 4)
-  where t2bs n =
-          let nPlus1 = n + 1
-              bs = convert nPlus1
-              bsLen = B.length bs
-          in if bsLen > maxBytes
-             then convert n
-             else if bsLen == maxBytes || n >= txtLen
-                  then bs
-                  else t2bs nPlus1
-        txtLen = T.length txt
-        convert n = TE.encodeUtf8 $ T.take n txt
-
-textToPaddedByteString :: Int -> T.Text -> B.ByteString
-textToPaddedByteString maxBytes txt =
-  padByteString maxBytes $ textToByteString maxBytes txt
-
 ----------------------------------------------------------------------
 
 class Connection t where
@@ -488,134 +407,6 @@ data LightInfo =
   , lHardwareVersion :: Maybe Int
   } deriving (Eq, Ord, Show, Read)
 
-parseIdStruct :: FromJSON a => Maybe Value -> Parser (Maybe a, Maybe Label)
-parseIdStruct (Just (Object v)) = do
-  i <- v .:? "id"
-  n <- v .:? "name"
-  return (i, n)
-parseIdStruct _ = return (Nothing, Nothing)
-
-combineColorBrightness :: Maybe Value -> Maybe Double -> Parser MaybeColor
-combineColorBrightness c b = do
-  c' <- parseColor c
-  return $ addBrightness c' b
-  where addBrightness cc Nothing = cc
-        addBrightness cc br@(Just _ ) = cc { brightness = br }
-        parseColor Nothing = return emptyColor
-        parseColor (Just (Object v)) = do
-          myHue        <- v .:? "hue"
-          mySaturation <- v .:? "saturation"
-          myBrightness <- v .:? "brightness"
-          myKelvin     <- v .:? "kelvin"
-          return $ HSBK myHue mySaturation myBrightness myKelvin
-        parseColor _ = fail "expected a JSON object for color"
-
-parseColorBrightness :: Object -> Parser MaybeColor
-parseColorBrightness v = do
-    myColorObj         <- v .:? "color"
-    myBrightness       <- v .:? "brightness"
-    combineColorBrightness myColorObj myBrightness
-
-parseCaps :: Value -> Parser [Capabilities]
-parseCaps (Object v) = do
-  hasColor  <- v .: "has_color"
-  hasVCTemp <- v .: "has_variable_color_temp"
-  let hc   = if hasColor  then [HasColor]             else []
-      hvct = if hasVCTemp then [HasVariableColorTemp] else []
-  return $ hc ++ hvct
-parseCaps _ = fail "expected a JSON object for capabilities"
-
-combineProd :: T.Text -> Maybe [Capabilities] -> Product
-combineProd pname (Just caps) =
-  (combineProd pname Nothing) { pCapabilities = caps }
-combineProd pname Nothing = mkProd $ productFromLongName pname
-  where mkProd (Just p) = p
-        mkProd Nothing = Product
-                         { pVendor = 0
-                         , pProduct = 0
-                         , pLongName = pname
-                         , pShortName = pname
-                         , pCapabilities = []
-                         }
-
-data MyISO8601_DateAndTime = MyISO8601_DateAndTime
-    deriving (Show,Eq)
-
-instance TimeFormat MyISO8601_DateAndTime where
-    toFormat _ = TimeFormatString
-        [Format_Year,dash,Format_Month2,dash,Format_Day2 -- date
-        ,Format_Text 'T'
-        ,Format_Hour,colon,Format_Minute,colon,Format_Second,dot,Format_MilliSecond -- time
-        ,Format_TzHM_Colon -- timezone offset with colon +HH:MM
-        ]
-      where dash = Format_Text '-'
-            colon = Format_Text ':'
-            dot = Format_Text '.'
-
-instance FromJSON LightInfo where
-  parseJSON (Object v) = do
-    myId               <- v .:  "id"
-    myUuid             <- parseUuid (Just v)
-    myLabel            <- v .:? "label"
-    myConnected        <- v .:  "connected"
-    myPower            <- v .:? "power"
-    myGroupStruct      <- v .:? "group"
-    myLocationStruct   <- v .:? "location"
-    myLastSeenStr      <- v .:  "last_seen"
-    mySecondsSinceSeen <- v .:  "seconds_since_seen"
-    myColor            <- parseColorBrightness v
-    myProductName      <- v .:? "product_name"
-    myCapabilities     <- v .:? "capabilities"
-    myFirmwareVersStr  <- v .:? "firmware_version"
-    myHardwareVersion  <- v .:? "hardware_version"
-
-    myTemperature      <- v .:? "temperature"
-    myUptime           <- v .:? "uptime"
-
-    (myGroupId, myGroup)       <- parseIdStruct myGroupStruct
-    (myLocationId, myLocation) <- parseIdStruct myLocationStruct
-
-    myLastSeen <- case timeParseE MyISO8601_DateAndTime myLastSeenStr of
-                   Right (x, _ ) -> return x
-                   Left (tfe , msg) -> fail
-                                     $ msg ++ " when parsing " ++ show tfe
-                                     ++ " in '" ++ myLastSeenStr ++ "'"
-
-    myFirmwareVersion <- case myFirmwareVersStr of
-                          Nothing -> return Nothing
-                          Just s -> case readEither' s of
-                                     Left msg -> fail msg
-                                     Right vers -> return $ Just vers
-
-    myCaps <- case myCapabilities of
-               Nothing -> return Nothing
-               Just obj -> Just <$> parseCaps obj
-
-    let myProduct = case myProductName of
-                     Nothing -> Nothing
-                     Just p -> Just $ combineProd p myCaps
-
-    return $ LightInfo
-           { lId               = myId
-           , lUuid             = myUuid
-           , lLabel            = myLabel
-           , lConnected        = myConnected
-           , lPower            = myPower
-           , lColor            = myColor
-           , lGroupId          = myGroupId
-           , lGroup            = myGroup
-           , lLocationId       = myLocationId
-           , lLocation         = myLocation
-           , lLastSeen         = myLastSeen
-           , lSecondsSinceSeen = mySecondsSinceSeen
-           , lProduct          = myProduct
-           , lTemperature      = myTemperature
-           , lUptime           = myUptime
-           , lFirmwareVersion  = myFirmwareVersion
-           , lHardwareVersion  = myHardwareVersion
-           }
-
-  parseJSON _ = fail "expected a JSON object for light"
 
 data StateTransition =
   StateTransition
@@ -663,46 +454,12 @@ data Scene =
   , scDevices :: [SceneDevice]
   } deriving (Eq, Ord, Show, Read)
 
-parseUuid :: Maybe Object -> Parser (Maybe U.UUID)
-parseUuid Nothing = return Nothing
-parseUuid (Just v) = do
-  myUuidTxt <- v .:? "uuid"
-  case myUuidTxt of
-   Nothing -> return Nothing
-   Just txt -> case U.fromText txt of
-                Just x -> return $ Just x
-                Nothing -> fail "could not parse uuid as a UUID"
-
-ununix :: Int64 -> DateTime
-ununix s = timeFromElapsed $ Elapsed $ Seconds s
-
-instance FromJSON Scene where
-  parseJSON (Object v) = do
-    myId      <- v .:  "uuid"
-    myName    <- v .:  "name"
-    myUpAt    <- v .:  "updated_at"
-    myCrAt    <- v .:  "created_at"
-    myAccount <- v .:? "account" >>= parseUuid
-    myDevices <- v .:  "devices"
-    return $ Scene myId myName
-      (ununix myUpAt) (ununix myCrAt)
-      myAccount myDevices
-  parseJSON _ = fail "expected a JSON object for scene"
-
 data SceneDevice =
   SceneDevice
   { sdId :: DeviceId
   , sdPower :: Maybe Power
   , sdColor :: MaybeColor
   } deriving (Eq, Ord, Show, Read)
-
-instance FromJSON SceneDevice where
-  parseJSON (Object v) = do
-    myId <- v .: "serial_number"
-    myPower <- v .:? "power"
-    myColor <- parseColorBrightness v
-    return $ SceneDevice myId myPower myColor
-  parseJSON _ = fail "expected a JSON object for device in scene"
 
 newtype SceneId = SceneId { unSceneId :: U.UUID }
                 deriving (Eq, Ord, Show, Read {- , Hashable -})

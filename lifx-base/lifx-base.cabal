@@ -44,9 +44,11 @@ cabal-version:       >=1.10
 
 
 library
-  exposed-modules: Lifx.Types
+  exposed-modules: Lifx
 
-  -- other-modules:
+  other-modules: Lifx.Json
+               , Lifx.Types
+               , Lifx.Util
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
