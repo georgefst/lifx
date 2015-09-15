@@ -531,6 +531,20 @@ combineProd pname Nothing = mkProd $ productFromLongName pname
                          , pCapabilities = []
                          }
 
+data MyISO8601_DateAndTime = MyISO8601_DateAndTime
+    deriving (Show,Eq)
+
+instance TimeFormat MyISO8601_DateAndTime where
+    toFormat _ = TimeFormatString
+        [Format_Year,dash,Format_Month2,dash,Format_Day2 -- date
+        ,Format_Text 'T'
+        ,Format_Hour,colon,Format_Minute,colon,Format_Second,dot,Format_MilliSecond -- time
+        ,Format_TzHM_Colon -- timezone offset with colon +HH:MM
+        ]
+      where dash = Format_Text '-'
+            colon = Format_Text ':'
+            dot = Format_Text '.'
+
 instance FromJSON LightInfo where
   parseJSON (Object v) = do
     myId               <- v .:  "id"
@@ -556,9 +570,11 @@ instance FromJSON LightInfo where
     (myGroupId, myGroup)       <- parseIdStruct myGroupStruct
     (myLocationId, myLocation) <- parseIdStruct myLocationStruct
 
-    myLastSeen <- case timeParse ISO8601_DateAndTime myLastSeenStr of
-                   Just x -> return x
-                   Nothing -> fail $ "could not parse last_seen '" ++ myLastSeenStr ++ "' as ISO8601 date"
+    myLastSeen <- case timeParseE MyISO8601_DateAndTime myLastSeenStr of
+                   Right (x, _ ) -> return x
+                   Left (tfe , msg) -> fail
+                                     $ msg ++ " when parsing " ++ show tfe
+                                     ++ " in '" ++ myLastSeenStr ++ "'"
 
     myUuid <- case myUuidTxt of
                Nothing -> return Nothing
