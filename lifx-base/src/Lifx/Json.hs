@@ -35,8 +35,9 @@ import Text.ParserCombinators.ReadP (skipSpaces)
 import Text.ParserCombinators.ReadPrec (readPrec_to_S)
 import Text.Read hiding (String)
 
-import Lifx.Util
+import Lifx.ColorParser
 import Lifx.Types
+import Lifx.Util
 
 instance FromJSON Power where
   parseJSON (String "on") = return On
