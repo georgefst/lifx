@@ -158,12 +158,25 @@ instance FromJSON LightInfo where
 
   parseJSON _ = fail "expected a JSON object for light"
 
-{-
 instance FromJSON StateTransition where
   parseJSON (Object v) = do
-    myPower <- v .:? "power"
-    myColorStr <- v .:? "color"
--}
+    myPower      <- v .:? "power"
+    myColorTxt   <- v .:? "color"
+    myBrightness <- v .:? "brightness"
+    myDuration   <- v .:? "duration" .!= 1.0
+
+    myColor1 <- case myColorTxt of
+                 Nothing -> return emptyColor
+                 Just txt -> case parseColor txt of
+                              Left msg -> fail msg
+                              Right c -> return c
+
+    let myColor2 = emptyColor { brightness = myBrightness }
+        myColor = myColor1 `combineColors` myColor2
+
+    return $ StateTransition myPower myColor myDuration
+
+  parseJSON _ = fail "expected a JSON object for state transition"
 
 parseUuid :: Maybe Object -> Parser (Maybe U.UUID)
 parseUuid Nothing = return Nothing

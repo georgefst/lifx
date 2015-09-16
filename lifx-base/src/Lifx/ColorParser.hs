@@ -1,12 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lifx.ColorParser where
+module Lifx.ColorParser (parseColor) where
 
 import Control.Applicative
 import Data.Attoparsec.Text
 import Data.Char
+import qualified Data.Text as T
 
 import Lifx.Types
+
+parseColor :: T.Text -> Either String MaybeColor
+parseColor = parseOnly (colorString <* endOfInput)
 
 colorString :: Parser MaybeColor
 colorString = colorName <|> colorHSBK <|> colorHexRGB <|> colorDecRGB

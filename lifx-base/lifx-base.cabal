@@ -46,7 +46,8 @@ cabal-version:       >=1.10
 library
   exposed-modules: Lifx
 
-  other-modules: Lifx.Json
+  other-modules: Lifx.ColorParser
+               , Lifx.Json
                , Lifx.Types
                , Lifx.Util
 
