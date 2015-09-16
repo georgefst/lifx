@@ -42,7 +42,9 @@ import Lifx.Util
 instance FromJSON Power where
   parseJSON (String "on") = return On
   parseJSON (String "off") = return Off
-  parseJSON _ = fail "could not parse power"
+  parseJSON (String txt) =
+    fail $ "expected power to be 'on' or 'off', but got " ++ show txt
+  parseJSON _ = fail "expected a JSON string for power"
 
 parseIdStruct :: FromJSON a => Maybe Value -> Parser (Maybe a, Maybe Label)
 parseIdStruct (Just (Object v)) = do
@@ -177,6 +179,35 @@ instance FromJSON StateTransition where
     return $ StateTransition myPower myColor myDuration
 
   parseJSON _ = fail "expected a JSON object for state transition"
+
+instance FromJSON Status where
+  parseJSON (String "ok")        = return Ok
+  parseJSON (String "timed_out") = return TimedOut
+  parseJSON (String "offline")   = return Offline
+  parseJSON (String txt) =
+    fail $ "expected status to be 'ok', 'timed_out', or 'offline', but got "
+           ++ show txt
+  parseJSON _ = fail "expected a JSON string for status"
+
+instance FromJSON Result where
+  parseJSON (Object v) = do
+    myId     <- v .:  "id"
+    myLabel  <- v .:? "label"
+    myStatus <- v .:  "status"
+    return $ Result myId myLabel myStatus
+  parseJSON _ = fail "expected a JSON object for result"
+
+instance FromJSON StateTransitionResult where
+  parseJSON (Object v) = do
+    myOp      <- v .: "operation"
+    myResults <- v .: "results"
+
+    mySelector        <- myOp .: "selector"
+    myStateTransition <- parseJSON (Object myOp)
+
+    return $ StateTransitionResult (mySelector, myStateTransition) myResults
+
+  parseJSON _ = fail "expected a JSON object for state transition result"
 
 parseUuid :: Maybe Object -> Parser (Maybe U.UUID)
 parseUuid Nothing = return Nothing
