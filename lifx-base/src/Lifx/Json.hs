@@ -38,6 +38,11 @@ import Text.Read hiding (String)
 import Lifx.Util
 import Lifx.Types
 
+instance FromJSON Power where
+  parseJSON (String "on") = return On
+  parseJSON (String "off") = return Off
+  parseJSON _ = fail "could not parse power"
+
 parseIdStruct :: FromJSON a => Maybe Value -> Parser (Maybe a, Maybe Label)
 parseIdStruct (Just (Object v)) = do
   i <- v .:? "id"
@@ -151,6 +156,13 @@ instance FromJSON LightInfo where
            }
 
   parseJSON _ = fail "expected a JSON object for light"
+
+{-
+instance FromJSON StateTransition where
+  parseJSON (Object v) = do
+    myPower <- v .:? "power"
+    myColorStr <- v .:? "color"
+-}
 
 parseUuid :: Maybe Object -> Parser (Maybe U.UUID)
 parseUuid Nothing = return Nothing

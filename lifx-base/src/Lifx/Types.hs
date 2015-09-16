@@ -39,11 +39,6 @@ import Lifx.Util
 
 data Power = Off | On deriving (Show, Read, Eq, Ord)
 
-instance FromJSON Power where
-  parseJSON (String "on") = return On
-  parseJSON (String "off") = return Off
-  parseJSON _ = fail "could not parse power"
-
 data HSBK a =
   HSBK
   { hue :: a
