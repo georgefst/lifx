@@ -20,7 +20,7 @@ import Data.String
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
-import Data.Text.Format
+import Data.Text.Format hiding (print)
 import Data.Text.Format.Params
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.IO as TIO

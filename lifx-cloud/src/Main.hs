@@ -217,11 +217,14 @@ main = do
   let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
   mgr <- newManager tlsManagerSettings
   let cc = CloudConnection mgr lifxToken "https://api.lifx.com/v1.0-beta1/"
+  {-
   -- lbs <- doEffect cc "id:d073d50225cd" "pulse" [ ("color", "red") , ("cycles", "5") ]
   lbs <- listScenes cc
   -- lbs <- activateScene cc "ffae25ad-f74d-458f-af37-73b958921b18" [("duration", "5")]
   -- lbs <- listLights cc "all"
   let lites = (eitherDecode lbs) :: Either String [Scene]
+  -}
+  lites <- listLights cc SelAll
   print lites
   {-
   let val = (fromJust $ decode lbs) :: Value
