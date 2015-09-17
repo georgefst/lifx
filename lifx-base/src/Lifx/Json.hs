@@ -36,6 +36,7 @@ import Text.ParserCombinators.ReadPrec (readPrec_to_S)
 import Text.Read hiding (String)
 
 import Lifx.ColorParser
+import Lifx.SelectorParser
 import Lifx.Types
 import Lifx.Util
 
@@ -45,6 +46,12 @@ instance FromJSON Power where
   parseJSON (String txt) =
     fail $ "expected power to be 'on' or 'off', but got " ++ show txt
   parseJSON _ = fail "expected a JSON string for power"
+
+instance FromJSON Selector where
+  parseJSON (String txt) =
+    case parseSelector txt of
+     Left msg -> fail msg
+     Right sel -> return sel
 
 parseIdStruct :: FromJSON a => Maybe Value -> Parser (Maybe a, Maybe Label)
 parseIdStruct (Just (Object v)) = do
@@ -95,6 +102,7 @@ combineProd pname Nothing = mkProd $ productFromLongName pname
                          , pShortName = pname
                          , pCapabilities = []
                          }
+
 instance FromJSON LightInfo where
   parseJSON (Object v) = do
     myId               <- v .:  "id"

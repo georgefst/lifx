@@ -15,9 +15,11 @@ module Lifx
        , tmatch
        , padByteString
        , readEither'
-       , Selector
+       , Selector (..)
+{-
        , selectAll, selectLabel, selectDeviceId
        , selectGroup, selectGroupId, selectLocation, selectLocationId
+-}
        , Connection (..)
        , FracSeconds
        , LightInfo (..)

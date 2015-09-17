@@ -48,6 +48,7 @@ library
 
   other-modules: Lifx.ColorParser
                , Lifx.Json
+               , Lifx.SelectorParser
                , Lifx.Types
                , Lifx.Util
 

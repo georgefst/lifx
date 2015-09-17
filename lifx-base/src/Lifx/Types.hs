@@ -18,7 +18,7 @@ import Data.Hourglass
 import Data.Int
 import Data.List (find)
 import Data.Maybe
-import Data.Monoid (Monoid(..))
+import Data.Monoid hiding (Product)
 import qualified Data.Set as S
 import Data.Text (Text(..))
 import qualified Data.Text as T
@@ -363,6 +363,7 @@ class Connection t where
   cycle :: t -> Selector -> [StateTransition] -> IO [Result]
   terminate :: t -> IO ()
 
+{-
 selectAll        :: Selector
 selectLabel      :: Label      -> Selector
 selectDeviceId   :: DeviceId   -> Selector
@@ -378,6 +379,7 @@ selectGroup      = SelGroup
 selectGroupId    = SelGroupId
 selectLocation   = SelLocation
 selectLocationId = SelLocationId
+-}
 
 type FracSeconds = Double
 
@@ -480,3 +482,12 @@ colorToText (HSBK h s b k) =
   let hsbk = zip ["hue", "saturation", "brightness", "kelvin"] [h, s, b, k]
       components = mapMaybe textualize hsbk
   in T.intercalate " " components
+
+selectorToText :: Selector -> T.Text
+selectorToText SelAll = "all"
+selectorToText (SelLabel x)      = "label:"       <> toText x
+selectorToText (SelDevId x)      = "id:"          <> toText x
+selectorToText (SelGroup x)      = "group:"       <> toText x
+selectorToText (SelGroupId x)    = "group_id:"    <> toText x
+selectorToText (SelLocation x)   = "location:"    <> toText x
+selectorToText (SelLocationId x) = "location_id:" <> toText x
