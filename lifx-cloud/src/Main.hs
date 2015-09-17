@@ -20,6 +20,8 @@ import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
+import Data.Text.Format hiding (print)
+import Data.Text.Format.Params
 import Data.Vector hiding (takeWhile, mapM_, (++))
 import Data.Version
 import System.IO
@@ -79,9 +81,17 @@ instance Connection CloudConnection where
   listLights cc sel = do
     req <- endpoint cc ("lights/" <> selectorToText sel)
     performRequest cc req
+
   listScenes cc = do
     req <- endpoint cc "scenes"
     performRequest cc req
+
+  activateScene cc scene dur = do
+    req <- endpoint cc ("scenes/scene_id:" <> toText scene <> "/activate")
+    let durTxt = fmt "{}" (Only dur)
+        params = [("duration", TE.encodeUtf8 durTxt)]
+        req' = (urlEncodedBody params req) { method = methodPut }
+    performRequest cc req'
 
 endpoint :: CloudConnection -> T.Text -> IO Request
 endpoint cc ep = do

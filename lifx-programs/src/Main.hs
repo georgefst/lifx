@@ -86,9 +86,6 @@ nsToDuration (NanoSeconds ns) =
         (h, minutes) = m `quotRem` 60
         (days, hours) = h `quotRem` 24
 
-fmt :: Params ps => Format -> ps -> T.Text
-fmt f p = LT.toStrict $ format f p
-
 l2 = left 2 ' '
 l3 = left 3 ' '
 l4 = left 4 ' '

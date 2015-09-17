@@ -36,6 +36,7 @@ module Lifx
        , SceneId (..)
        , colorToText
        , selectorToText
+       , fmt
        ) where
 
 import Lifx.Util
