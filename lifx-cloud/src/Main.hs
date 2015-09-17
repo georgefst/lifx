@@ -24,7 +24,7 @@ import Data.Vector hiding (takeWhile, mapM_, (++))
 import Data.Version
 import System.IO
 
-import Lifx hiding (listScenes)
+import Lifx
 
 import Paths_lifx_cloud
 
@@ -78,6 +78,9 @@ performRequest cc req = do
 instance Connection CloudConnection where
   listLights cc sel = do
     req <- endpoint cc ("lights/" <> selectorToText sel)
+    performRequest cc req
+  listScenes cc = do
+    req <- endpoint cc "scenes"
     performRequest cc req
 
 endpoint :: CloudConnection -> T.Text -> IO Request
@@ -194,11 +197,13 @@ doEffect cc sel eff params = do
   resp <- httpLbs req' (ccManager cc)
   return $ responseBody resp
 
+{-
 listScenes :: CloudConnection -> IO L.ByteString
 listScenes cc = do
   req <- endpoint cc "scenes"
   resp <- httpLbs req (ccManager cc)
   return $ responseBody resp
+-}
 
 activateScene :: CloudConnection
                  -> T.Text
@@ -224,7 +229,8 @@ main = do
   -- lbs <- listLights cc "all"
   let lites = (eitherDecode lbs) :: Either String [Scene]
   -}
-  lites <- listLights cc SelAll
+  -- lites <- listLights cc SelAll
+  lites <- listScenes cc
   print lites
   {-
   let val = (fromJust $ decode lbs) :: Value
