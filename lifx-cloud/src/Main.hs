@@ -213,7 +213,6 @@ listScenes cc = do
   req <- endpoint cc "scenes"
   resp <- httpLbs req (ccManager cc)
   return $ responseBody resp
--}
 
 activateScene :: CloudConnection
                  -> T.Text
@@ -224,6 +223,7 @@ activateScene cc scene params = do
   let req' = (urlEncodedBody params req) { method = methodPut }
   resp <- httpLbs req' (ccManager cc)
   return $ responseBody resp
+-}
 
 fromRight = either error id
 
@@ -240,7 +240,8 @@ main = do
   let lites = (eitherDecode lbs) :: Either String [Scene]
   -}
   -- lites <- listLights cc SelAll
-  lites <- listScenes cc
+  -- lites <- listScenes cc
+  lites <- activateScene cc (fromRight $ fromText "2c969519-1d6a-4c93-a4d7-d099045726c9") 5
   print lites
   {-
   let val = (fromJust $ decode lbs) :: Value
