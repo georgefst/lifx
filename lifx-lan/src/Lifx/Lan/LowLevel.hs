@@ -24,7 +24,6 @@ module Lifx.Lan.LowLevel
       Waveform(..),
       Bulb,
       Lan,
-      LifxException(..),
       RetryParams(..),
       openLan,
       openLan',

@@ -1,9 +1,10 @@
-{-# LANGUAGE OverloadedStrings, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings, GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
 
 module Lifx.Types where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Arrow (first)
+import Control.Exception
 import Control.Monad
 import Data.Aeson hiding (Result)
 import Data.Aeson.Types (Parser)
@@ -27,6 +28,7 @@ import qualified Data.Text.Encoding.Error as TEE
 import Data.Text.Format
 import Data.Text.Format.Params
 import qualified Data.Text.Lazy as LT
+import Data.Typeable
 import qualified Data.UUID.Types as U
 import Data.Version
 import Data.Word
@@ -36,6 +38,13 @@ import Text.ParserCombinators.ReadPrec (readPrec_to_S)
 import Text.Read hiding (String)
 
 import Lifx.Util
+
+data LifxException = NoSuchInterface String [String]
+                   | CloudError T.Text
+                   | CloudJsonError T.Text
+                   deriving (Show, Typeable)
+
+instance Exception LifxException
 
 data Power = Off | On deriving (Show, Read, Eq, Ord)
 

@@ -1,5 +1,6 @@
 module Lifx
-       ( Power (..)
+       ( LifxException(..)
+       , Power (..)
        , HSBK (..)
        , LiFrac , Color , MaybeColor
        , white, red, orange, yellow, green, cyan, blue, purple, pink
@@ -34,6 +35,7 @@ module Lifx
        , SceneDevice (..)
        , SceneId (..)
        , colorToText
+       , selectorToText
        ) where
 
 import Lifx.Util

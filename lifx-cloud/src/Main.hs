@@ -3,7 +3,10 @@
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
 import Network.HTTP.Types
+import Control.Applicative
 import Control.Concurrent
+import Control.Exception
+import Control.Monad
 import Data.Aeson
 import Data.Aeson.Encode.Pretty
 import qualified Data.ByteString as B
@@ -16,11 +19,12 @@ import Data.Maybe
 import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
+import qualified Data.Text.Encoding.Error as TEE
 import Data.Vector hiding (takeWhile, mapM_, (++))
 import Data.Version
 import System.IO
 
-import Lifx hiding (listLights, listScenes)
+import Lifx hiding (listScenes)
 
 import Paths_lifx_cloud
 
@@ -33,6 +37,48 @@ data CloudConnection =
   , ccToken :: AuthToken
   , ccRoot :: T.Text
   }
+
+decodeUtf8Lenient :: B.ByteString -> T.Text
+decodeUtf8Lenient = TE.decodeUtf8With TEE.lenientDecode
+
+newtype CloudMessage = CloudMessage { unCloudMessage :: T.Text }
+
+instance FromJSON CloudMessage where
+  parseJSON (Object v) = CloudMessage <$> v .: "message"
+  parseJSON _ = mzero
+
+isJsonMimeType :: Response a -> Bool
+isJsonMimeType resp =
+  let hdrs = responseHeaders resp
+      mayMime = hContentType `lookup` hdrs
+  in case mayMime of
+      Nothing -> False
+      Just bs -> bs == appJson
+
+extractMessage :: Response L.ByteString -> T.Text
+extractMessage resp = orElseStatus jsonMessage
+  where orElseStatus Nothing =
+          decodeUtf8Lenient $ statusMessage $ responseStatus resp
+        orElseStatus (Just txt) = txt
+        jsonMessage = do
+          unless (isJsonMimeType resp) Nothing
+          msg <- decode' $ responseBody resp
+          return $ unCloudMessage msg
+
+performRequest :: FromJSON a => CloudConnection -> Request -> IO a
+performRequest cc req = do
+  resp <- httpLbs req (ccManager cc)
+  let stat = responseStatus resp
+      code = statusCode stat
+  when (code < 200 || code > 299) $ throw $ CloudError $ extractMessage resp
+  case eitherDecode' $ responseBody resp of
+   Left msg -> throw $ CloudJsonError $ T.pack msg
+   Right x -> return x
+
+instance Connection CloudConnection where
+  listLights cc sel = do
+    req <- endpoint cc ("lights/" <> selectorToText sel)
+    performRequest cc req
 
 endpoint :: CloudConnection -> T.Text -> IO Request
 endpoint cc ep = do
@@ -122,13 +168,13 @@ doColor mgr lifxToken c = do
   setColor mgr lifxToken c
   threadDelay 2000000
   getColor mgr lifxToken c
--}
 
 listLights :: CloudConnection -> T.Text -> IO L.ByteString
 listLights cc sel = do
   req <- endpoint cc ("lights/" <> sel)
   resp <- httpLbs req (ccManager cc)
   return $ responseBody resp
+-}
 
 setStates :: CloudConnection -> L.ByteString -> IO L.ByteString
 setStates cc states = do

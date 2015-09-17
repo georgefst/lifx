@@ -1,9 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 module Lifx.Lan.Protocol
     ( Lan,
       Bulb(..),
-      LifxException(..),
       RetryParams(..),
       newHdrAndCallback,
       sendMsg,
@@ -340,11 +337,6 @@ mkSource ip port = nonzero $ murmur64 $ (ip' `shiftL` 16) .|. port'
           in if lo /= 0 then lo
              else if hi /= 0 then hi
                   else 0xdeadbeef
-
-data LifxException = NoSuchInterface String [String]
-                   deriving (Show, Typeable)
-
-instance Exception LifxException
 
 ifaceAddr :: String -> IO Word32
 ifaceAddr ifname = do
