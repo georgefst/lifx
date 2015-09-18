@@ -92,7 +92,7 @@ instance Connection CloudConnection where
 
   setStates cc pairs = do
     req <- endpoint cc "lights/states"
-    let states = encode $ map StatePair pairs
+    let states = encode $ object ["states" .= map StatePair pairs]
         req' = jsonPut req states
     performRequest cc req'
 
