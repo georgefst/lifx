@@ -486,11 +486,13 @@ textualize :: (T.Text, Maybe Double) -> Maybe T.Text
 textualize (_, Nothing) = Nothing
 textualize (key, Just value) = Just $ fmt "{}:{}" (key, value)
 
-colorToText :: MaybeColor -> T.Text
-colorToText (HSBK h s b k) =
-  let hsbk = zip ["hue", "saturation", "brightness", "kelvin"] [h, s, b, k]
-      components = mapMaybe textualize hsbk
-  in T.intercalate " " components
+colorToText :: MaybeColor -> Maybe T.Text
+colorToText c@(HSBK h s b k)
+  | isEmptyColor c = Nothing
+  | otherwise =
+      let hsbk = zip ["hue", "saturation", "brightness", "kelvin"] [h, s, b, k]
+          components = mapMaybe textualize hsbk
+      in Just $ T.intercalate " " components
 
 selectorToText :: Selector -> T.Text
 selectorToText SelAll = "all"

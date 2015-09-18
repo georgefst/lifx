@@ -6,7 +6,7 @@ import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Arrow (first)
 import Control.Monad
 import Data.Aeson hiding (Result)
-import Data.Aeson.Types (Parser)
+import Data.Aeson.Types (Parser, Pair)
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
@@ -46,6 +46,10 @@ instance FromJSON Power where
   parseJSON (String txt) =
     fail $ "expected power to be 'on' or 'off', but got " ++ show txt
   parseJSON _ = fail "expected a JSON string for power"
+
+instance ToJSON Power where
+  toJSON On  = String "on"
+  toJSON Off = String "off"
 
 instance FromJSON Selector where
   parseJSON (String txt) =
@@ -187,6 +191,27 @@ instance FromJSON StateTransition where
     return $ StateTransition myPower myColor myDuration
 
   parseJSON _ = fail "expected a JSON object for state transition"
+
+(.=?) :: ToJSON a => T.Text -> Maybe a -> Maybe Pair
+name .=? Nothing = Nothing
+name .=? (Just x) = Just (name .= x)
+
+(.=!) :: ToJSON a => T.Text -> a -> Maybe Pair
+name .=! x = Just (name .= x)
+
+objectMaybe :: [Maybe Pair] -> Value
+objectMaybe = object . catMaybes
+
+stateTransitionToPairs :: StateTransition -> [Pair]
+stateTransitionToPairs st =
+  catMaybes
+  [ "power" .=? sPower st
+  , "color" .=? colorToText (sColor st)
+  , "duration" .=! sDuration st
+  ]
+
+instance ToJSON StateTransition where
+  toJSON st = object $ stateTransitionToPairs st
 
 instance FromJSON Status where
   parseJSON (String "ok")        = return Ok

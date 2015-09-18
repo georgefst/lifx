@@ -37,6 +37,7 @@ module Lifx
        , colorToText
        , selectorToText
        , fmt
+       , stateTransitionToPairs
        ) where
 
 import Lifx.Util

@@ -22,7 +22,7 @@ import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
 import Data.Text.Format hiding (print)
 import Data.Text.Format.Params
-import Data.Vector hiding (takeWhile, mapM_, (++))
+import Data.Vector hiding (takeWhile, mapM_, (++), map)
 import Data.Version
 import System.IO
 
@@ -77,10 +77,24 @@ performRequest cc req = do
    Left msg -> throw $ CloudJsonError $ T.pack msg
    Right x -> return x
 
+newtype StatePair = StatePair (Selector, StateTransition)
+
+instance ToJSON StatePair where
+  toJSON (StatePair (sel, st)) =
+    let ps = stateTransitionToPairs st
+        ps' = ("selector" .= selectorToText sel) : ps
+    in object ps'
+
 instance Connection CloudConnection where
   listLights cc sel = do
     req <- endpoint cc ("lights/" <> selectorToText sel)
     performRequest cc req
+
+  setStates cc pairs = do
+    req <- endpoint cc "lights/states"
+    let states = encode $ map StatePair pairs
+        req' = jsonPut req states
+    performRequest cc req'
 
   listScenes cc = do
     req <- endpoint cc "scenes"
@@ -187,7 +201,6 @@ listLights cc sel = do
   req <- endpoint cc ("lights/" <> sel)
   resp <- httpLbs req (ccManager cc)
   return $ responseBody resp
--}
 
 setStates :: CloudConnection -> L.ByteString -> IO L.ByteString
 setStates cc states = do
@@ -195,6 +208,7 @@ setStates cc states = do
   let req' = jsonPut req states
   resp <- httpLbs req' (ccManager cc)
   return $ responseBody resp
+-}
 
 doEffect :: CloudConnection
             -> T.Text
@@ -241,7 +255,9 @@ main = do
   -}
   -- lites <- listLights cc SelAll
   -- lites <- listScenes cc
-  lites <- activateScene cc (fromRight $ fromText "2c969519-1d6a-4c93-a4d7-d099045726c9") 5
+  -- lites <- activateScene cc (fromRight $ fromText "2c969519-1d6a-4c93-a4d7-d099045726c9") 5
+  lites <- setStates cc [(SelGroup $ fromRight $ fromText "Bedroom",
+                          StateTransition (Just Off) emptyColor 10)]
   print lites
   {-
   let val = (fromJust $ decode lbs) :: Value
