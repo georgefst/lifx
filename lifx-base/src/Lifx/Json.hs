@@ -36,6 +36,7 @@ import Text.ParserCombinators.ReadPrec (readPrec_to_S)
 import Text.Read hiding (String)
 
 import Lifx.ColorParser
+import Lifx.ProductShortName
 import Lifx.SelectorParser
 import Lifx.Types
 import Lifx.Util
@@ -85,27 +86,22 @@ parseColorBrightness v = do
     myBrightness       <- v .:? "brightness"
     combineColorBrightness myColorObj myBrightness
 
-parseCaps :: Value -> Parser [Capabilities]
+parseCaps :: Value -> Parser Capabilities
 parseCaps (Object v) = do
   hasColor  <- v .: "has_color"
   hasVCTemp <- v .: "has_variable_color_temp"
-  let hc   = if hasColor  then [HasColor]             else []
-      hvct = if hasVCTemp then [HasVariableColorTemp] else []
-  return $ hc ++ hvct
+  return $ Capabilities { cHasColor = hasColor
+                        , cHasVariableColorTemp = hasVCTemp }
 parseCaps _ = fail "expected a JSON object for capabilities"
 
-combineProd :: T.Text -> Maybe [Capabilities] -> Product
-combineProd pname (Just caps) =
-  (combineProd pname Nothing) { pCapabilities = caps }
-combineProd pname Nothing = mkProd $ productFromLongName pname
-  where mkProd (Just p) = p
-        mkProd Nothing = Product
-                         { pVendor = 0
-                         , pProduct = 0
-                         , pLongName = pname
-                         , pShortName = pname
-                         , pCapabilities = []
-                         }
+combineProd :: T.Text -> Capabilities -> Product
+combineProd pname caps = Product
+  { pVendor       = 0
+  , pProduct      = 0
+  , pLongName     = pname
+  , pShortName    = productShortName pname
+  , pCapabilities = caps
+  }
 
 instance FromJSON LightInfo where
   parseJSON (Object v) = do
@@ -143,8 +139,8 @@ instance FromJSON LightInfo where
                                      Right vers -> return $ Just vers
 
     myCaps <- case myCapabilities of
-               Nothing -> return Nothing
-               Just obj -> Just <$> parseCaps obj
+               Nothing -> return $ Capabilities False False
+               Just obj -> parseCaps obj
 
     let myProduct = case myProductName of
                      Nothing -> Nothing

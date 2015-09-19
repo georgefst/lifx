@@ -8,7 +8,7 @@ module Lifx
        , DeviceId, GroupId, LocationId, Label, AuthToken
        , LifxId (..)
        , Product (..)
-       , products, productFromId, productFromLongName, productFromShortName
+       , products, productFromId
        , Targets (..)
        , TargetMatch (..)
        , LiteIds (..)
@@ -43,3 +43,4 @@ module Lifx
 import Lifx.Util
 import Lifx.Types
 import Lifx.Json
+import Lifx.ProductTable

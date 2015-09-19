@@ -1,0 +1,26 @@
+[
+    {
+        "Color": "Yes",
+        "Name": "Original 1000",
+        "Product ID": "1",
+        "Vendor ID": "1"
+    },
+    {
+        "Color": "Yes",
+        "Name": "Color 650",
+        "Product ID": "3",
+        "Vendor ID": "1"
+    },
+    {
+        "Color": "No",
+        "Name": "White 800 (Low Voltage)",
+        "Product ID": "10",
+        "Vendor ID": "1"
+    },
+    {
+        "Color": "No",
+        "Name": "White 800 (High Voltage)",
+        "Product ID": "11",
+        "Vendor ID": "1"
+    }
+]

@@ -282,8 +282,11 @@ isCompleteColor (HSBK (Just _ ) (Just _ ) (Just _ ) (Just _ )) = True
 isCompleteColor _ = False
 
 
-data Capabilities = HasColor | HasVariableColorTemp
-                  deriving (Show, Read, Eq, Ord)
+data Capabilities =
+  Capabilities
+  { cHasColor             :: !Bool
+  , cHasVariableColorTemp :: !Bool
+  } deriving (Show, Read, Eq, Ord)
 
 data Product =
   Product
@@ -291,27 +294,9 @@ data Product =
   , pProduct      :: !Word32
   , pLongName     :: Text
   , pShortName    :: Text
-  , pCapabilities :: [Capabilities]
+  , pCapabilities :: Capabilities
   } deriving (Show, Read, Eq, Ord)
 
-products :: [Product]
-products =
-  [ Product 1 1 "Original 1000" "O1000" [HasColor, HasVariableColorTemp]
-  , Product 1 2 "Color 650"     "C650"  [HasColor, HasVariableColorTemp]
-  , Product 1 3 "White 800"     "W800"  [HasVariableColorTemp]
-  ]
-
-productFromId :: Word32 -> Word32 -> Maybe Product
-productFromId v p = find f products
-  where f (Product v' p' _ _ _) = v == v' && p == p'
-
-productFromLongName :: Text -> Maybe Product
-productFromLongName ln = find f products
-  where f (Product _ _ ln' _ _) = ln == ln'
-
-productFromShortName :: Text -> Maybe Product
-productFromShortName sn = find f products
-  where f (Product _ _ _ sn' _) = sn == sn'
 
 data Targets = TargAll | TargSome (S.Set TargetMatch)
                deriving (Show, Read, Eq, Ord)
