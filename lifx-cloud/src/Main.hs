@@ -85,6 +85,14 @@ instance ToJSON StatePair where
         ps' = ("selector" .= selectorToText sel) : ps
     in object ps'
 
+maybifyPair :: (B.ByteString, Maybe T.Text)
+               -> Maybe (B.ByteString, B.ByteString)
+maybifyPair (_, Nothing) = Nothing
+maybifyPair (k, (Just v)) = Just (k, TE.encodeUtf8 v)
+
+showDown :: Show a => a -> T.Text
+showDown x = T.pack $ map toLower $ show x
+
 instance Connection CloudConnection where
   listLights cc sel = do
     req <- endpoint cc ("lights/" <> selectorToText sel)
@@ -94,6 +102,21 @@ instance Connection CloudConnection where
     req <- endpoint cc "lights/states"
     let states = encode $ object ["states" .= map StatePair pairs]
         req' = jsonPut req states
+    performRequest cc req'
+
+  effect cc sel eff = do
+    req <- endpoint cc ("lights/" <> selectorToText sel
+                        <> "/effects/" <> showDown (eType eff))
+    let params = mapMaybe maybifyPair
+                 [ ("color",      colorToText (eColor eff))
+                 , ("from_color", colorToText (eFromColor eff))
+                 , ("period",     Just $ fmt "{}" (Only $ ePeriod eff))
+                 , ("cycles",     Just $ fmt "{}" (Only $ eCycles eff))
+                 , ("persist",    Just $ showDown $ ePersist eff)
+                 , ("power_on",   Just $ showDown $ ePowerOn eff)
+                 , ("peak",       Just $ fmt "{}" (Only $ ePeak eff))
+                 ]
+        req' = (urlEncodedBody params req)
     performRequest cc req'
 
   listScenes cc = do
@@ -208,7 +231,6 @@ setStates cc states = do
   let req' = jsonPut req states
   resp <- httpLbs req' (ccManager cc)
   return $ responseBody resp
--}
 
 doEffect :: CloudConnection
             -> T.Text
@@ -221,7 +243,6 @@ doEffect cc sel eff params = do
   resp <- httpLbs req' (ccManager cc)
   return $ responseBody resp
 
-{-
 listScenes :: CloudConnection -> IO L.ByteString
 listScenes cc = do
   req <- endpoint cc "scenes"
@@ -256,8 +277,10 @@ main = do
   -- lites <- listLights cc SelAll
   -- lites <- listScenes cc
   -- lites <- activateScene cc (fromRight $ fromText "2c969519-1d6a-4c93-a4d7-d099045726c9") 5
-  lites <- setStates cc [(SelGroup $ fromRight $ fromText "Bedroom",
-                          StateTransition (Just Off) emptyColor 10)]
+  {- lites <- setStates cc [(SelGroup $ fromRight $ fromText "Bedroom",
+                             StateTransition (Just On) emptyColor 10)] -}
+  lites <- effect cc (SelGroup $ fromRight $ fromText "Bedroom")
+           defaultEffect { eType = Pulse, eColor = red, eCycles = 5 }
   print lites
   {-
   let val = (fromJust $ decode lbs) :: Value
