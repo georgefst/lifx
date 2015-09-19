@@ -435,6 +435,18 @@ data Effect =
   , ePeak :: Double
   } deriving (Eq, Ord, Show, Read)
 
+defaultEffect :: Effect
+defaultEffect = Effect
+  { eType = Pulse
+  , eColor = emptyColor
+  , eFromColor = emptyColor
+  , ePeriod = 1.0
+  , eCycles = 1.0
+  , ePersist = False
+  , ePowerOn = True
+  , ePeak = 0.5
+  }
+
 data Scene =
   Scene
   { scId :: SceneId

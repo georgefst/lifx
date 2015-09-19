@@ -38,6 +38,7 @@ module Lifx
        , selectorToText
        , fmt
        , stateTransitionToPairs
+       , defaultEffect
        ) where
 
 import Lifx.Util
