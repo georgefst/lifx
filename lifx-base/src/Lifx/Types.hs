@@ -383,8 +383,8 @@ data InfoNeeded = NeedLabel | NeedPower | NeedColor | NeedGroup | NeedLocation
                 | NeedFirmwareVersion | NeedHardwareVersion
                 deriving (Show, Read, Eq, Ord, Bounded, Enum)
 
-needEverying :: [InfoNeeded]
-needEverying = [minBound .. maxBound]
+needEverything :: [InfoNeeded]
+needEverything = [minBound .. maxBound]
 
 data LightInfo =
   LightInfo
