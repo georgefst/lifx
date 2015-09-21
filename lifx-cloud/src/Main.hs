@@ -135,7 +135,7 @@ instance Connection CloudConnection where
   cycleLights cc sel states = do
     req <- endpoint cc ("lights/" <> selectorToText sel <> "/cycle")
     let states' = encode $ object ["states" .= states]
-        req' = (jsonPut req states') -- { method = methodPost }
+        req' = (jsonPut req states') { method = methodPost }
     performRequest cc req'
 
 endpoint :: CloudConnection -> T.Text -> IO Request
