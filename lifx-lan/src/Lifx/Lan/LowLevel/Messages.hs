@@ -1,4 +1,4 @@
-module Lifx.Lan.Messages
+module Lifx.Lan.LowLevel.Messages
     ( SetWaveform(..),
       StateInfo(..),
       StateVersion(..),
@@ -40,9 +40,9 @@ import qualified Data.Text.Encoding.Error as TEE
 import Data.Word ( Word16, Word32, Word64 )
 
 import Lifx
-import Lifx.Lan.Util
-import Lifx.Lan.Types
-import Lifx.Lan.Protocol
+import Lifx.Lan.LowLevel.Util
+import Lifx.Lan.LowLevel.Types
+import Lifx.Lan.LowLevel.Protocol
 
 ackCb :: IO () -> Header -> Acknowledgement -> IO ()
 ackCb cb hdr ack = cb

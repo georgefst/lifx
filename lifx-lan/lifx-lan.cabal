@@ -46,10 +46,10 @@ cabal-version:       >=1.10
 library
   exposed-modules: Lifx.Lan.LowLevel
 
-  other-modules: Lifx.Lan.Util
-               , Lifx.Lan.Types
-               , Lifx.Lan.Messages
-               , Lifx.Lan.Protocol
+  other-modules: Lifx.Lan.LowLevel.Util
+               , Lifx.Lan.LowLevel.Types
+               , Lifx.Lan.LowLevel.Messages
+               , Lifx.Lan.LowLevel.Protocol
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:

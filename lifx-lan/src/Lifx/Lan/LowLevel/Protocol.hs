@@ -1,4 +1,4 @@
-module Lifx.Lan.Protocol
+module Lifx.Lan.LowLevel.Protocol
     ( Lan,
       Bulb(..),
       RetryParams(..),
@@ -65,8 +65,8 @@ import System.Mem.Weak
 import Text.Printf ( printf )
 
 import Lifx
-import Lifx.Lan.Util
-import Lifx.Lan.Types
+import Lifx.Lan.LowLevel.Util
+import Lifx.Lan.LowLevel.Types
 
 {- GetService and StateService are defined here instead of
  - Messages.hs for dependency reasons. -}

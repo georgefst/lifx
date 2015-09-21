@@ -36,7 +36,7 @@ module Lifx.Lan.LowLevel
       HSBK16
       ) where
 
-import Lifx.Lan.Util
-import Lifx.Lan.Types
-import Lifx.Lan.Messages
-import Lifx.Lan.Protocol
+import Lifx.Lan.LowLevel.Util
+import Lifx.Lan.LowLevel.Types
+import Lifx.Lan.LowLevel.Messages
+import Lifx.Lan.LowLevel.Protocol

@@ -1,4 +1,4 @@
-module Lifx.Lan.Util
+module Lifx.Lan.LowLevel.Util
     ( putFloat32le,
       getFloat32le,
       putInt16le,

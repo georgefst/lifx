@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
-module Lifx.Lan.Types
+module Lifx.Lan.LowLevel.Types
     ( MessageType(..),
       Header(..),
       dfltHdr,
@@ -24,7 +24,7 @@ import qualified Data.Text as T
 import Data.Word ( Word8, Word16, Word32, Word64 )
 
 import Lifx
-import Lifx.Lan.Util
+import Lifx.Lan.LowLevel.Util
 
 type Interface = T.Text
 type HSBK16 = HSBK Word16
