@@ -60,7 +60,9 @@ isJsonMimeType resp =
 extractMessage :: Response L.ByteString -> T.Text
 extractMessage resp = orElseStatus jsonMessage
   where orElseStatus Nothing =
-          decodeUtf8Lenient $ statusMessage $ responseStatus resp
+          fmt "{} {}"
+          ( statusCode $ responseStatus resp
+          , decodeUtf8Lenient $ statusMessage $ responseStatus resp )
         orElseStatus (Just txt) = txt
         jsonMessage = do
           unless (isJsonMimeType resp) Nothing
@@ -133,7 +135,7 @@ instance Connection CloudConnection where
   cycleLights cc sel states = do
     req <- endpoint cc ("lights/" <> selectorToText sel <> "/cycle")
     let states' = encode $ object ["states" .= states]
-        req' = (jsonPut req states') { method = methodPost }
+        req' = (jsonPut req states') -- { method = methodPost }
     performRequest cc req'
 
 endpoint :: CloudConnection -> T.Text -> IO Request
