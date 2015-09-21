@@ -106,6 +106,13 @@ instance Connection CloudConnection where
         req' = jsonPut req states
     performRequest cc req'
 
+  togglePower cc sel dur = do
+    req <- endpoint cc ("lights/" <> selectorToText sel <> "/toggle")
+    let durTxt = fmt "{}" (Only dur)
+        params = [("duration", TE.encodeUtf8 durTxt)]
+        req' = (urlEncodedBody params req)
+    performRequest cc req'
+
   effect cc sel eff = do
     req <- endpoint cc ("lights/" <> selectorToText sel
                         <> "/effects/" <> showDown (eType eff))
@@ -289,6 +296,7 @@ main = do
                              StateTransition (Just On) emptyColor 10)] -}
   {- lites <- effect cc (SelGroup $ fromRight $ fromText "Bedroom")
               defaultEffect { eType = Pulse, eColor = red, eCycles = 5 } -}
+  {-
   lites <- cycleLights cc (SelGroup $ fromRight $ fromText "Bedroom")
            [ StateTransition (Just On) red 2
            , StateTransition (Just On) yellow 2
@@ -296,6 +304,8 @@ main = do
            , StateTransition (Just On) blue 2
            , StateTransition (Just On) pink 2
            ]
+  -}
+  lites <- togglePower cc (SelGroup $ fromRight $ fromText "Bedroom") 1
   print lites
   {-
   let val = (fromJust $ decode lbs) :: Value

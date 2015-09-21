@@ -351,11 +351,12 @@ matchLab t1 x = t1 `T.isPrefixOf` t2
 class Connection t where
   listLights :: t -> Selector -> IO [LightInfo]
   setStates :: t -> [(Selector, StateTransition)] -> IO [StateTransitionResult]
+  togglePower :: t -> Selector -> FracSeconds -> IO [Result]
   effect :: t -> Selector -> Effect -> IO [Result]
   listScenes :: t -> IO [Scene]
   activateScene :: t -> SceneId -> FracSeconds -> IO [Result]
   cycleLights :: t -> Selector -> [StateTransition] -> IO [Result]
-  terminate :: t -> IO ()
+  closeConnection :: t -> IO ()
 
 {-
 selectAll        :: Selector
