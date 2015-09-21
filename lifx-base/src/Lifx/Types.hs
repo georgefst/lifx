@@ -349,7 +349,7 @@ matchLab t1 x = t1 `T.isPrefixOf` t2
 ----------------------------------------------------------------------
 
 class Connection t where
-  listLights :: t -> Selector -> IO [LightInfo]
+  listLights :: t -> Selector -> InfoNeeded -> IO [LightInfo]
   setStates :: t -> [(Selector, StateTransition)] -> IO [StateTransitionResult]
   togglePower :: t -> Selector -> FracSeconds -> IO [Result]
   effect :: t -> Selector -> Effect -> IO [Result]
@@ -377,6 +377,14 @@ selectLocationId = SelLocationId
 -}
 
 type FracSeconds = Double
+
+data InfoNeeded = NeedLabel | NeedPower | NeedColor | NeedGroup | NeedLocation
+                | NeedProduct | NeedTemperature | NeedUptime
+                | NeedFirmwareVersion | NeedHardwareVersion
+                deriving (Show, Read, Eq, Ord, Bounded, Enum)
+
+needEverying :: [InfoNeeded]
+needEverying = [minBound .. maxBound]
 
 data LightInfo =
   LightInfo

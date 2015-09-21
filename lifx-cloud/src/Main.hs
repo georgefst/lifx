@@ -96,7 +96,7 @@ showDown :: Show a => a -> T.Text
 showDown x = T.pack $ map toLower $ show x
 
 instance Connection CloudConnection where
-  listLights cc sel = do
+  listLights cc sel _ = do
     req <- endpoint cc ("lights/" <> selectorToText sel)
     performRequest cc req
 
