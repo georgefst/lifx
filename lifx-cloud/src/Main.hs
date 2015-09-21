@@ -130,6 +130,12 @@ instance Connection CloudConnection where
         req' = (urlEncodedBody params req) { method = methodPut }
     performRequest cc req'
 
+  cycleLights cc sel states = do
+    req <- endpoint cc ("lights/" <> selectorToText sel <> "/cycle")
+    let states' = encode $ object ["states" .= states]
+        req' = (jsonPut req states') { method = methodPost }
+    performRequest cc req'
+
 endpoint :: CloudConnection -> T.Text -> IO Request
 endpoint cc ep = do
   let url = T.unpack $ ccRoot cc <> ep
@@ -279,8 +285,15 @@ main = do
   -- lites <- activateScene cc (fromRight $ fromText "2c969519-1d6a-4c93-a4d7-d099045726c9") 5
   {- lites <- setStates cc [(SelGroup $ fromRight $ fromText "Bedroom",
                              StateTransition (Just On) emptyColor 10)] -}
-  lites <- effect cc (SelGroup $ fromRight $ fromText "Bedroom")
-           defaultEffect { eType = Pulse, eColor = red, eCycles = 5 }
+  {- lites <- effect cc (SelGroup $ fromRight $ fromText "Bedroom")
+              defaultEffect { eType = Pulse, eColor = red, eCycles = 5 } -}
+  lites <- cycleLights cc (SelGroup $ fromRight $ fromText "Bedroom")
+           [ StateTransition (Just On) red 2
+           , StateTransition (Just On) yellow 2
+           , StateTransition (Just On) green 2
+           , StateTransition (Just On) blue 2
+           , StateTransition (Just On) pink 2
+           ]
   print lites
   {-
   let val = (fromJust $ decode lbs) :: Value

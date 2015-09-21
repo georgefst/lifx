@@ -354,7 +354,7 @@ class Connection t where
   effect :: t -> Selector -> Effect -> IO [Result]
   listScenes :: t -> IO [Scene]
   activateScene :: t -> SceneId -> FracSeconds -> IO [Result]
-  cycle :: t -> Selector -> [StateTransition] -> IO [Result]
+  cycleLights :: t -> Selector -> [StateTransition] -> IO [Result]
   terminate :: t -> IO ()
 
 {-
