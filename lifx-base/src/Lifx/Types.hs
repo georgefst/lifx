@@ -349,7 +349,7 @@ matchLab t1 x = t1 `T.isPrefixOf` t2
 ----------------------------------------------------------------------
 
 class Connection t where
-  listLights :: t -> Selector -> InfoNeeded -> IO [LightInfo]
+  listLights :: t -> Selector -> [InfoNeeded] -> IO [LightInfo]
   setStates :: t -> [(Selector, StateTransition)] -> IO [StateTransitionResult]
   togglePower :: t -> Selector -> FracSeconds -> IO [Result]
   effect :: t -> Selector -> Effect -> IO [Result]
