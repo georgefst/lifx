@@ -40,19 +40,36 @@ getLan = lcLan
 data MVarList a = Empty | Cons { car :: a , cdr :: MVar (MVarList a) }
                 deriving Eq
 
+mVarListToList :: MVar (MVarList a) -> IO [a]
+mVarListToList mvl = unsafeInterleaveIO $ do
+  l <- takeMVar mvl
+  case l of
+   Empty -> return []
+   Cons lHead lTail -> do
+     lTail' <- mVarListToList lTail
+     return (lHead : lTail')
+
 doListLights :: LanConnection
                 -> Selector
                 -> [InfoNeeded]
                 -> MVar (MVarList LightInfo)
                 -> IO ()
 doListLights lc sel needed result = do
-  
+  tv <- newTVarIO (Just result)
+  forM_ [1..15] $ \_ -> do
+    discoverBulbs (lcLan lc) todoCallback
+    threadDelay 100000
+  mv <- atomically $ do
+    x <- readTVar tv
+    writeTVar tv Nothing
+    return x
+  putMVar mv Empty
 
 instance Connection LanConnection where
   listLights lc sel needed = do
     result <- newEmptyMVar
-    doListLights lc sel needed result
-    takeMVar result
+    forkIO $ doListLights lc sel needed result
+    mVarListToList result
 
   setStates lc pairs = undefined
   togglePower lc sel dur = undefined
