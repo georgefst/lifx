@@ -49,6 +49,47 @@ mVarListToList mvl = unsafeInterleaveIO $ do
      lTail' <- mVarListToList lTail
      return (lHead : lTail')
 
+emptyLightInfo :: DeviceId -> DateTime -> LightInfo
+emptyLightInfo devId now = LightInfo
+  { lId = devId
+  , lUuid = Nothing
+  , lLabel = Nothing
+  , lConnected = True
+  , lPower = Nothing
+  , lColor = emptyColor
+  , lGroupId = Nothing
+  , lGroup = Nothing
+  , lLocationId = Nothing
+  , lLocation = Nothing
+  , lLastSeen = now
+  , lSecondsSinceSeen = 0
+  , lProduct = Nothing
+  , lTemperature = Nothing
+  , lUptime = Nothing
+  , lFirmwareVersion = Nothing
+  , lHardwareVersion = Nothing
+  }
+
+selToNeeded :: Selector -> [InfoNeeded]
+selToNeeded SelAll             = []
+selToNeeded (SelLabel _ )      = [NeedLabel]
+selToNeeded (SelDevId _ )      = []
+selToNeeded (SelGroup _ )      = [NeedGroup]
+selToNeeded (SelGroupId _ )    = [NeedGroup]
+selToNeeded (SelLocation _ )   = [NeedLocation]
+selToNeeded (SelLocationId _ ) = [NeedLocation]
+
+{-
+NeedLabelPowerColor = GetLight
+NeedGroup           = GetGroup
+NeedLocation        = GetLocation
+NeedProduct         = GetVersion
+NeedTemperature     = GetHostInfo
+NeedUptime          = GetInfo
+NeedFirmwareVersion = GetHostFirmware
+NeedHardwareVersion = GetVersion
+-}
+
 doListLights :: LanConnection
                 -> Selector
                 -> [InfoNeeded]
