@@ -7,16 +7,17 @@ import Control.Concurrent.MVar
 
 data LanSettings =
   LanSettings
-  { lsIfName :: T.Text
-    lsLog :: String -> IO ()
-    lsPort :: Word16
-    lsListScenes :: IO [Scene]
+  { lsIfName      :: T.Text
+  , lsLog         :: String -> IO ()
+  , lsPort        :: !Word16
+  , lsListScenes  :: IO [Scene]
+  , lsRetryParams :: RetryParams
   }
 
 data LanConnection =
   LanConnection
   { lcLan :: Lan
-    lcSettings :: LanSettings
+  , lcSettings :: LanSettings
   }
 
 instance Show LanConnection where
@@ -103,14 +104,58 @@ whatsNeeded sel needed =
   sort $ nub $ map needMessage $ selToNeeded sel ++ needed
 
 
-type Contn = LightInfo -> IO ()
+type FinCont = Maybe LightInfo -> IO ()
+type NxtCont = LightInfo -> IO ()
 
-cbForMessage :: (Bulb, Selector, Contn)
+cbForMessage :: (LanSettings, Bulb, Selector, FinCont)
                 -> MessageNeeded
-                -> Contn
+                -> NxtCont
                 -> LightInfo
                 -> IO ()
--- I'm confused
+cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
+  where rq q cb = reliableQuery (lsRetryParams ls) (q bulb) cb $ do
+                    (lsLog ls) (show bulb ++ " not responding to " ++ opName)
+                    finCont li
+        opName = drop 4 $ show mneed
+
+        f NeedGetLight        = rq getLight        cbLight
+        f NeedGetGroup        = rq getGroup        cbGroup
+        f NeedGetLocation     = rq getLocation     cbLocation
+        f NeedGetVersion      = rq getVersion      cbVersion
+        f NeedGetHostInfo     = rq getHostInfo     cbHostInfo
+        f NeedGetInfo         = rq getInfo         cbInfo
+        f NeedGetHostFirmware = rq getHostFirmware cbHostFirmware
+
+        cbLight sl = if selLight sel sl
+                     then nxtCont (trLight sl)
+                     else finCont Nothing
+        cbGroup sg = if selGroup sel sg
+                     then nxtCont (trGroup sg)
+                     else finCont Nothing
+        cbLocation slo = if selLocation sel slo
+                         then nxtCont (trLocation slo)
+                         else finCont Nothing
+        cbVersion sv       = nxtCont (trVersion sv)
+        cbHostInfo shi     = nxtCont (trHostInfo shi)
+        cbInfo si          = nxtCont (trInfo si)
+        cbHostFirmware shf = nxtCont (trHostFirmware shf)
+
+        trLight sl = li { lColor = todo (slColor sl)
+                        , lPower = Just (slPower sl)
+                        , lLabel = Just (slLabel sl)
+                        }
+        trGroup sg = li { lGroupId = Just (sgGroup sg)
+                        , lGroup   = Just (sgLabel sg)
+                        }
+        trLocation slo = li { lLocationId = Just (sloLocation slo)
+                            , lLocation   = Just (sloLabel slo)
+                            }
+        trVersion sv = li { lProduct = todo (svVendor sv) (svProduct sv)
+                          , lHardwareVersion = Just (svVersion sv)
+                          }
+        trHostInfo shi = li { lTemperature = Just (shiMcuTemperature shi / 100) }
+        trInfo si = li { lUptime = Just (siUptime si / todo) }
+        trHostFirmware shf = li { lFirmwareVersion = Just (todo $ shfVersion shf) }
 
 doListLights :: LanConnection
                 -> Selector
