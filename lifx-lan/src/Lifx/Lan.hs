@@ -79,16 +79,38 @@ selToNeeded (SelGroupId _ )    = [NeedGroup]
 selToNeeded (SelLocation _ )   = [NeedLocation]
 selToNeeded (SelLocationId _ ) = [NeedLocation]
 
-{-
-NeedLabelPowerColor = GetLight
-NeedGroup           = GetGroup
-NeedLocation        = GetLocation
-NeedProduct         = GetVersion
-NeedTemperature     = GetHostInfo
-NeedUptime          = GetInfo
-NeedFirmwareVersion = GetHostFirmware
-NeedHardwareVersion = GetVersion
--}
+
+data MessageNeeded = NeedGetLight   | NeedGetGroup    | NeedGetLocation
+                   | NeedGetVersion | NeedGetHostInfo | NeedGetInfo
+                   | NeedGetHostFirmware
+                   deriving (Show, Read, Eq, Ord, Bounded, Enum)
+
+needMessage :: InfoNeeded -> MessageNeeded
+needMessage NeedLabel           = NeedGetLight
+needMessage NeedPower           = NeedGetLight
+needMessage NeedColor           = NeedGetLight
+needMessage NeedGroup           = NeedGetGroup
+needMessage NeedLocation        = NeedGetLocation
+needMessage NeedProduct         = NeedGetVersion
+needMessage NeedTemperature     = NeedGetHostInfo
+needMessage NeedUptime          = NeedGetInfo
+needMessage NeedFirmwareVersion = NeedGetHostFirmware
+needMessage NeedHardwareVersion = NeedGetVersion
+
+
+whatsNeeded :: Selector -> [InfoNeeded] -> [MessageNeeded]
+whatsNeeded sel needed =
+  sort $ nub $ map needMessage $ selToNeeded sel ++ needed
+
+
+type Contn = LightInfo -> IO ()
+
+cbForMessage :: (Bulb, Selector, Contn)
+                -> MessageNeeded
+                -> Contn
+                -> LightInfo
+                -> IO ()
+-- I'm confused
 
 doListLights :: LanConnection
                 -> Selector
@@ -96,9 +118,10 @@ doListLights :: LanConnection
                 -> MVar (MVarList LightInfo)
                 -> IO ()
 doListLights lc sel needed result = do
+  let messagesNeeded = whatsNeeded sel needed
   tv <- newTVarIO (Just result)
   forM_ [1..15] $ \_ -> do
-    discoverBulbs (lcLan lc) todoCallback
+    discoverBulbs (lcLan lc) (todoCallback messagesNeeded tv)
     threadDelay 100000
   mv <- atomically $ do
     x <- readTVar tv
