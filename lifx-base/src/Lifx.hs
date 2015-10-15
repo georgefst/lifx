@@ -39,6 +39,8 @@ module Lifx
        , fmt
        , stateTransitionToPairs
        , defaultEffect
+       , InfoNeeded (..)
+       , needEverything
        ) where
 
 import Lifx.Util

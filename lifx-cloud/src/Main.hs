@@ -46,7 +46,7 @@ decodeUtf8Lenient = TE.decodeUtf8With TEE.lenientDecode
 newtype CloudMessage = CloudMessage { unCloudMessage :: T.Text }
 
 instance FromJSON CloudMessage where
-  parseJSON (Object v) = CloudMessage <$> v .: "message"
+  parseJSON (Object v) = CloudMessage <$> v .: "error"
   parseJSON _ = mzero
 
 isJsonMimeType :: Response a -> Bool
@@ -281,7 +281,7 @@ main = do
   lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
   let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
   mgr <- newManager tlsManagerSettings
-  let cc = CloudConnection mgr lifxToken "https://api.lifx.com/v1.0-beta1/"
+  let cc = CloudConnection mgr lifxToken "https://api.lifx.com/v1/"
   {-
   -- lbs <- doEffect cc "id:d073d50225cd" "pulse" [ ("color", "red") , ("cycles", "5") ]
   lbs <- listScenes cc
@@ -290,7 +290,7 @@ main = do
   let lites = (eitherDecode lbs) :: Either String [Scene]
   -}
   -- lites <- listLights cc SelAll
-  -- lites <- listScenes cc
+  lites <- listScenes cc
   -- lites <- activateScene cc (fromRight $ fromText "2c969519-1d6a-4c93-a4d7-d099045726c9") 5
   {- lites <- setStates cc [(SelGroup $ fromRight $ fromText "Bedroom",
                              StateTransition (Just On) emptyColor 10)] -}
@@ -305,7 +305,8 @@ main = do
            , StateTransition (Just On) pink 2
            ]
   -}
-  lites <- togglePower cc (SelGroup $ fromRight $ fromText "Bedroom") 1
+  -- lites <- togglePower cc (SelGroup $ fromRight $ fromText "Bedroom") 1
+  -- lites <- listLights cc (SelGroup $ fromRight $ fromText "Phelps") needEverything
   print lites
   {-
   let val = (fromJust $ decode lbs) :: Value

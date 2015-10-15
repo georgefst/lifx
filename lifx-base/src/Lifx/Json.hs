@@ -115,8 +115,9 @@ instance FromJSON LightInfo where
     myLastSeenStr      <- v .:  "last_seen"
     mySecondsSinceSeen <- v .:  "seconds_since_seen"
     myColor            <- parseColorBrightness v
-    myProductName      <- v .:? "product_name"
-    myCapabilities     <- v .:? "capabilities"
+    p                  <- v .: "product"
+    myProductName      <- p .:? "name"
+    myCapabilities     <- p .:? "capabilities"
     myFirmwareVersStr  <- v .:? "firmware_version"
     myHardwareVersion  <- v .:? "hardware_version"
 
