@@ -36,6 +36,7 @@ module Lifx
        , SceneId (..)
        , colorToText
        , selectorToText
+       , selectorsToText
        , fmt
        , stateTransitionToPairs
        , defaultEffect

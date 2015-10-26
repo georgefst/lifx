@@ -42,6 +42,7 @@ import Lifx.Util
 data LifxException = NoSuchInterface String [String]
                    | CloudError T.Text
                    | CloudJsonError T.Text
+                   | IllegalCharacter Char
                    deriving (Show, Typeable)
 
 instance Exception LifxException
@@ -349,13 +350,13 @@ matchLab t1 x = t1 `T.isPrefixOf` t2
 ----------------------------------------------------------------------
 
 class Connection t where
-  listLights :: t -> Selector -> [InfoNeeded] -> IO [LightInfo]
-  setStates :: t -> [(Selector, StateTransition)] -> IO [StateTransitionResult]
-  togglePower :: t -> Selector -> FracSeconds -> IO [Result]
-  effect :: t -> Selector -> Effect -> IO [Result]
+  listLights :: t -> [Selector] -> [InfoNeeded] -> IO [LightInfo]
+  setStates :: t -> [([Selector], StateTransition)] -> IO [StateTransitionResult]
+  togglePower :: t -> [Selector] -> FracSeconds -> IO [Result]
+  effect :: t -> [Selector] -> Effect -> IO [Result]
   listScenes :: t -> IO [Scene]
   activateScene :: t -> SceneId -> FracSeconds -> IO [Result]
-  cycleLights :: t -> Selector -> [StateTransition] -> IO [Result]
+  cycleLights :: t -> [Selector] -> [StateTransition] -> IO [Result]
   closeConnection :: t -> IO ()
 
 {-
@@ -508,3 +509,12 @@ selectorToText (SelGroup x)      = "group:"       <> toText x
 selectorToText (SelGroupId x)    = "group_id:"    <> toText x
 selectorToText (SelLocation x)   = "location:"    <> toText x
 selectorToText (SelLocationId x) = "location_id:" <> toText x
+
+selectorsToText :: [Selector] -> Either LifxException T.Text
+selectorsToText sels = do
+  let illegalChars = ",/"
+      checkChars t = checkChars' t $ T.find (`elem` illegalChars) t
+      checkChars' t Nothing = Right t
+      checkChars' _ (Just c) = Left $ IllegalCharacter c
+  txts <- mapM (checkChars . selectorToText) sels
+  return $ T.intercalate "," txts

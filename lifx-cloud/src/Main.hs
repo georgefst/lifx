@@ -74,17 +74,27 @@ performRequest cc req = do
   resp <- httpLbs req (ccManager cc)
   let stat = responseStatus resp
       code = statusCode stat
-  when (code < 200 || code > 299) $ throw $ CloudError $ extractMessage resp
+  when (code < 200 || code > 299) $ throwIO $ CloudError $ extractMessage resp
   case eitherDecode' $ responseBody resp of
-   Left msg -> throw $ CloudJsonError $ T.pack msg
+   Left msg -> throwIO $ CloudJsonError $ T.pack msg
    Right x -> return x
 
 newtype StatePair = StatePair (Selector, StateTransition)
 
+selectorsToTextThrow :: [Selector] -> T.Text
+selectorsToTextThrow sels = f $ selectorsToText sels
+  where f (Left e) = throw e
+        f (Right t) = t
+
+selectorsToTextThrowIO :: [Selector] -> IO T.Text
+selectorsToTextThrowIO sels = f $ selectorsToText sels
+  where f (Left e) = throwIO e
+        f (Right t) = return t
+
 instance ToJSON StatePair where
   toJSON (StatePair (sel, st)) =
     let ps = stateTransitionToPairs st
-        ps' = ("selector" .= selectorToText sel) : ps
+        ps' = ("selector" .= selectorsToTextThrow sel) : ps
     in object ps'
 
 maybifyPair :: (B.ByteString, Maybe T.Text)
@@ -97,7 +107,8 @@ showDown x = T.pack $ map toLower $ show x
 
 instance Connection CloudConnection where
   listLights cc sel _ = do
-    req <- endpoint cc ("lights/" <> selectorToText sel)
+    txt <- selectorsToTextThrowIO sel
+    req <- endpoint cc ("lights/" <> txt)
     performRequest cc req
 
   setStates cc pairs = do
@@ -107,15 +118,16 @@ instance Connection CloudConnection where
     performRequest cc req'
 
   togglePower cc sel dur = do
-    req <- endpoint cc ("lights/" <> selectorToText sel <> "/toggle")
+    txt <- selectorsToTextThrowIO sel
+    req <- endpoint cc ("lights/" <> txt <> "/toggle")
     let durTxt = fmt "{}" (Only dur)
         params = [("duration", TE.encodeUtf8 durTxt)]
         req' = (urlEncodedBody params req)
     performRequest cc req'
 
   effect cc sel eff = do
-    req <- endpoint cc ("lights/" <> selectorToText sel
-                        <> "/effects/" <> showDown (eType eff))
+    txt <- selectorsToTextThrowIO sel
+    req <- endpoint cc ("lights/" <> txt <> "/effects/" <> showDown (eType eff))
     let params = mapMaybe maybifyPair
                  [ ("color",      colorToText (eColor eff))
                  , ("from_color", colorToText (eFromColor eff))
@@ -140,7 +152,8 @@ instance Connection CloudConnection where
     performRequest cc req'
 
   cycleLights cc sel states = do
-    req <- endpoint cc ("lights/" <> selectorToText sel <> "/cycle")
+    txt <- selectorsToTextThrowIO sel
+    req <- endpoint cc ("lights/" <> txt <> "/cycle")
     let states' = encode $ object ["states" .= states]
         req' = (jsonPut req states') { method = methodPost }
     performRequest cc req'
