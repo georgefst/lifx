@@ -468,7 +468,7 @@ data Scene =
 
 data SceneDevice =
   SceneDevice
-  { sdId :: DeviceId
+  { sdSel   :: Selector
   , sdPower :: Maybe Power
   , sdColor :: MaybeColor
   } deriving (Eq, Ord, Show, Read)
