@@ -259,17 +259,17 @@ instance FromJSON Scene where
     myUpAt    <- v .:  "updated_at"
     myCrAt    <- v .:  "created_at"
     myAccount <- v .:? "account" >>= parseUuid
-    myDevices <- v .:  "states"
+    myStates  <- v .:  "states"
     return $ Scene myId myName
       (ununix myUpAt) (ununix myCrAt)
-      myAccount myDevices
+      myAccount myStates
   parseJSON _ = fail "expected a JSON object for scene"
 
-instance FromJSON SceneDevice where
+instance FromJSON SceneState where
   parseJSON (Object v) = do
     mySel   <- v .: "selector"
     myPower <- v .:? "power"
     myColor <- parseColorBrightness v
-    return $ SceneDevice mySel myPower myColor
+    return $ SceneState mySel myPower myColor
   parseJSON _ = fail "expected a JSON object for device in scene"
 

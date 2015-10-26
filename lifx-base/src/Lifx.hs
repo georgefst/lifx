@@ -32,7 +32,7 @@ module Lifx
        , EffectType (..)
        , Effect (..)
        , Scene (..)
-       , SceneDevice (..)
+       , SceneState (..)
        , SceneId (..)
        , colorToText
        , selectorToText

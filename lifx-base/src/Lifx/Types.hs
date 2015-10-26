@@ -463,11 +463,11 @@ data Scene =
   , scUpdatedAt :: DateTime
   , scCreatedAt :: DateTime
   , scAccount :: Maybe U.UUID
-  , scDevices :: [SceneDevice]
+  , scStates :: [SceneState]
   } deriving (Eq, Ord, Show, Read)
 
-data SceneDevice =
-  SceneDevice
+data SceneState =
+  SceneState
   { sdSel   :: Selector
   , sdPower :: Maybe Power
   , sdColor :: MaybeColor
