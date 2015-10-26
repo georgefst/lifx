@@ -468,9 +468,9 @@ data Scene =
 
 data SceneState =
   SceneState
-  { sdSel   :: Selector
-  , sdPower :: Maybe Power
-  , sdColor :: MaybeColor
+  { ssSel   :: Selector
+  , ssPower :: Maybe Power
+  , ssColor :: MaybeColor
   } deriving (Eq, Ord, Show, Read)
 
 newtype SceneId = SceneId { unSceneId :: U.UUID }
