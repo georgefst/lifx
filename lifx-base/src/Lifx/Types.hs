@@ -497,7 +497,9 @@ colorToText :: MaybeColor -> Maybe T.Text
 colorToText c@(HSBK h s b k)
   | isEmptyColor c = Nothing
   | otherwise =
-      let hsbk = zip ["hue", "saturation", "brightness", "kelvin"] [h, s, b, k]
+      -- kelvin has to go before saturation because of weird behavior:
+      -- https://community.lifx.com/t/interpolating-colors-whites/573/8
+      let hsbk = zip ["kelvin", "hue", "saturation", "brightness"] [k, h, s, b]
           components = mapMaybe textualize hsbk
       in Just $ T.intercalate " " components
 
