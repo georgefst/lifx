@@ -79,7 +79,7 @@ performRequest cc req = do
    Left msg -> throwIO $ CloudJsonError $ T.pack msg
    Right x -> return x
 
-newtype StatePair = StatePair (Selector, StateTransition)
+newtype StatePair = StatePair ([Selector], StateTransition)
 
 selectorsToTextThrow :: [Selector] -> T.Text
 selectorsToTextThrow sels = f $ selectorsToText sels
