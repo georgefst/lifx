@@ -20,9 +20,10 @@ import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
+import qualified Data.Text.IO as TIO
 import Data.Text.Format hiding (print)
 import Data.Text.Format.Params
-import Data.Vector hiding (takeWhile, mapM_, (++), map)
+import Data.Vector hiding (takeWhile, mapM_, (++), map, forM)
 import Data.Version
 import System.IO
 
@@ -38,6 +39,7 @@ data CloudConnection =
   { ccManager :: Manager
   , ccToken :: AuthToken
   , ccRoot :: T.Text
+  , ccWarn :: T.Text -> IO ()
   }
 
 decodeUtf8Lenient :: B.ByteString -> T.Text
@@ -69,6 +71,19 @@ extractMessage resp = orElseStatus jsonMessage
           msg <- decode' $ responseBody resp
           return $ unCloudMessage msg
 
+newtype Warnings = Warnings [T.Text]
+
+instance FromJSON Warnings where
+  parseJSON (Object v) = do
+    ws <- v .: "warnings"
+    Warnings <$> forM ws (\w -> w .: "warning")
+  parseJSON _ = mzero
+
+logWarnings :: (T.Text -> IO ()) -> Maybe Warnings -> IO ()
+logWarnings _ Nothing = return ()
+logWarnings _ (Just (Warnings [])) = return ()
+logWarnings log (Just (Warnings w)) = log (T.intercalate "; " w)
+
 performRequest :: FromJSON a => CloudConnection -> Request -> IO a
 performRequest cc req = do
   resp <- httpLbs req (ccManager cc)
@@ -77,7 +92,9 @@ performRequest cc req = do
   when (code < 200 || code > 299) $ throwIO $ CloudError $ extractMessage resp
   case eitherDecode' $ responseBody resp of
    Left msg -> throwIO $ CloudJsonError $ T.pack msg
-   Right x -> return x
+   Right x -> do
+     logWarnings (ccWarn cc) (decode' $ responseBody resp)
+     return x
 
 newtype StatePair = StatePair ([Selector], StateTransition)
 
@@ -294,7 +311,7 @@ main = do
   lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
   let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
   mgr <- newManager tlsManagerSettings
-  let cc = CloudConnection mgr lifxToken "https://api.lifx.com/v1/"
+  let cc = CloudConnection mgr lifxToken "https://api.lifx.com/v1/" TIO.putStrLn
   {-
   -- lbs <- doEffect cc "id:d073d50225cd" "pulse" [ ("color", "red") , ("cycles", "5") ]
   lbs <- listScenes cc
