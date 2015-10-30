@@ -1,0 +1,3 @@
+[submodule "lifx-base/products"]
+	path = lifx-base/products
+	url = https://github.com/LIFX/products.git
