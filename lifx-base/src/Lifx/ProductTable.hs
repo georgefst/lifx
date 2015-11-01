@@ -15,7 +15,7 @@ import Lifx.ProductShortName
 import Lifx.Types
 
 products :: [Product]
-products = fromRight $ eitherDecodeStrict' $(embedFile "products.json")
+products = fromRight $ eitherDecodeStrict' $(embedFile "products/products.json")
 
 productFromId :: Word32 -> Word32 -> Maybe Product
 productFromId v p = find f products
