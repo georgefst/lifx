@@ -5,9 +5,11 @@ module Lifx.ProductTable (productFromId) where
 import Control.Applicative
 import Data.Aeson
 import qualified Data.ByteString as B
+import Data.Char
 import Data.Either
 import Data.FileEmbed
 import Data.List
+import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Data.Word
 
@@ -17,14 +19,14 @@ import Lifx.Types
 data Vendor =
   Vendor
   { vVid  :: !Word32
-  , vName :: Text
+  , vName :: T.Text
   , vProducts :: [ProductForVendor]
   } deriving (Show, Read, Eq, Ord)
 
 data ProductForVendor =
   ProductForVendor
   { vpPid      :: !Word32
-  , vpName     :: Text
+  , vpName     :: T.Text
   , vpFeatures :: Capabilities
   } deriving (Show, Read, Eq, Ord)
 
@@ -49,7 +51,21 @@ vendors :: [Vendor]
 vendors = fromRight $ eitherDecodeStrict' $(embedFile "products/products.json")
 
 products :: M.Map VidPid Product
-products = fromList TODO
+products = fromList $ concatMap productsForVendor vendors
+
+productsForVendor :: Vendor -> [(VidPid, Product)]
+productsForVendor v = map pr2pr (vProducts v)
+  where pr2pr p = (VidPid (vVid v) (vpPid p),
+                   Product { pCompanyName  = vName v
+                           , pLongName     = vpName p
+                           , pShortName    = productShortName (vpName p)
+                           , pIdentifier   = mkIdentifier (vName v) (vpName p)
+                           , pCapabilities = vpFeatures p
+                           })
+
+mkIdentifier :: T.Text -> T.Text -> T.Text
+mkIdentifier v p = T.toLower $ map underscorify $ v ++ " " ++ p
+  where underscorify c = if isAlphaNum c then c else '_'
 
 productFromId :: Word32 -> Word32 -> Maybe Product
 productFromId v p = M.lookup (VidPid v p) products
