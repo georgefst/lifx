@@ -8,7 +8,7 @@ module Lifx
        , DeviceId, GroupId, LocationId, Label, AuthToken
        , LifxId (..)
        , Product (..)
-       , products, productFromId
+       , productFromId
        , Targets (..)
        , TargetMatch (..)
        , LiteIds (..)

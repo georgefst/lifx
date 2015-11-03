@@ -291,10 +291,10 @@ data Capabilities =
 
 data Product =
   Product
-  { pVendor       :: !Word32
-  , pProduct      :: !Word32
+  { pCompanyName  :: Text
   , pLongName     :: Text
   , pShortName    :: Text
+  , pIdentifier   :: Text
   , pCapabilities :: Capabilities
   } deriving (Show, Read, Eq, Ord)
 
