@@ -319,8 +319,8 @@ main = do
   -- lbs <- listLights cc "all"
   let lites = (eitherDecode lbs) :: Either String [Scene]
   -}
-  -- lites <- listLights cc SelAll
-  lites <- listScenes cc
+  lites <- listLights cc [SelAll] needEverything
+  -- lites <- listScenes cc
   -- lites <- activateScene cc (fromRight $ fromText "2c969519-1d6a-4c93-a4d7-d099045726c9") 5
   {- lites <- setStates cc [(SelGroup $ fromRight $ fromText "Bedroom",
                              StateTransition (Just On) emptyColor 10)] -}
