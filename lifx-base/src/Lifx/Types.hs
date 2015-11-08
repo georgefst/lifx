@@ -292,8 +292,7 @@ data Capabilities =
 data Product =
   Product
   { pCompanyName  :: Text
-  , pLongName     :: Text
-  , pShortName    :: Text
+  , pProductName  :: Text
   , pIdentifier   :: Text
   , pCapabilities :: Capabilities
   } deriving (Show, Read, Eq, Ord)

@@ -94,15 +94,6 @@ parseCaps (Object v) = do
                         , cHasVariableColorTemp = hasVCTemp }
 parseCaps _ = fail "expected a JSON object for capabilities"
 
-combineProd :: T.Text -> Capabilities -> Product
-combineProd pname caps = Product
-  { pVendor       = 0
-  , pProduct      = 0
-  , pLongName     = pname
-  , pShortName    = productShortName pname
-  , pCapabilities = caps
-  }
-
 instance FromJSON LightInfo where
   parseJSON (Object v) = do
     myId               <- v .:  "id"
@@ -116,8 +107,10 @@ instance FromJSON LightInfo where
     mySecondsSinceSeen <- v .:  "seconds_since_seen"
     myColor            <- parseColorBrightness v
     p                  <- v .: "product"
-    myProductName      <- p .:? "name"
-    myCapabilities     <- p .:? "capabilities"
+    myProductName      <- p .: "name"
+    myProductCompany   <- p .: "company"
+    myProductIdent     <- p .: "identifier"
+    myCapabilities     <- p .: "capabilities"
     myFirmwareVersStr  <- v .:? "firmware_version"
     myHardwareVersion  <- v .:? "hardware_version"
 
@@ -139,13 +132,15 @@ instance FromJSON LightInfo where
                                      Left msg -> fail msg
                                      Right vers -> return $ Just vers
 
-    myCaps <- case myCapabilities of
-               Nothing -> return $ Capabilities False False
-               Just obj -> parseCaps obj
+    myCaps <- parseCaps myCapabilities
 
-    let myProduct = case myProductName of
-                     Nothing -> Nothing
-                     Just p -> Just $ combineProd p myCaps
+    let myProduct =
+          Product
+          { pCompanyName  = myProductCompany
+          , pProductName  = myProductName
+          , pIdentifier   = myProductIdent
+          , pCapabilities = myCaps
+          }
 
     return $ LightInfo
            { lId               = myId
@@ -160,7 +155,7 @@ instance FromJSON LightInfo where
            , lLocation         = myLocation
            , lLastSeen         = myLastSeen
            , lSecondsSinceSeen = mySecondsSinceSeen
-           , lProduct          = myProduct
+           , lProduct          = Just myProduct
            , lTemperature      = myTemperature
            , lUptime           = myUptime
            , lFirmwareVersion  = myFirmwareVersion

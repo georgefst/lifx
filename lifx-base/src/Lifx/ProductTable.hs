@@ -30,7 +30,7 @@ data ProductForVendor =
   , vpFeatures :: Capabilities
   } deriving (Show, Read, Eq, Ord)
 
-data VidPid = VidPid !Word32 !Word32
+data VidPid = VidPid !Word32 !Word32 deriving (Show, Read, Eq, Ord)
 
 instance FromJSON Vendor where
   parseJSON (Object v) = do
@@ -51,20 +51,19 @@ vendors :: [Vendor]
 vendors = fromRight $ eitherDecodeStrict' $(embedFile "products/products.json")
 
 products :: M.Map VidPid Product
-products = fromList $ concatMap productsForVendor vendors
+products = M.fromList $ concatMap productsForVendor vendors
 
 productsForVendor :: Vendor -> [(VidPid, Product)]
 productsForVendor v = map pr2pr (vProducts v)
   where pr2pr p = (VidPid (vVid v) (vpPid p),
                    Product { pCompanyName  = vName v
-                           , pLongName     = vpName p
-                           , pShortName    = productShortName (vpName p)
+                           , pProductName  = vpName p
                            , pIdentifier   = mkIdentifier (vName v) (vpName p)
                            , pCapabilities = vpFeatures p
                            })
 
 mkIdentifier :: T.Text -> T.Text -> T.Text
-mkIdentifier v p = T.toLower $ map underscorify $ v ++ " " ++ p
+mkIdentifier v p = T.toLower $ T.map underscorify $ T.concat [v, " ", p]
   where underscorify c = if isAlphaNum c then c else '_'
 
 productFromId :: Word32 -> Word32 -> Maybe Product
