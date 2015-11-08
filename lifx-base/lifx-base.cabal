@@ -49,7 +49,6 @@ library
 
   other-modules: Lifx.ColorParser
                , Lifx.Json
-               , Lifx.ProductShortName
                , Lifx.ProductTable
                , Lifx.SelectorParser
                , Lifx.Types

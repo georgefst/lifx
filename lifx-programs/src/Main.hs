@@ -35,6 +35,7 @@ import Lifx.Lan.LowLevel
 import Lifx hiding (Pulse, NeedGroup)
 import qualified Lifx.Program.CmdParser as C
 import Lifx.Program.Column
+import Lifx.Program.ProductShortName
 
 {-
 myTime :: Word64 -> String
@@ -133,7 +134,7 @@ prVersion sv = addVers $ f $ productFromId vend prod
   where vend = svVendor sv
         prod = svProduct sv
         vers = svVersion sv
-        f (Just p) = pShortName p
+        f (Just p) = productShortName $ pProductName p
         f Nothing = fmt "{}:{}" (vend, prod)
         addVers txt = [txt, fmt "{}v{}" (txt, vers)]
 

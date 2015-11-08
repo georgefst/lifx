@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lifx.ProductShortName (productShortName) where
+module Lifx.Program.ProductShortName (productShortName) where
 
 import Control.Applicative
 import Data.Attoparsec.Text hiding (takeWhile)
@@ -9,7 +9,7 @@ import Data.Char
 import Data.Monoid
 import qualified Data.Text as T
 
-import Lifx.Types
+import Lifx
 
 productShortName :: T.Text -> T.Text
 productShortName t = f (parseOnly pname t)

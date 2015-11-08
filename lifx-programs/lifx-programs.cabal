@@ -50,6 +50,7 @@ executable lites
   -- Modules included in this executable, other than Main.
   other-modules: Lifx.Program.CmdParser
                , Lifx.Program.Column
+               , Lifx.Program.ProductShortName
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -57,6 +58,7 @@ executable lites
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.5 && <5
                      , stm >=2.4.2 && <2.5
+                     , attoparsec >= 0.13.0.1 && < 0.14
                      , binary >=0.7 && <0.8
                      , bytestring >=0.10 && <0.11
                      , containers >=0.5 && <0.6

@@ -36,7 +36,6 @@ import Text.ParserCombinators.ReadPrec (readPrec_to_S)
 import Text.Read hiding (String)
 
 import Lifx.ColorParser
-import Lifx.ProductShortName
 import Lifx.SelectorParser
 import Lifx.Types
 import Lifx.Util

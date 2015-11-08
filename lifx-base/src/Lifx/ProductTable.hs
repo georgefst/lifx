@@ -13,7 +13,6 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Data.Word
 
-import Lifx.ProductShortName
 import Lifx.Types
 
 data Vendor =
