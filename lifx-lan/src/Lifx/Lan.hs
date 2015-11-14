@@ -3,7 +3,15 @@ module Lifx.Lan where
 import Lifx
 import Lifx.Lan.LowLevel
 
+import Control.Concurrent
 import Control.Concurrent.MVar
+import Control.Concurrent.STM
+import Control.Monad
+import Data.Hourglass
+import Data.List
+import qualified Data.Text as T
+import Data.Word
+import System.IO.Unsafe
 
 data LanSettings =
   LanSettings
@@ -140,7 +148,7 @@ cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
         cbInfo si          = nxtCont (trInfo si)
         cbHostFirmware shf = nxtCont (trHostFirmware shf)
 
-        trLight sl = li { lColor = todo (slColor sl)
+        trLight sl = li { lColor = _todo1 (slColor sl)
                         , lPower = Just (slPower sl)
                         , lLabel = Just (slLabel sl)
                         }
@@ -150,12 +158,12 @@ cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
         trLocation slo = li { lLocationId = Just (sloLocation slo)
                             , lLocation   = Just (sloLabel slo)
                             }
-        trVersion sv = li { lProduct = todo (svVendor sv) (svProduct sv)
+        trVersion sv = li { lProduct = _todo2 (svVendor sv) (svProduct sv)
                           , lHardwareVersion = Just (svVersion sv)
                           }
         trHostInfo shi = li { lTemperature = Just (shiMcuTemperature shi / 100) }
-        trInfo si = li { lUptime = Just (siUptime si / todo) }
-        trHostFirmware shf = li { lFirmwareVersion = Just (todo $ shfVersion shf) }
+        trInfo si = li { lUptime = Just (siUptime si / _todo3) }
+        trHostFirmware shf = li { lFirmwareVersion = Just (_todo4 $ shfVersion shf) }
 
 doListLights :: LanConnection
                 -> Selector
@@ -166,7 +174,7 @@ doListLights lc sel needed result = do
   let messagesNeeded = whatsNeeded sel needed
   tv <- newTVarIO (Just result)
   forM_ [1..15] $ \_ -> do
-    discoverBulbs (lcLan lc) (todoCallback messagesNeeded tv)
+    discoverBulbs (lcLan lc) (_todoCallback messagesNeeded tv)
     threadDelay 100000
   mv <- atomically $ do
     x <- readTVar tv
