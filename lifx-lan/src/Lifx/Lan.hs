@@ -9,6 +9,7 @@ import Control.Concurrent.STM
 import Control.Monad
 import Data.Hourglass
 import Data.List
+import Data.Maybe
 import qualified Data.Text as T
 import Data.Word
 import System.IO.Unsafe
@@ -40,7 +41,7 @@ instance Ord LanConnection where
 
 openLanConnection :: LanSettings -> IO LanConnection
 openLanConnection ls = do
-  lan <- openLan' (lsIfName ls) (lsPort ls) (Just $ lsLog ls)
+  lan <- openLan' (lsIfName ls) (Just $ lsPort ls) (Just $ lsLog ls)
   return $ LanConnection lan ls
 
 getLan :: LanConnection -> Lan
@@ -107,9 +108,9 @@ needMessage NeedFirmwareVersion = NeedGetHostFirmware
 needMessage NeedHardwareVersion = NeedGetVersion
 
 
-whatsNeeded :: Selector -> [InfoNeeded] -> [MessageNeeded]
+whatsNeeded :: [Selector] -> [InfoNeeded] -> [MessageNeeded]
 whatsNeeded sel needed =
-  sort $ nub $ map needMessage $ selToNeeded sel ++ needed
+  sort $ nub $ map needMessage $ concatMap selToNeeded sel ++ needed
 
 
 type FinCont = Maybe LightInfo -> IO ()
@@ -123,7 +124,7 @@ cbForMessage :: (LanSettings, Bulb, Selector, FinCont)
 cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
   where rq q cb = reliableQuery (lsRetryParams ls) (q bulb) cb $ do
                     (lsLog ls) (show bulb ++ " not responding to " ++ opName)
-                    finCont li
+                    finCont (Just li)
         opName = drop 4 $ show mneed
 
         f NeedGetLight        = rq getLight        cbLight
@@ -134,13 +135,13 @@ cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
         f NeedGetInfo         = rq getInfo         cbInfo
         f NeedGetHostFirmware = rq getHostFirmware cbHostFirmware
 
-        cbLight sl = if selLight sel sl
+        cbLight sl = if _selLight sel sl
                      then nxtCont (trLight sl)
                      else finCont Nothing
-        cbGroup sg = if selGroup sel sg
+        cbGroup sg = if _selGroup sel sg
                      then nxtCont (trGroup sg)
                      else finCont Nothing
-        cbLocation slo = if selLocation sel slo
+        cbLocation slo = if _selLocation sel slo
                          then nxtCont (trLocation slo)
                          else finCont Nothing
         cbVersion sv       = nxtCont (trVersion sv)
@@ -159,14 +160,14 @@ cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
                             , lLocation   = Just (sloLabel slo)
                             }
         trVersion sv = li { lProduct = _todo2 (svVendor sv) (svProduct sv)
-                          , lHardwareVersion = Just (svVersion sv)
+                          , lHardwareVersion = Just (fromIntegral $ svVersion sv)
                           }
-        trHostInfo shi = li { lTemperature = Just (shiMcuTemperature shi / 100) }
-        trInfo si = li { lUptime = Just (siUptime si / _todo3) }
+        trHostInfo shi = li { lTemperature = Just (fromIntegral (shiMcuTemperature shi) / 100) }
+        trInfo si = li { lUptime = Just (fromIntegral (siUptime si) / _todo3) }
         trHostFirmware shf = li { lFirmwareVersion = Just (_todo4 $ shfVersion shf) }
 
 doListLights :: LanConnection
-                -> Selector
+                -> [Selector]
                 -> [InfoNeeded]
                 -> MVar (MVarList LightInfo)
                 -> IO ()
@@ -180,7 +181,7 @@ doListLights lc sel needed result = do
     x <- readTVar tv
     writeTVar tv Nothing
     return x
-  putMVar mv Empty
+  putMVar (fromJust mv) Empty
 
 instance Connection LanConnection where
   listLights lc sel needed = do
