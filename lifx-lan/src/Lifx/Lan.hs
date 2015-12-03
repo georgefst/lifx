@@ -138,14 +138,11 @@ color16toFrac c = HSBK
 justColor :: Color -> MaybeColor
 justColor = fmap Just
 
-todo1 :: HSBK16 -> MaybeColor
-todo1 hsbk = justColor $ color16toFrac hsbk
+color16ToMaybeFrac :: HSBK16 -> MaybeColor
+color16ToMaybeFrac hsbk = justColor $ color16toFrac hsbk
 
-todo2 :: Word32 -> Word32 -> Maybe Product
-todo2 = productFromId
-
-todo3 :: FracSeconds
-todo3 = undefined
+nanosPerSecond :: FracSeconds
+nanosPerSecond = 1e9
 
 unpackFirmwareVersion :: Word32 -> Version
 unpackFirmwareVersion v = Version (map fromIntegral [major, minor]) []
@@ -189,7 +186,7 @@ cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
         cbInfo si          = nxtCont (trInfo si)
         cbHostFirmware shf = nxtCont (trHostFirmware shf)
 
-        trLight sl = li { lColor = todo1 (slColor sl)
+        trLight sl = li { lColor = color16ToMaybeFrac (slColor sl)
                         , lPower = Just (slPower sl)
                         , lLabel = Just (slLabel sl)
                         }
@@ -199,11 +196,11 @@ cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
         trLocation slo = li { lLocationId = Just (sloLocation slo)
                             , lLocation   = Just (sloLabel slo)
                             }
-        trVersion sv = li { lProduct = todo2 (svVendor sv) (svProduct sv)
+        trVersion sv = li { lProduct = productFromId (svVendor sv) (svProduct sv)
                           , lHardwareVersion = Just (fromIntegral $ svVersion sv)
                           }
         trHostInfo shi = li { lTemperature = Just (fromIntegral (shiMcuTemperature shi) / 100) }
-        trInfo si = li { lUptime = Just (fromIntegral (siUptime si) / todo3) }
+        trInfo si = li { lUptime = Just (fromIntegral (siUptime si) / nanosPerSecond) }
         trHostFirmware shf = li { lFirmwareVersion = Just (unpackFirmwareVersion $ shfVersion shf) }
 
 doListLights :: LanConnection
