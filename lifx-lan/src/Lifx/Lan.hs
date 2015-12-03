@@ -7,6 +7,7 @@ import Control.Concurrent
 import Control.Concurrent.MVar
 import Control.Concurrent.STM
 import Control.Monad
+import Data.Bits
 import Data.Hourglass
 import Data.List
 import Data.Maybe
@@ -118,25 +119,38 @@ type FinCont = Maybe LightInfo -> IO ()
 type NxtCont = LightInfo -> IO ()
 
 selLight :: Selector -> StateLight -> Bool
-selLight = undefined
+selLight sel sl = undefined
 
 selGroup :: Selector -> StateGroup -> Bool
-selGroup = undefined
+selGroup sel sg = undefined
 
 selLocation :: Selector -> StateLocation -> Bool
-selLocation = undefined
+selLocation sel slo = undefined
+
+color16toFrac :: HSBK16 -> Color
+color16toFrac c = HSBK
+  { hue = fromIntegral (hue c) / 65535 * 360
+  , saturation = fromIntegral (saturation c) / 65535
+  , brightness = fromIntegral (brightness c) / 65535
+  , kelvin = fromIntegral (kelvin c)
+  }
+
+justColor :: Color -> MaybeColor
+justColor = fmap Just
 
 todo1 :: HSBK16 -> MaybeColor
-todo1 hsbk = undefined
+todo1 hsbk = justColor $ color16toFrac hsbk
 
 todo2 :: Word32 -> Word32 -> Maybe Product
-todo2 vend prod = undefined
+todo2 = productFromId
 
 todo3 :: FracSeconds
 todo3 = undefined
 
-todo4 :: Word32 -> Version
-todo4 v = undefined
+unpackFirmwareVersion :: Word32 -> Version
+unpackFirmwareVersion v = Version (map fromIntegral [major, minor]) []
+  where major = v `shiftR` 16
+        minor = v .&. 0xffff
 
 todoCallback :: [MessageNeeded]
                 -> TVar (Maybe (MVar (MVarList LightInfo))) -> Bulb -> IO ()
@@ -190,7 +204,7 @@ cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
                           }
         trHostInfo shi = li { lTemperature = Just (fromIntegral (shiMcuTemperature shi) / 100) }
         trInfo si = li { lUptime = Just (fromIntegral (siUptime si) / todo3) }
-        trHostFirmware shf = li { lFirmwareVersion = Just (todo4 $ shfVersion shf) }
+        trHostFirmware shf = li { lFirmwareVersion = Just (unpackFirmwareVersion $ shfVersion shf) }
 
 doListLights :: LanConnection
                 -> [Selector]
