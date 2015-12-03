@@ -11,6 +11,7 @@ import Data.Hourglass
 import Data.List
 import Data.Maybe
 import qualified Data.Text as T
+import Data.Version
 import Data.Word
 import System.IO.Unsafe
 
@@ -116,6 +117,31 @@ whatsNeeded sel needed =
 type FinCont = Maybe LightInfo -> IO ()
 type NxtCont = LightInfo -> IO ()
 
+selLight :: Selector -> StateLight -> Bool
+selLight = undefined
+
+selGroup :: Selector -> StateGroup -> Bool
+selGroup = undefined
+
+selLocation :: Selector -> StateLocation -> Bool
+selLocation = undefined
+
+todo1 :: HSBK16 -> MaybeColor
+todo1 hsbk = undefined
+
+todo2 :: Word32 -> Word32 -> Maybe Product
+todo2 vend prod = undefined
+
+todo3 :: FracSeconds
+todo3 = undefined
+
+todo4 :: Word32 -> Version
+todo4 v = undefined
+
+todoCallback :: [MessageNeeded]
+                -> TVar (Maybe (MVar (MVarList LightInfo))) -> Bulb -> IO ()
+todoCallback messagesNeeded tv bulb = undefined
+
 cbForMessage :: (LanSettings, Bulb, Selector, FinCont)
                 -> MessageNeeded
                 -> NxtCont
@@ -135,13 +161,13 @@ cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
         f NeedGetInfo         = rq getInfo         cbInfo
         f NeedGetHostFirmware = rq getHostFirmware cbHostFirmware
 
-        cbLight sl = if _selLight sel sl
+        cbLight sl = if selLight sel sl
                      then nxtCont (trLight sl)
                      else finCont Nothing
-        cbGroup sg = if _selGroup sel sg
+        cbGroup sg = if selGroup sel sg
                      then nxtCont (trGroup sg)
                      else finCont Nothing
-        cbLocation slo = if _selLocation sel slo
+        cbLocation slo = if selLocation sel slo
                          then nxtCont (trLocation slo)
                          else finCont Nothing
         cbVersion sv       = nxtCont (trVersion sv)
@@ -149,7 +175,7 @@ cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
         cbInfo si          = nxtCont (trInfo si)
         cbHostFirmware shf = nxtCont (trHostFirmware shf)
 
-        trLight sl = li { lColor = _todo1 (slColor sl)
+        trLight sl = li { lColor = todo1 (slColor sl)
                         , lPower = Just (slPower sl)
                         , lLabel = Just (slLabel sl)
                         }
@@ -159,12 +185,12 @@ cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
         trLocation slo = li { lLocationId = Just (sloLocation slo)
                             , lLocation   = Just (sloLabel slo)
                             }
-        trVersion sv = li { lProduct = _todo2 (svVendor sv) (svProduct sv)
+        trVersion sv = li { lProduct = todo2 (svVendor sv) (svProduct sv)
                           , lHardwareVersion = Just (fromIntegral $ svVersion sv)
                           }
         trHostInfo shi = li { lTemperature = Just (fromIntegral (shiMcuTemperature shi) / 100) }
-        trInfo si = li { lUptime = Just (fromIntegral (siUptime si) / _todo3) }
-        trHostFirmware shf = li { lFirmwareVersion = Just (_todo4 $ shfVersion shf) }
+        trInfo si = li { lUptime = Just (fromIntegral (siUptime si) / todo3) }
+        trHostFirmware shf = li { lFirmwareVersion = Just (todo4 $ shfVersion shf) }
 
 doListLights :: LanConnection
                 -> [Selector]
@@ -175,7 +201,7 @@ doListLights lc sel needed result = do
   let messagesNeeded = whatsNeeded sel needed
   tv <- newTVarIO (Just result)
   forM_ [1..15] $ \_ -> do
-    discoverBulbs (lcLan lc) (_todoCallback messagesNeeded tv)
+    discoverBulbs (lcLan lc) (todoCallback messagesNeeded tv)
     threadDelay 100000
   mv <- atomically $ do
     x <- readTVar tv
