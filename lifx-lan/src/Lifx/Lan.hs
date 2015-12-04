@@ -119,13 +119,18 @@ type FinCont = Maybe LightInfo -> IO ()
 type NxtCont = LightInfo -> IO ()
 
 selLight :: Selector -> StateLight -> Bool
-selLight sel sl = undefined
+selLight (SelLabel lbl) sl = lbl == slLabel sl
+selLight _ _ = True
 
 selGroup :: Selector -> StateGroup -> Bool
-selGroup sel sg = undefined
+selGroup (SelGroup lbl) sg = lbl == sgLabel sg -- FIXME: use up-to-date label
+selGroup (SelGroupId gid) sg = gid == sgGroup sg
+selGroup _ _ = True
 
 selLocation :: Selector -> StateLocation -> Bool
-selLocation sel slo = undefined
+selLocation (SelLocation lbl) slo = lbl == sloLabel slo -- FIXME: use up-to-date label
+selLocation (SelLocationId lid) slo = lid == sloLocation slo
+selLocation _ _ = True
 
 color16toFrac :: HSBK16 -> Color
 color16toFrac c = HSBK
