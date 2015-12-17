@@ -154,9 +154,11 @@ unpackFirmwareVersion v = Version (map fromIntegral [major, minor]) []
   where major = v `shiftR` 16
         minor = v .&. 0xffff
 
-todoCallback :: [MessageNeeded]
-                -> TVar (Maybe (MVar (MVarList LightInfo))) -> Bulb -> IO ()
-todoCallback messagesNeeded tv bulb = undefined
+discoveryCallback :: [MessageNeeded]
+                     -> TVar (Maybe (MVar (MVarList LightInfo)))
+                     -> Bulb
+                     -> IO ()
+discoveryCallback messagesNeeded tv bulb = undefined
 
 cbForMessage :: (LanSettings, Bulb, Selector, FinCont)
                 -> MessageNeeded
@@ -217,7 +219,7 @@ doListLights lc sel needed result = do
   let messagesNeeded = whatsNeeded sel needed
   tv <- newTVarIO (Just result)
   forM_ [1..15] $ \_ -> do
-    discoverBulbs (lcLan lc) (todoCallback messagesNeeded tv)
+    discoverBulbs (lcLan lc) (discoveryCallback messagesNeeded tv)
     threadDelay 100000
   mv <- atomically $ do
     x <- readTVar tv
