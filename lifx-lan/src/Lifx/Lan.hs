@@ -1,4 +1,9 @@
-module Lifx.Lan where
+module Lifx.Lan
+    ( LanSettings(..)
+    , LanConnection
+    , openLanConnection
+    , getLan
+    ) where
 
 import Lifx
 import Lifx.Lan.LowLevel
