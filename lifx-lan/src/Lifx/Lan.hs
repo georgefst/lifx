@@ -11,9 +11,11 @@ import Data.Bits
 import Data.Hourglass
 import Data.List
 import Data.Maybe
+import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.Version
 import Data.Word
+import System.Hourglass
 import System.IO.Unsafe
 
 data LanSettings =
@@ -154,18 +156,36 @@ unpackFirmwareVersion v = Version (map fromIntegral [major, minor]) []
   where major = v `shiftR` 16
         minor = v .&. 0xffff
 
-discoveryCallback :: [MessageNeeded]
+discoveryCallback :: LanConnection
+                     -> [Selector]
+                     -> [MessageNeeded]
                      -> TVar (Maybe (MVar (MVarList LightInfo)))
+                     -> DateTime
                      -> Bulb
                      -> IO ()
-discoveryCallback messagesNeeded tv bulb = undefined
+discoveryCallback lc sels messagesNeeded tv now bulb =
+  gatherInfo (lcSettings lc, bulb, sels, fin) messagesNeeded eli
 
-cbForMessage :: (LanSettings, Bulb, Selector, FinCont)
+  where eli = emptyLightInfo (deviceId bulb) now
+
+        gatherInfo _ [] li = fin (Just li)
+        gatherInfo stuff (mneed:mneeds) li =
+          cbForMessage stuff mneed (gatherInfo stuff mneeds) li
+
+        fin Nothing = return () -- FIXME: need to do something here?
+        fin (Just li) = appendLightInfo tv li
+
+appendLightInfo :: TVar (Maybe (MVar (MVarList LightInfo)))
+                   -> LightInfo
+                   -> IO ()
+appendLightInfo tv li = undefined -- TODO
+
+cbForMessage :: (LanSettings, Bulb, [Selector], FinCont)
                 -> MessageNeeded
                 -> NxtCont
                 -> LightInfo
                 -> IO ()
-cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
+cbForMessage (ls, bulb, sels, finCont) mneed nxtCont li = f mneed
   where rq q cb = reliableQuery (lsRetryParams ls) (q bulb) cb $ do
                     (lsLog ls) (show bulb ++ " not responding to " ++ opName)
                     finCont (Just li)
@@ -178,6 +198,8 @@ cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
         f NeedGetHostInfo     = rq getHostInfo     cbHostInfo
         f NeedGetInfo         = rq getInfo         cbInfo
         f NeedGetHostFirmware = rq getHostFirmware cbHostFirmware
+
+        sel = head (sels ++ [SelAll]) -- FIXME: support multiple selectors
 
         cbLight sl = if selLight sel sl
                      then nxtCont (trLight sl)
@@ -210,16 +232,30 @@ cbForMessage (ls, bulb, sel, finCont) mneed nxtCont li = f mneed
         trInfo si = li { lUptime = Just (fromIntegral (siUptime si) / nanosPerSecond) }
         trHostFirmware shf = li { lFirmwareVersion = Just (unpackFirmwareVersion $ shfVersion shf) }
 
+onceCb :: TVar (S.Set DeviceId) -> (Bulb -> IO ()) -> Bulb -> IO ()
+onceCb done realCb bulb = do
+  let dev = deviceId bulb
+  dup <- atomically $ do
+    s <- readTVar done
+    let d = dev `S.member` s
+    unless d $ writeTVar done $ dev `S.insert` s
+    return d
+  unless dup $ realCb bulb
+
 doListLights :: LanConnection
                 -> [Selector]
                 -> [InfoNeeded]
                 -> MVar (MVarList LightInfo)
                 -> IO ()
-doListLights lc sel needed result = do
-  let messagesNeeded = whatsNeeded sel needed
+doListLights lc sels needed result = do
+  let messagesNeeded = whatsNeeded sels needed
+  s <- newTVarIO S.empty
   tv <- newTVarIO (Just result)
+  now <- dateCurrent
   forM_ [1..15] $ \_ -> do
-    discoverBulbs (lcLan lc) (discoveryCallback messagesNeeded tv)
+    discoverBulbs (lcLan lc)
+      $ onceCb s
+      $ discoveryCallback lc sels messagesNeeded tv now
     threadDelay 100000
   mv <- atomically $ do
     x <- readTVar tv
