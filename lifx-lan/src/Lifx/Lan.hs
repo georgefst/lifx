@@ -178,7 +178,16 @@ discoveryCallback lc sels messagesNeeded tv now bulb =
 appendLightInfo :: TVar (Maybe (MVar (MVarList LightInfo)))
                    -> LightInfo
                    -> IO ()
-appendLightInfo tv li = undefined -- TODO
+appendLightInfo tv li = do
+  mv <- newEmptyMVar
+  f <- atomically $ do
+    mby <- readTVar tv
+    case mby of
+     (Just mvPrev) -> do
+       writeTVar tv (Just mv)
+       return $ putMVar mvPrev $ Cons { car = li , cdr = mv }
+     Nothing -> return $ return ()
+  f
 
 cbForMessage :: (LanSettings, Bulb, [Selector], FinCont)
                 -> MessageNeeded
