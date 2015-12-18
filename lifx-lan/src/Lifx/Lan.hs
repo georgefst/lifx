@@ -172,7 +172,7 @@ discoveryCallback lc sels messagesNeeded tv now bulb =
         gatherInfo stuff (mneed:mneeds) li =
           cbForMessage stuff mneed (gatherInfo stuff mneeds) li
 
-        fin Nothing = return () -- FIXME: need to do something here?
+        fin Nothing = return ()
         fin (Just li) = appendLightInfo tv li
 
 appendLightInfo :: TVar (Maybe (MVar (MVarList LightInfo)))
