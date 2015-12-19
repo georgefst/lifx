@@ -12,7 +12,15 @@ ls = LanSettings
      , lsRetryParams = defaultRetryParams
      }
 
+st = StateTransition
+     { sPower = Nothing
+     , sColor = blue
+     , sDuration = 1.0
+     }
+
 main = do
   lc <- openLanConnection ls
   li <- listLights lc [SelAll] needEverything
   print li
+  tr <- setStates lc [([SelAll], st)]
+  print tr
