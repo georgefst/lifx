@@ -16,6 +16,7 @@ import Data.Bits
 import Data.Hourglass
 import Data.List
 import Data.Maybe
+import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.Version
@@ -32,10 +33,28 @@ data LanSettings =
   , lsRetryParams :: RetryParams
   }
 
+data CachedLight =
+  CachedLight
+  { clBulb     :: Bulb
+  , clLastSeen :: DateTime
+  , clLocation :: Maybe LocationId
+  , clGroup    :: Maybe GroupId
+  , clLabel    :: Maybe Label
+  } deriving (Show, Eq, Ord)
+
+data CachedLabel =
+  CachedLabel
+  { claLabel     :: Label
+  , claUpdatedAt :: !Word64
+  } deriving (Show, Eq, Ord)
+
 data LanConnection =
   LanConnection
-  { lcLan :: Lan
-  , lcSettings :: LanSettings
+  { lcLan       :: Lan
+  , lcSettings  :: LanSettings
+  , lcLights    :: TVar (M.Map DeviceId   CachedLight)
+  , lcGroups    :: TVar (M.Map GroupId    CachedLabel)
+  , lcLocations :: TVar (M.Map LocationId CachedLabel)
   }
 
 instance Show LanConnection where
@@ -48,10 +67,16 @@ instance Ord LanConnection where
   (LanConnection { lcLan = lan1 }) `compare` (LanConnection { lcLan = lan2 }) =
     lan1 `compare` lan2
 
+tvEmptyMap :: IO (TVar (M.Map a b))
+tvEmptyMap = newTVarIO M.empty
+
 openLanConnection :: LanSettings -> IO LanConnection
 openLanConnection ls = do
   lan <- openLan' (lsIfName ls) (Just $ lsPort ls) (Just $ lsLog ls)
-  return $ LanConnection lan ls
+  m1 <- tvEmptyMap
+  m2 <- tvEmptyMap
+  m3 <- tvEmptyMap
+  return $ LanConnection lan ls m1 m2 m3
 
 getLan :: LanConnection -> Lan
 getLan = lcLan
@@ -276,6 +301,21 @@ doListLights lc sels needed result = do
     writeTVar tv Nothing
     return x
   putMVar (fromJust mv) Empty
+
+updateLabelCache :: Ord a
+                    => TVar (M.Map a CachedLabel)
+                    -> a
+                    -> Label
+                    -> Word64
+                    -> STM ()
+updateLabelCache tv key lbl upd = do
+  cache <- readTVar tv
+  let doUpdate = case key `M.lookup` cache of
+                  Nothing -> True
+                  (Just (CachedLabel { claUpdatedAt = oldUpd })) -> upd > oldUpd
+      cl = CachedLabel { claLabel = lbl , claUpdatedAt = upd }
+      cache' = M.insert key cl cache
+  when doUpdate $ writeTVar tv cache'
 
 instance Connection LanConnection where
   listLights lc sel needed = do
