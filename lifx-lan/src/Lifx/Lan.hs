@@ -394,10 +394,10 @@ updateLocation lc dev now slo = do
 
 updateGroup :: LanConnection -> DeviceId -> DateTime -> StateGroup
                -> STM ()
-updateGroup lc dev now slo = do
+updateGroup lc dev now sg = do
   let gid = sgGroup sg
   updateCachedLight lc dev $ \cl -> cl { clGroup = Cached now gid }
-  updateCachedLabel (lcGroups lc) lid (sgLabel sg) (sgUpdatedAt sg)
+  updateCachedLabel (lcGroups lc) gid (sgLabel sg) (sgUpdatedAt sg)
 
 updateLabel :: LanConnection -> DeviceId -> DateTime -> StateLight
                -> STM ()
