@@ -318,21 +318,91 @@ updateLabelCache tv key lbl upd = do
       cache' = M.insert key cl cache
   when doUpdate $ writeTVar tv cache'
 
-dtOfCt :: CachedThing a -> b -> [(DateTime, b)]
-dtOfCt NotCached _ = []
-dtOfCt (Cached dt _) x = [(dt, x)]
+longAgo = DateTime d t
+  where d = Date 1776 July 4
+        t = TimeOfDay (Hours 0) (Minutes 0) (Seconds 0) (NanoSeconds 0)
+
+dtOfCt :: CachedThing a -> DateTime
+dtOfCt NotCached = longAgo
+dtOfCt (Cached dt _ ) = dt
+
+data Query = QueryLocation | QueryGroup | QueryLabel deriving (Show, Eq, Ord)
 
 discoveryCb :: LanConnection -> Bulb -> IO ()
 discoveryCb lc bulb = do
-  cbacks <- atomically $ do
+  queries <- atomically $ do
     lites <- readTVar (lcLights lc)
     case deviceId bulb `M.lookup` lites of
      Nothing -> do
        let lite = CachedLight bulb NotCached NotCached NotCached
        writeTVar (lcLights lc) $ M.insert (deviceId bulb) lite lites
-       return [ QueryLocation , QueryGroup , QueryLabel ]
+       return [ QueryLocation , QueryGroup , QueryLabel ] -- update all three
      (Just lite) ->
-       let 
+       -- FIXME: what if bulb changes (same id, new ip)
+       let pairs = [ (dtOfCt (clLocation lite), QueryLocation)
+                   , (dtOfCt (clGroup    lite), QueryGroup)
+                   , (dtOfCt (clLabel    lite), QueryLabel) ]
+       in return [ snd $ head $ sort pairs ] -- just update the oldest one
+  doQuery queries
+
+  where
+    -- FIXME: need to do reliable query?  or just accept lossiness?
+    doQuery [] = return ()
+    doQuery (QueryLocation:qs) = getLocation bulb $ \slo -> do
+      now <- dateCurrent
+      atomically $ updateLocation lc dev now slo
+      doQuery qs
+    doQuery (QueryGroup:qs) = getGroup bulb $ \sg -> do
+      now <- dateCurrent
+      atomically $ updateGroup lc dev now sg
+      doQuery qs
+    doQuery (QueryLabel:qs) = getLight bulb $ \sl -> do
+      now <- dateCurrent
+      atomically $ updateLabel lc dev now sl
+      doQuery qs
+
+    dev = deviceId bulb
+
+updateCachedLight :: LanConnection -> DeviceId -> (CachedLight -> CachedLight)
+                     -> STM ()
+updateCachedLight lc dev f = do
+  lites <- readTVar (lcLights lc)
+  let lites' = M.adjust f dev lites
+  writeTVar (lcLights lc) lites'
+
+updateCachedLabel :: Ord a
+                     => TVar (M.Map a CachedLabel)
+                     -> a
+                     -> Label
+                     -> Word64
+                     -> STM ()
+updateCachedLabel tv k lbl updatedAt = do
+  cache <- readTVar tv
+  let needUpd =
+        case k `M.lookup` cache of
+         Nothing -> True
+         (Just (CachedLabel { claUpdatedAt = upat })) -> upat < updatedAt
+      cl = CachedLabel { claLabel = lbl , claUpdatedAt = updatedAt }
+  when needUpd $ writeTVar tv $ M.insert k cl cache
+
+updateLocation :: LanConnection -> DeviceId -> DateTime -> StateLocation
+                  -> STM ()
+updateLocation lc dev now slo = do
+  let lid = sloLocation slo
+  updateCachedLight lc dev $ \cl -> cl { clLocation = Cached now lid }
+  updateCachedLabel (lcLocations lc) lid (sloLabel slo) (sloUpdatedAt slo)
+
+updateGroup :: LanConnection -> DeviceId -> DateTime -> StateGroup
+               -> STM ()
+updateGroup lc dev now slo = do
+  let gid = sgGroup sg
+  updateCachedLight lc dev $ \cl -> cl { clGroup = Cached now gid }
+  updateCachedLabel (lcGroups lc) lid (sgLabel sg) (sgUpdatedAt sg)
+
+updateLabel :: LanConnection -> DeviceId -> DateTime -> StateLight
+               -> STM ()
+updateLabel lc dev now sl =
+  updateCachedLight lc dev $ \cl -> cl { clLabel = Cached now (slLabel sl) }
 
 instance Connection LanConnection where
   listLights lc sel needed = do
