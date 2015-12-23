@@ -33,13 +33,14 @@ data LanSettings =
   , lsRetryParams :: RetryParams
   }
 
+data CachedThing a = NotCached | Cached DateTime a deriving (Show, Eq, Ord)
+
 data CachedLight =
   CachedLight
   { clBulb     :: Bulb
-  , clLastSeen :: DateTime
-  , clLocation :: Maybe LocationId
-  , clGroup    :: Maybe GroupId
-  , clLabel    :: Maybe Label
+  , clLocation :: CachedThing LocationId
+  , clGroup    :: CachedThing GroupId
+  , clLabel    :: CachedThing Label
   } deriving (Show, Eq, Ord)
 
 data CachedLabel =
@@ -316,6 +317,22 @@ updateLabelCache tv key lbl upd = do
       cl = CachedLabel { claLabel = lbl , claUpdatedAt = upd }
       cache' = M.insert key cl cache
   when doUpdate $ writeTVar tv cache'
+
+dtOfCt :: CachedThing a -> b -> [(DateTime, b)]
+dtOfCt NotCached _ = []
+dtOfCt (Cached dt _) x = [(dt, x)]
+
+discoveryCb :: LanConnection -> Bulb -> IO ()
+discoveryCb lc bulb = do
+  cbacks <- atomically $ do
+    lites <- readTVar (lcLights lc)
+    case deviceId bulb `M.lookup` lites of
+     Nothing -> do
+       let lite = CachedLight bulb NotCached NotCached NotCached
+       writeTVar (lcLights lc) $ M.insert (deviceId bulb) lite lites
+       return [ QueryLocation , QueryGroup , QueryLabel ]
+     (Just lite) ->
+       let 
 
 instance Connection LanConnection where
   listLights lc sel needed = do
