@@ -23,6 +23,7 @@ import Data.Version
 import Data.Word
 import System.Hourglass
 import System.IO.Unsafe
+import System.Mem.Weak
 
 data LanSettings =
   LanSettings
@@ -56,6 +57,7 @@ data LanConnection =
   , lcLights    :: TVar (M.Map DeviceId   CachedLight)
   , lcGroups    :: TVar (M.Map GroupId    CachedLabel)
   , lcLocations :: TVar (M.Map LocationId CachedLabel)
+  , lcThread    :: Weak ThreadId
   }
 
 instance Show LanConnection where
@@ -77,7 +79,13 @@ openLanConnection ls = do
   m1 <- tvEmptyMap
   m2 <- tvEmptyMap
   m3 <- tvEmptyMap
-  return $ LanConnection lan ls m1 m2 m3
+  tmv <- newEmptyTMVarIO
+  thr <- forkIO (discoveryThread tmv)
+  wthr <- mkWeakThreadId thr
+  atomically $ do
+    let = LanConnection lan ls m1 m2 m3 wthr
+    putTMVar tmv lc
+    return lc
 
 getLan :: LanConnection -> Lan
 getLan = lcLan
@@ -325,6 +333,16 @@ longAgo = DateTime d t
 dtOfCt :: CachedThing a -> DateTime
 dtOfCt NotCached = longAgo
 dtOfCt (Cached dt _ ) = dt
+
+microsPerSecond = 1e6
+secondsBetweenDiscovery = 2.5
+
+discoveryThread :: TMVar LanConnection -> IO ()
+discoveryThread tmv = do
+  lc <- atomically $ takeTMVar tmv
+  forever $ do
+    discoverBulbs (lcLan lc) $ discoveryCb lc
+    threadDelay $ floor $ microsPerSecond * secondsBetweenDiscovery
 
 data Query = QueryLocation | QueryGroup | QueryLabel deriving (Show, Eq, Ord)
 
