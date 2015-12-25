@@ -290,6 +290,17 @@ onceCb done realCb bulb = do
     return d
   unless dup $ realCb bulb
 
+selectLights :: LanConnection -> Selector -> STM [Bulb]
+selectLights lc (SelGroup lbl) = do
+  gid <- findLabel (lcGroups lc) lbl
+  selectLights lc (SelGroupId gid)
+selectLights lc (SelLocation lbl) = do
+  lid <- findLabel (lcLocations lc) lbl
+  selectLights lc (SelLocationId lid)
+selectLights lc sel = filterLights (lcLights lc) (selectFilter sel)
+
+selectFilter :: Selector -> CachedLight -> Bool
+
 doListLights :: LanConnection
                 -> [Selector]
                 -> [InfoNeeded]
