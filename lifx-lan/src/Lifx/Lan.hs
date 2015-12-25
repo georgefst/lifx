@@ -83,7 +83,7 @@ openLanConnection ls = do
   thr <- forkIO (discoveryThread tmv)
   wthr <- mkWeakThreadId thr
   atomically $ do
-    let = LanConnection lan ls m1 m2 m3 wthr
+    let lc = LanConnection lan ls m1 m2 m3 wthr
     putTMVar tmv lc
     return lc
 
@@ -335,14 +335,21 @@ dtOfCt NotCached = longAgo
 dtOfCt (Cached dt _ ) = dt
 
 microsPerSecond = 1e6
-secondsBetweenDiscovery = 2.5
+discoveryTime = 1.5
+fastDiscoveryTime = 0.25
 
 discoveryThread :: TMVar LanConnection -> IO ()
 discoveryThread tmv = do
   lc <- atomically $ takeTMVar tmv
+  forM_ [1..3] $ \_ -> do
+    db lc
+    td fastDiscoveryTime
   forever $ do
-    discoverBulbs (lcLan lc) $ discoveryCb lc
-    threadDelay $ floor $ microsPerSecond * secondsBetweenDiscovery
+    db lc
+    td discoveryTime
+  where
+    db lc = discoverBulbs (lcLan lc) $ discoveryCb lc
+    td secs = threadDelay $ floor $ microsPerSecond * secs
 
 data Query = QueryLocation | QueryGroup | QueryLabel deriving (Show, Eq, Ord)
 
