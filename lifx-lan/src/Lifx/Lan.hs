@@ -299,7 +299,25 @@ selectLights lc (SelLocation lbl) = do
   selectLights lc (SelLocationId lid)
 selectLights lc sel = filterLights (lcLights lc) (selectFilter sel)
 
+data FilterResult = Accept | Reject | Unknown
+
+b2fr :: Bool -> FilterResult
+b2fr True = Accept
+b2fr False = Reject
+
 selectFilter :: Selector -> CachedLight -> Bool
+selectFilter SelAll _ = Accept
+selectFilter (SelLabel lbl) (CachedLight {clLabel = NotCached}) = Unknown
+selectFilter (SelLabel lbl) (CachedLight {clLabel = (Cached _ lbl')}) =
+  b2fr (lbl == lbl')
+selectFilter (SelDevId did) cl = did == (deviceId $ clBulb cl)
+selectFilter (SelGroupId gid) (CachedLight {clGroup = NotCached}) = Unknown
+selectFilter (SelGroupId gid) (CachedLight {clGroup = (Cached _ gid')}) =
+  b2fr (gid == gid')
+selectFilter (SelLocationId lid) (CachedLight {clLocation = NotCached}) = Unknown
+selectFilter (SelLocationId lid) (CachedLight {clLocation = (Cached _ lid')}) =
+  b2fr (lid == lid')
+
 
 doListLights :: LanConnection
                 -> [Selector]
