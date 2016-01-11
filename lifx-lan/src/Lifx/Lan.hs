@@ -292,22 +292,37 @@ onceCb done realCb bulb = do
 
 selectLights :: LanConnection -> Selector -> STM [Bulb]
 selectLights lc (SelGroup lbl) = do
-  gid <- findLabel (lcGroups lc) lbl
-  selectLights lc (SelGroupId gid)
+  mby <- findLabel (lcGroups lc) lbl
+  case mby of
+   Nothing -> return []
+   (Just gid) -> selectLights lc (SelGroupId gid)
 selectLights lc (SelLocation lbl) = do
-  lid <- findLabel (lcLocations lc) lbl
-  selectLights lc (SelLocationId lid)
+  mby <- findLabel (lcLocations lc) lbl
+  case mby of
+   Nothing -> return []
+   (Just lid) -> selectLights lc (SelLocationId lid)
 selectLights lc sel = filterLights (lcLights lc) (selectFilter sel)
 
 data FilterResult = Accept | Reject | Unknown
 
+isAccept :: FilterResult -> Bool
+isAccept Accept = True
+isAccept _ = False
+
 filterLights :: TVar (M.Map DeviceId CachedLight)
                 -> (CachedLight -> FilterResult)
                 -> STM [Bulb]
-filterLights = undefined
+filterLights tv f = do
+  m <- readTVar tv
+  let lites = M.elems m
+  return $ map clBulb $ filter (isAccept . f) lites
 
-findLabel :: TVar (M.Map a CachedLabel) -> Label -> STM a
-findLabel = undefined
+findLabel :: TVar (M.Map a CachedLabel) -> Label -> STM (Maybe a)
+findLabel tv lbl = do
+  m <- readTVar tv
+  let lst = map f $ M.toList m
+      f (x, y) = (claLabel y, x)
+  return $ lookup lbl lst
 
 b2fr :: Bool -> FilterResult
 b2fr True = Accept
