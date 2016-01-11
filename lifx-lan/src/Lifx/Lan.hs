@@ -195,14 +195,14 @@ unpackFirmwareVersion v = Version (map fromIntegral [major, minor]) []
   where major = v `shiftR` 16
         minor = v .&. 0xffff
 
-discoveryCallback :: LanConnection
-                     -> [Selector]
-                     -> [MessageNeeded]
-                     -> TVar (Maybe (MVar (MVarList LightInfo)))
-                     -> DateTime
-                     -> Bulb
-                     -> IO ()
-discoveryCallback lc sels messagesNeeded tv now bulb =
+listOneLight :: LanConnection
+                -> [Selector]
+                -> [MessageNeeded]
+                -> TVar (Maybe (MVar (MVarList LightInfo)))
+                -> DateTime
+                -> Bulb
+                -> IO ()
+listOneLight lc sels messagesNeeded tv now bulb =
   gatherInfo (lcSettings lc, bulb, sels, fin) messagesNeeded eli
 
   where eli = emptyLightInfo (deviceId bulb) now
@@ -290,6 +290,13 @@ onceCb done realCb bulb = do
     return d
   unless dup $ realCb bulb
 
+applySelectors :: LanConnection -> [Selector] -> STM [Bulb]
+applySelectors lc sels = do
+  lists <- mapM (selectLights lc) sels
+  let sets = map S.fromList lists
+      uniq = S.unions sets
+  return $ S.toList uniq
+
 selectLights :: LanConnection -> Selector -> STM [Bulb]
 selectLights lc (SelGroup lbl) = do
   mby <- findLabel (lcGroups lc) lbl
@@ -355,7 +362,7 @@ doListLights lc sels needed result = do
   forM_ [1..15] $ \_ -> do
     discoverBulbs (lcLan lc)
       $ onceCb s
-      $ discoveryCallback lc sels messagesNeeded tv now
+      $ listOneLight lc sels messagesNeeded tv now
     threadDelay 100000
   mv <- atomically $ do
     x <- readTVar tv
