@@ -11,6 +11,7 @@ import Lifx.Lan.LowLevel
 import Control.Concurrent
 import Control.Concurrent.MVar
 import Control.Concurrent.STM
+import Control.Concurrent.STM.TSem
 import Control.Monad
 import Data.Bits
 import Data.Hourglass
@@ -205,9 +206,10 @@ listOneLight :: LanConnection
                 -> [Selector]
                 -> [MessageNeeded]
                 -> TVar (Maybe (MVar (MVarList LightInfo)))
+                -> TSem
                 -> CachedLight
                 -> IO ()
-listOneLight lc sels messagesNeeded tv cl =
+listOneLight lc sels messagesNeeded tv sem cl =
   gatherInfo (lcSettings lc, bulb, sels, fin) messagesNeeded eli
 
   where bulb = clBulb cl
@@ -364,17 +366,10 @@ doListLights lc sels needed result = do
   let messagesNeeded = whatsNeeded sels needed
   s <- newTVarIO S.empty
   tv <- newTVarIO (Just result)
+  sem <- atomically $ newTSem 0
   lites <- atomically $ applySelectors lc sels
-  forM_ lites $ listOneLight lc sels messagesNeeded tv
-  -- FIXME: need a different sort of waiting
-{-
-  now <- dateCurrent
-  forM_ [1..15] $ \_ -> do
-    discoverBulbs (lcLan lc)
-      $ onceCb s
-      $ listOneLight lc sels messagesNeeded tv now
-    threadDelay 100000
--}
+  forM_ lites $ listOneLight lc sels messagesNeeded tv sem
+  atomically $ do forM_ lites $ \_ -> waitTSem sem
   mv <- atomically $ do
     x <- readTVar tv
     writeTVar tv Nothing
