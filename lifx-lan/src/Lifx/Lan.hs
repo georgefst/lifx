@@ -358,12 +358,17 @@ doListLights lc sels needed result = do
   let messagesNeeded = whatsNeeded sels needed
   s <- newTVarIO S.empty
   tv <- newTVarIO (Just result)
+  bulbs <- atomically $ applySelectors lc sels
+  forM_ bulbs $ listOneLight lc sels messagesNeeded tv undefined -- FIXME: now
+  -- FIXME: need a different sort of waiting
+{-
   now <- dateCurrent
   forM_ [1..15] $ \_ -> do
     discoverBulbs (lcLan lc)
       $ onceCb s
       $ listOneLight lc sels messagesNeeded tv now
     threadDelay 100000
+-}
   mv <- atomically $ do
     x <- readTVar tv
     writeTVar tv Nothing
