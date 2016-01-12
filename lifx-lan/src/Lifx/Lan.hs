@@ -195,17 +195,23 @@ unpackFirmwareVersion v = Version (map fromIntegral [major, minor]) []
   where major = v `shiftR` 16
         minor = v .&. 0xffff
 
+lastSeen :: CachedLight -> DateTime
+lastSeen cl = maximum [ dtOfCt (clLocation cl)
+                      , dtOfCt (clGroup    cl)
+                      , dtOfCt (clLabel    cl)
+                      ]
+
 listOneLight :: LanConnection
                 -> [Selector]
                 -> [MessageNeeded]
                 -> TVar (Maybe (MVar (MVarList LightInfo)))
-                -> DateTime
-                -> Bulb
+                -> CachedLight
                 -> IO ()
-listOneLight lc sels messagesNeeded tv now bulb =
+listOneLight lc sels messagesNeeded tv cl =
   gatherInfo (lcSettings lc, bulb, sels, fin) messagesNeeded eli
 
-  where eli = emptyLightInfo (deviceId bulb) now
+  where bulb = clBulb cl
+        eli = emptyLightInfo (deviceId bulb) (lastSeen cl)
 
         gatherInfo _ [] li = fin (Just li)
         gatherInfo stuff (mneed:mneeds) li =
@@ -290,14 +296,14 @@ onceCb done realCb bulb = do
     return d
   unless dup $ realCb bulb
 
-applySelectors :: LanConnection -> [Selector] -> STM [Bulb]
+applySelectors :: LanConnection -> [Selector] -> STM [CachedLight]
 applySelectors lc sels = do
   lists <- mapM (selectLights lc) sels
   let sets = map S.fromList lists
       uniq = S.unions sets
   return $ S.toList uniq
 
-selectLights :: LanConnection -> Selector -> STM [Bulb]
+selectLights :: LanConnection -> Selector -> STM [CachedLight]
 selectLights lc (SelGroup lbl) = do
   mby <- findLabel (lcGroups lc) lbl
   case mby of
@@ -318,11 +324,11 @@ isAccept _ = False
 
 filterLights :: TVar (M.Map DeviceId CachedLight)
                 -> (CachedLight -> FilterResult)
-                -> STM [Bulb]
+                -> STM [CachedLight]
 filterLights tv f = do
   m <- readTVar tv
   let lites = M.elems m
-  return $ map clBulb $ filter (isAccept . f) lites
+  return $ filter (isAccept . f) lites
 
 findLabel :: TVar (M.Map a CachedLabel) -> Label -> STM (Maybe a)
 findLabel tv lbl = do
@@ -358,8 +364,8 @@ doListLights lc sels needed result = do
   let messagesNeeded = whatsNeeded sels needed
   s <- newTVarIO S.empty
   tv <- newTVarIO (Just result)
-  bulbs <- atomically $ applySelectors lc sels
-  forM_ bulbs $ listOneLight lc sels messagesNeeded tv undefined -- FIXME: now
+  lites <- atomically $ applySelectors lc sels
+  forM_ lites $ listOneLight lc sels messagesNeeded tv
   -- FIXME: need a different sort of waiting
 {-
   now <- dateCurrent
