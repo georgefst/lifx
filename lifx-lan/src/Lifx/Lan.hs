@@ -219,8 +219,12 @@ listOneLight lc sels messagesNeeded tv sem cl =
         gatherInfo stuff (mneed:mneeds) li =
           cbForMessage stuff mneed (gatherInfo stuff mneeds) li
 
-        fin Nothing = return ()
-        fin (Just li) = appendLightInfo tv li
+        fin Nothing = sigSem
+        fin (Just li) = do
+          appendLightInfo tv li
+          sigSem
+
+        sigSem = atomically $ signalTSem sem
 
 appendLightInfo :: TVar (Maybe (MVar (MVarList LightInfo)))
                    -> LightInfo
