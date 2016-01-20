@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+import Control.Concurrent
+
 import Lifx.Lan
 import Lifx.Lan.LowLevel
 import Lifx
@@ -20,7 +22,10 @@ st = StateTransition
 
 main = do
   lc <- openLanConnection ls
+  threadDelay 1000000
   li <- listLights lc [SelAll] needEverything
   print li
+  {-
   tr <- setStates lc [([SelAll], st)]
   print tr
+  -}
