@@ -426,7 +426,7 @@ data Status = Ok | TimedOut | Offline deriving (Eq, Ord, Show, Read)
 
 data StateTransitionResult =
   StateTransitionResult
-  { tOperation :: (Selector, StateTransition)
+  { tOperation :: ([Selector], StateTransition)
   , tResults :: [Result]
   } deriving (Eq, Ord, Show, Read)
 

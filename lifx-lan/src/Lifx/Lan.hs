@@ -498,13 +498,23 @@ updateLabel :: LanConnection -> DeviceId -> DateTime -> StateLight
 updateLabel lc dev now sl =
   updateCachedLight lc dev $ \cl -> cl { clLabel = Cached now (slLabel sl) }
 
+doSetStates :: LanConnection
+               -> [([Selector], StateTransition)]
+               -> MVar (MVarList StateTransitionResult)
+               -> IO ()
+doSetStates lc pairs result = undefined
+
 instance Connection LanConnection where
   listLights lc sel needed = do
     result <- newEmptyMVar
     forkIO $ doListLights lc sel needed result
     mVarListToList result
 
-  setStates lc pairs = undefined
+  setStates lc pairs = do
+    result <- newEmptyMVar
+    forkIO $ doSetStates lc pairs result
+    mVarListToList result
+
   togglePower lc sel dur = undefined
   effect lc sel eff = undefined
   listScenes lc = undefined
