@@ -368,7 +368,6 @@ doListLights :: LanConnection
                 -> IO ()
 doListLights lc sels needed result = do
   let messagesNeeded = whatsNeeded sels needed
-  s <- newTVarIO S.empty
   tv <- newTVarIO (Just result)
   sem <- atomically $ newTSem 0
   lites <- atomically $ applySelectors lc sels
