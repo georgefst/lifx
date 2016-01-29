@@ -372,7 +372,7 @@ doListLights lc sels needed result = do
   sem <- atomically $ newTSem 0
   lites <- atomically $ applySelectors lc sels
   forM_ lites $ listOneLight lc sels messagesNeeded tv sem
-  atomically $ do forM_ lites $ \_ -> waitTSem sem
+  atomically $ forM_ lites $ \_ -> waitTSem sem
   mv <- atomically $ do
     x <- readTVar tv
     writeTVar tv Nothing
@@ -501,7 +501,12 @@ doSetStates :: LanConnection
                -> [([Selector], StateTransition)]
                -> MVar (MVarList StateTransitionResult)
                -> IO ()
-doSetStates lc pairs result = undefined
+doSetStates lc pairs result = undefined {- do
+  tv <- newTVarIO (Just result)
+  sem <- atomically $ newTSem 0
+  forM_ pairs $ setOneState lc tv sem
+  atomically $ forM_ pairs $ \_ -> waitTSem sem
+-}
 
 instance Connection LanConnection where
   listLights lc sel needed = do
