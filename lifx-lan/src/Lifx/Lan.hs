@@ -103,6 +103,9 @@ mVarListToList mvl = unsafeInterleaveIO $ do
      lTail' <- mVarListToList lTail
      return (lHead : lTail')
 
+listOfMVarToList :: [MVar a] -> IO [a]
+listOfMVarToList = mapM (unsafeInterleaveIO . takeMVar)
+
 emptyLightInfo :: DeviceId -> DateTime -> LightInfo
 emptyLightInfo devId now = LightInfo
   { lId = devId
@@ -499,14 +502,26 @@ updateLabel lc dev now sl =
 
 doSetStates :: LanConnection
                -> [([Selector], StateTransition)]
-               -> MVar (MVarList StateTransitionResult)
-               -> IO ()
-doSetStates lc pairs result = undefined {- do
-  tv <- newTVarIO (Just result)
-  sem <- atomically $ newTSem 0
-  forM_ pairs $ setOneState lc tv sem
-  atomically $ forM_ pairs $ \_ -> waitTSem sem
--}
+               -> IO [MVar StateTransitionResult]
+doSetStates lc pairs = forM pairs $ setOneState lc
+
+setOneState :: LanConnection
+               -> ([Selector], StateTransition)
+               -> IO (MVar StateTransitionResult)
+setOneState lc pair@(sels, st) = do
+  mv <- newEmptyMVar
+  forkIO $ do
+    lites <- atomically $ applySelectors lc sels
+    results <- forM lites $ setOneLightState lc st
+    results' <- listOfMVarToList results
+    putMVar mv (StateTransitionResult pair results')
+  return mv
+
+setOneLightState :: LanConnection
+                    -> StateTransition
+                    -> CachedLight
+                    -> IO (MVar Result)
+setOneLightState = undefined
 
 instance Connection LanConnection where
   listLights lc sel needed = do
@@ -515,9 +530,8 @@ instance Connection LanConnection where
     mVarListToList result
 
   setStates lc pairs = do
-    result <- newEmptyMVar
-    forkIO $ doSetStates lc pairs result
-    mVarListToList result
+    result <- doSetStates lc pairs
+    listOfMVarToList result
 
   togglePower lc sel dur = undefined
   effect lc sel eff = undefined
