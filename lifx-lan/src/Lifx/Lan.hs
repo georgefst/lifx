@@ -524,11 +524,12 @@ setOneLightState :: LanConnection
 setOneLightState lc st cl = do
   mv <- newEmptyMVar
   forkIO $ do
-    statColor <- setOneLightColor lc (sColor st) cl
-    statPwr <- setOneLightPower lc (sPower st) cl
+    statColor <- setOneLightColor lc (sColor st) (sDuration st) cl
+    stat <- case statColor of
+                 Ok -> setOneLightPower lc (sPower st) (sDuration st) cl
+                 _ -> return statColor
     let did = deviceId (clBulb cl)
         lbl = maybeFromCached (clLabel cl)
-        stat = combineStatuses statColor statPwr -- FIXME: maybe not
     putMVar mv (Result did lbl stat)
   return mv
 
@@ -538,14 +539,32 @@ maybeFromCached (Cached _ x) = Just x
 
 setOneLightPower :: LanConnection
                     -> Maybe Power
+                    -> FracSeconds
                     -> CachedLight
                     -> IO Status
-setOneLightPower _ Nothing _ = return Ok
-setOneLightPower lc (Just pwr) cl = undefined
+setOneLightPower _ Nothing _ _ = return Ok
+setOneLightPower lc (Just pwr) dur cl = undefined
 
-setOneLightColor = undefined
+getOneLightColor :: LanConnection
+                    -> CachedLight
+                    -> IO (MaybeColor, Status)
+getOneLightColor = undefined
 
-combineStatuses = undefined
+setOneLightColor :: LanConnection
+                    -> MaybeColor
+                    -> FracSeconds
+                    -> CachedLight
+                    -> IO Status
+setOneLightColor lc mc dur cl =
+  if isEmptyColor mc
+  then return Ok
+  else do
+    (oldColor, status) <- if isCompleteColor mc
+                          then return (emptyColor, Ok)
+                          else getOneLightColor lc cl
+    case status of
+     Ok -> undefined -- do_some_stuff
+     _ -> return status
 
 instance Connection LanConnection where
   listLights lc sel needed = do
