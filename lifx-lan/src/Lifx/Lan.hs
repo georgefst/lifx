@@ -566,6 +566,23 @@ setOneLightColor lc mc dur cl =
      Ok -> undefined -- do_some_stuff
      _ -> return status
 
+blockingQuery :: RetryParams
+                 -> ((a -> IO ()) -> IO ())
+                 -> IO (Maybe a)
+blockingQuery rp query = do
+  mv <- newEmptyMVar
+  let cbSucc x = putMVar mv (Just x)
+      cbFail = putMVar mv Nothing
+  reliableQuery rp query cbSucc cbFail
+  takeMVar mv
+
+blockingAction :: RetryParams
+                  -> (IO () -> IO ())
+                  -> IO (Maybe ())
+blockingAction rp action =
+  blockingQuery rp query
+  where query cb = action $ cb ()
+
 instance Connection LanConnection where
   listLights lc sel needed = do
     result <- newEmptyMVar
