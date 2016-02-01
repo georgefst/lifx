@@ -517,6 +517,7 @@ setOneState lc pair@(sels, st) = do
     putMVar mv (StateTransitionResult pair results')
   return mv
 
+{-
 setOneLightState :: LanConnection
                     -> StateTransition
                     -> CachedLight
@@ -531,6 +532,25 @@ setOneLightState lc st cl = do
     let did = deviceId (clBulb cl)
         lbl = maybeFromCached (clLabel cl)
     putMVar mv (Result did lbl stat)
+  return mv
+-}
+
+setOneLightState :: LanConnection
+                    -> StateTransition
+                    -> CachedLight
+                    -> IO (MVar Result)
+setOneLightState lc st cl = do
+  mv <- newEmptyMVar
+  let did = deviceId (clBulb cl)
+      lbl = maybeFromCached (clLabel cl)
+      putResult stat = putMVar mv (Result did lbl stat)
+      timeout = putResult TimedOut
+      newColor = sColor st
+      skipGet = isEmptyColor newColor || isCompleteColor newColor
+  getOneLightColor lc skipGet cl timeout $ \oldColor ->
+  setOneLightColor lc oldColor newColor (sDuration st) cl timeout $
+  setOneLightPower lc (sPower st) (sDuration st) cl timeout $
+  putResult Ok
   return mv
 
 maybeFromCached :: CachedThing a -> Maybe a
