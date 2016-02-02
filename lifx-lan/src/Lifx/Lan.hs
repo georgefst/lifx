@@ -517,24 +517,6 @@ setOneState lc pair@(sels, st) = do
     putMVar mv (StateTransitionResult pair results')
   return mv
 
-{-
-setOneLightState :: LanConnection
-                    -> StateTransition
-                    -> CachedLight
-                    -> IO (MVar Result)
-setOneLightState lc st cl = do
-  mv <- newEmptyMVar
-  forkIO $ do
-    statColor <- setOneLightColor lc (sColor st) (sDuration st) cl
-    stat <- case statColor of
-                 Ok -> setOneLightPower lc (sPower st) (sDuration st) cl
-                 _ -> return statColor
-    let did = deviceId (clBulb cl)
-        lbl = maybeFromCached (clLabel cl)
-    putMVar mv (Result did lbl stat)
-  return mv
--}
-
 setOneLightState :: LanConnection
                     -> StateTransition
                     -> CachedLight
@@ -547,44 +529,44 @@ setOneLightState lc st cl = do
       timeout = putResult TimedOut
       newColor = sColor st
       skipGet = isEmptyColor newColor || isCompleteColor newColor
-  getOneLightColor lc skipGet cl timeout $ \oldColor ->
-  setOneLightColor lc oldColor newColor (sDuration st) cl timeout $
-  setOneLightPower lc (sPower st) (sDuration st) cl timeout $
-  putResult Ok
+  getOneLightColor lc skipGet cl timeout $
+    \oldColor -> setOneLightColor lc oldColor newColor (sDuration st) cl timeout $
+      setOneLightPower lc (sPower st) (sDuration st) cl timeout $
+        putResult Ok
   return mv
 
 maybeFromCached :: CachedThing a -> Maybe a
 maybeFromCached NotCached = Nothing
 maybeFromCached (Cached _ x) = Just x
 
+getOneLightColor :: LanConnection
+                    -> Bool
+                    -> CachedLight
+                    -> IO ()
+                    -> (MaybeColor -> IO ())
+                    -> IO ()
+getOneLightColor _ True _ _ cbSucc = cbSucc emptyColor
+getOneLightColor lc False cl cbFail cbSucc = undefined
+
+setOneLightColor :: LanConnection
+                    -> MaybeColor
+                    -> MaybeColor
+                    -> FracSeconds
+                    -> CachedLight
+                    -> IO ()
+                    -> IO ()
+                    -> IO ()
+setOneLightColor lc oldColor newColor dur cl cbFail cbSucc = undefined
+
 setOneLightPower :: LanConnection
                     -> Maybe Power
                     -> FracSeconds
                     -> CachedLight
-                    -> IO Status
-setOneLightPower _ Nothing _ _ = return Ok
-setOneLightPower lc (Just pwr) dur cl = undefined
-
-getOneLightColor :: LanConnection
-                    -> CachedLight
-                    -> IO (MaybeColor, Status)
-getOneLightColor = undefined
-
-setOneLightColor :: LanConnection
-                    -> MaybeColor
-                    -> FracSeconds
-                    -> CachedLight
-                    -> IO Status
-setOneLightColor lc mc dur cl =
-  if isEmptyColor mc
-  then return Ok
-  else do
-    (oldColor, status) <- if isCompleteColor mc
-                          then return (emptyColor, Ok)
-                          else getOneLightColor lc cl
-    case status of
-     Ok -> undefined -- do_some_stuff
-     _ -> return status
+                    -> IO ()
+                    -> IO ()
+                    -> IO ()
+setOneLightPower _ Nothing _ _ _ cbSucc = cbSucc
+setOneLightPower lc (Just pwr) dur cl cbFail cbSucc = undefined
 
 blockingQuery :: RetryParams
                  -> ((a -> IO ()) -> IO ())
