@@ -185,11 +185,25 @@ color16toFrac c = HSBK
   , kelvin = fromIntegral (kelvin c)
   }
 
+colorFracTo16 :: Color -> HSBK16
+colorFracTo16 c = HSBK
+  { hue = round $ hue c * 65535 / 360
+  , saturation = round $ saturation c * 65535
+  , brightness = round $ brightness c * 65535
+  , kelvin = round $ kelvin c
+  }
+
 justColor :: Color -> MaybeColor
 justColor = fmap Just
 
+definitelyColor :: MaybeColor -> Color
+definitelyColor = fmap fromJust
+
 color16ToMaybeFrac :: HSBK16 -> MaybeColor
 color16ToMaybeFrac hsbk = justColor $ color16toFrac hsbk
+
+f2ms :: LiFrac -> Word32
+f2ms x = round $ 1000 * x
 
 nanosPerSecond :: FracSeconds
 nanosPerSecond = 1e9
@@ -546,7 +560,11 @@ getOneLightColor :: LanConnection
                     -> (MaybeColor -> IO ())
                     -> IO ()
 getOneLightColor _ True _ _ cbSucc = cbSucc emptyColor
-getOneLightColor lc False cl cbFail cbSucc = undefined
+getOneLightColor lc False cl cbFail cbSucc =
+  reliableQuery rp (getLight bulb) succ cbFail
+  where rp = lsRetryParams $ lcSettings lc
+        bulb = clBulb cl
+        succ sl = cbSucc $ justColor $ color16toFrac $ slColor sl
 
 setOneLightColor :: LanConnection
                     -> MaybeColor
@@ -556,7 +574,14 @@ setOneLightColor :: LanConnection
                     -> IO ()
                     -> IO ()
                     -> IO ()
-setOneLightColor lc oldColor newColor dur cl cbFail cbSucc = undefined
+setOneLightColor lc oldColor newColor dur cl cbFail cbSucc
+  | isEmptyColor newColor = cbSucc
+  | otherwise =
+      reliableAction rp (setColor bulb c $ f2ms dur) cbSucc cbFail
+  where rp = lsRetryParams $ lcSettings lc
+        bulb = clBulb cl
+        combinedColor = oldColor `combineColors` newColor
+        c = (colorFracTo16 $ definitelyColor combinedColor)
 
 setOneLightPower :: LanConnection
                     -> Maybe Power
@@ -566,7 +591,10 @@ setOneLightPower :: LanConnection
                     -> IO ()
                     -> IO ()
 setOneLightPower _ Nothing _ _ _ cbSucc = cbSucc
-setOneLightPower lc (Just pwr) dur cl cbFail cbSucc = undefined
+setOneLightPower lc (Just pwr) dur cl cbFail cbSucc =
+  reliableAction rp (setPower bulb pwr $ f2ms dur) cbSucc cbFail
+  where rp = lsRetryParams $ lcSettings lc
+        bulb = clBulb cl
 
 blockingQuery :: RetryParams
                  -> ((a -> IO ()) -> IO ())
