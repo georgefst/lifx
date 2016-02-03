@@ -564,7 +564,7 @@ getOneLightColor lc False cl cbFail cbSucc =
   reliableQuery rp (getLight bulb) succ cbFail
   where rp = lsRetryParams $ lcSettings lc
         bulb = clBulb cl
-        succ sl = cbSucc $ justColor $ color16toFrac $ slColor sl
+        succ sl = cbSucc $ color16ToMaybeFrac $ slColor sl
 
 setOneLightColor :: LanConnection
                     -> MaybeColor

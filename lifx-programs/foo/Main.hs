@@ -25,7 +25,5 @@ main = do
   threadDelay 1000000
   li <- listLights lc [SelAll] needEverything
   print li
-  {-
   tr <- setStates lc [([SelAll], st)]
   print tr
-  -}
