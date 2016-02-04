@@ -613,6 +613,43 @@ blockingAction rp action =
   blockingQuery rp query
   where query cb = action $ cb ()
 
+doTogglePower :: LanConnection
+                 -> [Selector]
+                 -> FracSeconds
+                 -> IO [MVar Result]
+doTogglePower lc sels dur = do
+  lites <- atomically $ applySelectors lc sels
+  forM lites $ toggleOneLightPower lc dur
+
+toggleOneLightPower :: LanConnection
+                       -> FracSeconds
+                       -> CachedLight
+                       -> IO (MVar Result)
+toggleOneLightPower lc dur cl = do
+  mv <- newEmptyMVar
+  let did = deviceId (clBulb cl)
+      lbl = maybeFromCached (clLabel cl)
+      putResult stat = putMVar mv (Result did lbl stat)
+      timeout = putResult TimedOut
+  getOneLightPower lc cl timeout $
+    \oldPwr -> setOneLightPower lc (Just $ flipPwr oldPwr) dur cl timeout $
+               putResult Ok
+  return mv
+
+flipPwr On = Off
+flipPwr Off = On
+
+getOneLightPower :: LanConnection
+                    -> CachedLight
+                    -> IO ()
+                    -> (Power -> IO ())
+                    -> IO ()
+getOneLightPower lc cl cbFail cbSucc =
+  reliableQuery rp (getLight bulb) succ cbFail
+  where rp = lsRetryParams $ lcSettings lc
+        bulb = clBulb cl
+        succ sl = cbSucc $ slPower sl
+
 instance Connection LanConnection where
   listLights lc sel needed = do
     result <- newEmptyMVar
@@ -623,7 +660,10 @@ instance Connection LanConnection where
     result <- doSetStates lc pairs
     listOfMVarToList result
 
-  togglePower lc sel dur = undefined
+  togglePower lc sel dur = do
+    result <- doTogglePower lc sel dur
+    listOfMVarToList result
+
   effect lc sel eff = undefined
   listScenes lc = undefined
   activateScene lc scene dur = undefined
