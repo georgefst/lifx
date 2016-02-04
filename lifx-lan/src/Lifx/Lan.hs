@@ -543,8 +543,8 @@ setOneLightState lc st cl = do
       timeout = putResult TimedOut
       newColor = sColor st
       skipGet = isEmptyColor newColor || isCompleteColor newColor
-  getOneLightColor lc skipGet cl timeout $
-    \oldColor -> setOneLightColor lc oldColor newColor (sDuration st) cl timeout $
+  getOneLight lc skipGet cl timeout $
+    \( _ , oldColor ) -> setOneLightColor lc oldColor newColor (sDuration st) cl timeout $
       setOneLightPower lc (sPower st) (sDuration st) cl timeout $
         putResult Ok
   return mv
@@ -553,18 +553,18 @@ maybeFromCached :: CachedThing a -> Maybe a
 maybeFromCached NotCached = Nothing
 maybeFromCached (Cached _ x) = Just x
 
-getOneLightColor :: LanConnection
-                    -> Bool
-                    -> CachedLight
-                    -> IO ()
-                    -> (MaybeColor -> IO ())
-                    -> IO ()
-getOneLightColor _ True _ _ cbSucc = cbSucc emptyColor
-getOneLightColor lc False cl cbFail cbSucc =
+getOneLight :: LanConnection
+               -> Bool
+               -> CachedLight
+               -> IO ()
+               -> ((Power, MaybeColor) -> IO ())
+               -> IO ()
+getOneLight _ True _ _ cbSucc = cbSucc (Off, emptyColor)
+getOneLight lc False cl cbFail cbSucc =
   reliableQuery rp (getLight bulb) succ cbFail
   where rp = lsRetryParams $ lcSettings lc
         bulb = clBulb cl
-        succ sl = cbSucc $ color16ToMaybeFrac $ slColor sl
+        succ sl = cbSucc (slPower sl, color16ToMaybeFrac $ slColor sl)
 
 setOneLightColor :: LanConnection
                     -> MaybeColor
@@ -631,24 +631,13 @@ toggleOneLightPower lc dur cl = do
       lbl = maybeFromCached (clLabel cl)
       putResult stat = putMVar mv (Result did lbl stat)
       timeout = putResult TimedOut
-  getOneLightPower lc cl timeout $
-    \oldPwr -> setOneLightPower lc (Just $ flipPwr oldPwr) dur cl timeout $
-               putResult Ok
+  getOneLight lc False cl timeout $
+    \( pwr , _ ) -> setOneLightPower lc (Just $ flipPwr pwr) dur cl timeout $
+                     putResult Ok
   return mv
 
 flipPwr On = Off
 flipPwr Off = On
-
-getOneLightPower :: LanConnection
-                    -> CachedLight
-                    -> IO ()
-                    -> (Power -> IO ())
-                    -> IO ()
-getOneLightPower lc cl cbFail cbSucc =
-  reliableQuery rp (getLight bulb) succ cbFail
-  where rp = lsRetryParams $ lcSettings lc
-        bulb = clBulb cl
-        succ sl = cbSucc $ slPower sl
 
 instance Connection LanConnection where
   listLights lc sel needed = do
