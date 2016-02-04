@@ -639,6 +639,20 @@ toggleOneLightPower lc dur cl = do
 flipPwr On = Off
 flipPwr Off = On
 
+doEffect :: LanConnection
+            -> [Selector]
+            -> Effect
+            -> IO [MVar Result]
+doEffect lc sels eff = do
+  lites <- atomically $ applySelectors lc sels
+  forM lites $ effectOneLight lc eff
+
+effectOneLight :: LanConnection
+                  -> Effect
+                  -> CachedLight
+                  -> IO (MVar Result)
+effectOneLight lc eff cl = undefined
+
 instance Connection LanConnection where
   listLights lc sel needed = do
     result <- newEmptyMVar
@@ -653,7 +667,10 @@ instance Connection LanConnection where
     result <- doTogglePower lc sel dur
     listOfMVarToList result
 
-  effect lc sel eff = undefined
+  effect lc sel eff = do
+    result <- doEffect lc sel eff
+    listOfMVarToList result
+
   listScenes lc = undefined
   activateScene lc scene dur = undefined
   cycleLights lc sel states = undefined
