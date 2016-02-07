@@ -651,7 +651,32 @@ effectOneLight :: LanConnection
                   -> Effect
                   -> CachedLight
                   -> IO (MVar Result)
-effectOneLight lc eff cl = undefined
+effectOneLight lc eff cl = do
+  mv <- newEmptyMVar
+  let did = deviceId (clBulb cl)
+      lbl = maybeFromCached (clLabel cl)
+      putResult stat = putMVar mv (Result did lbl stat)
+      timeout = putResult TimedOut
+      nd2setColor = not $ isEmptyColor $ eFromColor eff
+      nd2restoreColor = nd2setColor && not (ePersist eff)
+      nd2getPwr = ePowerOn eff
+      skipGet = not nd2restoreColor && not nd2getPwr
+  getOneLight lc skipGet cl timeout $
+    \(origPwr, origColor) ->
+      perhaps nd2setColor (setOneLightColor lc origColor (eFromColor eff) 0 cl timeout) $
+        let nd2ChangePwr = ePowerOn eff && not origPwr
+            (newPwr, restorePwr) = if nd2ChangePwr
+                                   then (Just On, Just Off)
+                                   else (Nothing, Nothing)
+        in setOneLightPower lc newPwr 0 cl timeout $
+           setOneLightWaveform lc eff timeout $
+           if nd2ChangePwr || nd2restoreColor
+           then forkIO $ do
+             threadDelay todo
+             setOneLightPower lc restorePwr 0 cl timeout $
+               setOneLightColor lc origColor origColor 0 cl timeout $
+               putResult Ok
+           else putResult Ok
 
 instance Connection LanConnection where
   listLights lc sel needed = do
