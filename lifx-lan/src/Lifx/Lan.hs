@@ -205,6 +205,9 @@ color16ToMaybeFrac hsbk = justColor $ color16toFrac hsbk
 f2ms :: LiFrac -> Word32
 f2ms x = round $ 1000 * x
 
+f2µs :: LiFrac -> Int
+f2µs x = round $ 1e6 * x
+
 nanosPerSecond :: FracSeconds
 nanosPerSecond = 1e9
 
@@ -663,20 +666,26 @@ effectOneLight lc eff cl = do
       skipGet = not nd2restoreColor && not nd2getPwr
   getOneLight lc skipGet cl timeout $
     \(origPwr, origColor) ->
-      perhaps nd2setColor (setOneLightColor lc origColor (eFromColor eff) 0 cl timeout) $
-        let nd2ChangePwr = ePowerOn eff && not origPwr
+      setOneLightColor lc origColor (eFromColor eff) 0 cl timeout $
+        let nd2ChangePwr = ePowerOn eff && (origPwr == Off)
             (newPwr, restorePwr) = if nd2ChangePwr
                                    then (Just On, Just Off)
                                    else (Nothing, Nothing)
         in setOneLightPower lc newPwr 0 cl timeout $
            setOneLightWaveform lc eff timeout $
            if nd2ChangePwr || nd2restoreColor
-           then forkIO $ do
-             threadDelay todo
-             setOneLightPower lc restorePwr 0 cl timeout $
-               setOneLightColor lc origColor origColor 0 cl timeout $
-               putResult Ok
+           then do
+             forkIO $ do
+               let dur = ePeriod eff * eCycles eff
+               threadDelay $ f2µs dur
+               setOneLightPower lc restorePwr 0 cl timeout $
+                 setOneLightColor lc origColor origColor 0 cl timeout $
+                 putResult Ok
+             return ()
            else putResult Ok
+  return mv
+
+setOneLightWaveform = undefined
 
 instance Connection LanConnection where
   listLights lc sel needed = do
