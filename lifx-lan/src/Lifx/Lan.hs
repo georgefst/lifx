@@ -6,7 +6,9 @@ module Lifx.Lan
     ) where
 
 import Lifx
+import qualified Lifx as E( EffectType( Pulse ) )
 import Lifx.Lan.LowLevel
+import qualified Lifx.Lan.LowLevel as W( Waveform( Pulse ) )
 
 import Control.Concurrent
 import Control.Concurrent.MVar
@@ -22,6 +24,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.Version
 import Data.Word
+import GHC.Float
 import System.Hourglass
 import System.IO.Unsafe
 import System.Mem.Weak
@@ -661,9 +664,12 @@ effectOneLight lc eff cl = do
       putResult stat = putMVar mv (Result did lbl stat)
       timeout = putResult TimedOut
       nd2setColor = not $ isEmptyColor $ eFromColor eff
+      nd2combineColor = (not ((isEmptyColor $ eFromColor eff) ||
+                              (isCompleteColor $ eFromColor eff))) ||
+                        (not $ isCompleteColor $ eColor eff)
       nd2restoreColor = nd2setColor && not (ePersist eff)
       nd2getPwr = ePowerOn eff
-      skipGet = not nd2restoreColor && not nd2getPwr
+      skipGet = not nd2restoreColor && not nd2getPwr && not nd2combineColor
   getOneLight lc skipGet cl timeout $
     \(origPwr, origColor) ->
       setOneLightColor lc origColor (eFromColor eff) 0 cl timeout $
@@ -672,7 +678,7 @@ effectOneLight lc eff cl = do
                                    then (Just On, Just Off)
                                    else (Nothing, Nothing)
         in setOneLightPower lc newPwr 0 cl timeout $
-           setOneLightWaveform lc eff cl timeout $
+           setOneLightWaveform lc origColor eff cl timeout $
            if nd2ChangePwr || nd2restoreColor
            then do
              forkIO $ do
@@ -686,23 +692,29 @@ effectOneLight lc eff cl = do
   return mv
 
 setOneLightWaveform :: LanConnection
+                       -> MaybeColor
                        -> Effect
                        -> CachedLight
                        -> IO ()
                        -> IO ()
                        -> IO ()
-setOneLightWaveform lc eff cl cbFail cbSucc =
-  reliableAction rp (setWaveform bulb swf) sbSucc cbFail
+setOneLightWaveform lc origColor eff cl cbFail cbSucc =
+  reliableAction rp (setWaveform bulb swf) cbSucc cbFail
   where rp = lsRetryParams $ lcSettings lc
         bulb = clBulb cl
+        combinedColor = origColor `combineColors` eColor eff
         swf = SetWaveform
               { swTransient = not (ePersist eff)
-              , swColor = todo
-              , swPeriod = todo
-              , swCycles = todo
-              , swDutyCycle = todo
+              , swColor = colorFracTo16 $ definitelyColor $ combinedColor
+              , swPeriod = f2ms (ePeriod eff)
+              , swCycles = double2Float (eCycles eff)
+              , swDutyCycle = floor $ 65535 * (ePeak eff - 0.5)
               , swWaveform = effectTypeToWaveform (eType eff)
               }
+
+effectTypeToWaveform :: EffectType -> Waveform
+effectTypeToWaveform E.Pulse = W.Pulse
+effectTypeToWaveform Breathe = Sine
 
 instance Connection LanConnection where
   listLights lc sel needed = do
