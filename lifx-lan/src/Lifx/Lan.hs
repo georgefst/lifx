@@ -672,7 +672,7 @@ effectOneLight lc eff cl = do
                                    then (Just On, Just Off)
                                    else (Nothing, Nothing)
         in setOneLightPower lc newPwr 0 cl timeout $
-           setOneLightWaveform lc eff timeout $
+           setOneLightWaveform lc eff cl timeout $
            if nd2ChangePwr || nd2restoreColor
            then do
              forkIO $ do
@@ -685,7 +685,24 @@ effectOneLight lc eff cl = do
            else putResult Ok
   return mv
 
-setOneLightWaveform = undefined
+setOneLightWaveform :: LanConnection
+                       -> Effect
+                       -> CachedLight
+                       -> IO ()
+                       -> IO ()
+                       -> IO ()
+setOneLightWaveform lc eff cl cbFail cbSucc =
+  reliableAction rp (setWaveform bulb swf) sbSucc cbFail
+  where rp = lsRetryParams $ lcSettings lc
+        bulb = clBulb cl
+        swf = SetWaveform
+              { swTransient = not (ePersist eff)
+              , swColor = todo
+              , swPeriod = todo
+              , swCycles = todo
+              , swDutyCycle = todo
+              , swWaveform = effectTypeToWaveform (eType eff)
+              }
 
 instance Connection LanConnection where
   listLights lc sel needed = do
