@@ -27,6 +27,7 @@ main = do
   print li
   {-
   tr <- setStates lc [([SelAll], st)]
-  -}
   tr <- togglePower lc [SelAll] 3.0
+  -}
+  tr <- effect lc [SelAll] defaultEffect { eColor = red , eType = Breathe, eCycles = 5 }
   print tr
