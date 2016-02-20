@@ -55,7 +55,7 @@ defaultCloudSettings =
   { csManager = newManager tlsManagerSettings
   , csToken = error "You need to specify a valid API token for csToken."
   , csRoot = "https://api.lifx.com/v1/"
-  , csLog = TIO.putStrLn
+  , csLog = TIO.hPutStrLn stderr
   }
 
 data CloudConnection =
