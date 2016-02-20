@@ -734,6 +734,7 @@ instance Connection LanConnection where
     result <- doEffect lc sel eff
     listOfMVarToList result
 
-  listScenes lc = undefined
+  listScenes lc = lsListScenes $ lcSettings lc
+
   activateScene lc scene dur = undefined
   cycleLights lc sel states = undefined
