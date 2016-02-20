@@ -1,6 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Lifx.Lan
     ( LanSettings(..)
     , LanConnection
+    , defaultLanSettings
     , openLanConnection
     , getLan
     ) where
@@ -36,6 +39,16 @@ data LanSettings =
   , lsPort        :: !Word16
   , lsListScenes  :: IO [Scene]
   , lsRetryParams :: RetryParams
+  }
+
+defaultLanSettings :: LanSettings
+defaultLanSettings =
+  LanSettings
+  { lsIfName      = "en1"
+  , lsLog         = putStrLn
+  , lsPort        = 56700
+  , lsListScenes  = return []
+  , lsRetryParams = defaultRetryParams
   }
 
 data CachedThing a = NotCached | Cached DateTime a deriving (Show, Eq, Ord)

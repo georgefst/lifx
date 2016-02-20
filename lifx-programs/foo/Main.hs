@@ -6,14 +6,6 @@ import Lifx.Lan
 import Lifx.Lan.LowLevel
 import Lifx
 
-ls = LanSettings
-     { lsIfName      = "en1"
-     , lsLog         = putStrLn
-     , lsPort        = 56700
-     , lsListScenes  = undefined
-     , lsRetryParams = defaultRetryParams
-     }
-
 st = StateTransition
      { sPower = Nothing
      , sColor = blue
@@ -21,7 +13,7 @@ st = StateTransition
      }
 
 main = do
-  lc <- openLanConnection ls
+  lc <- openLanConnection defaultLanSettings
   threadDelay 1000000
   li <- listLights lc [SelAll] needEverything
   print li
