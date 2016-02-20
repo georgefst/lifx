@@ -143,7 +143,7 @@ serializeMsg hdr payload = hdrBs `L.append` payloadBS
         hdrBs = encode hdr'
 
 newState :: Text -> Word32 -> Socket -> SockAddr -> Weak ThreadId
-            -> Maybe (String -> IO ()) -> STM Lan
+            -> Maybe (T.Text -> IO ()) -> STM Lan
 newState ifname src sock bcast wthr logFunc = do
   seq <- newTVar 0
   cbacks <- newListArray (0, 255) (map noSeq [0..255])
@@ -158,7 +158,7 @@ newState ifname src sock bcast wthr logFunc = do
              , stIfName = ifname
              }
   where mkLogState Nothing = \_ -> return ()
-        mkLogState (Just f) = f
+        mkLogState (Just f) = f . T.pack
         noSeq i st sa _ _ =
           stLog st $ "No callback for sequence #" ++ show i ++ strFrom sa
 
@@ -284,7 +284,7 @@ discoverBulbs st cb = do
 openLan :: Text -> IO Lan
 openLan ifname = openLan' ifname Nothing Nothing
 
-openLan' :: Text -> Maybe Word16 -> Maybe (String -> IO()) -> IO Lan
+openLan' :: Text -> Maybe Word16 -> Maybe (T.Text -> IO()) -> IO Lan
 openLan' ifname mport mlog = do
   hostAddr <- ifaceAddr $ T.unpack ifname
   sock <- socket AF_INET Datagram defaultProtocol

@@ -25,17 +25,19 @@ import Data.Maybe
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import Data.Version
 import Data.Word
 import GHC.Float
 import System.Hourglass
+import System.IO
 import System.IO.Unsafe
 import System.Mem.Weak
 
 data LanSettings =
   LanSettings
   { lsIfName      :: T.Text
-  , lsLog         :: String -> IO ()
+  , lsLog         :: T.Text -> IO ()
   , lsPort        :: !Word16
   , lsListScenes  :: IO [Scene]
   , lsRetryParams :: RetryParams
@@ -45,7 +47,7 @@ defaultLanSettings :: LanSettings
 defaultLanSettings =
   LanSettings
   { lsIfName      = "en1"
-  , lsLog         = putStrLn
+  , lsLog         = TIO.hPutStrLn stderr
   , lsPort        = 56700
   , lsListScenes  = return []
   , lsRetryParams = defaultRetryParams
@@ -283,7 +285,8 @@ cbForMessage :: (LanSettings, Bulb, [Selector], FinCont)
                 -> IO ()
 cbForMessage (ls, bulb, sels, finCont) mneed nxtCont li = f mneed
   where rq q cb = reliableQuery (lsRetryParams ls) (q bulb) cb $ do
-                    (lsLog ls) (show bulb ++ " not responding to " ++ opName)
+                    (lsLog ls)
+                      (T.pack $ show bulb ++ " not responding to " ++ opName)
                     finCont (Just li)
         opName = drop 4 $ show mneed
 
