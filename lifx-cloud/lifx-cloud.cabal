@@ -46,6 +46,8 @@ cabal-version:       >=1.10
 library
   exposed-modules: Lifx.Cloud
 
+  other-modules: Paths_lifx_cloud
+
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
 
