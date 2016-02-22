@@ -123,10 +123,13 @@ performRequest cc req = do
   let stat = responseStatus resp
       code = statusCode stat
   when (code < 200 || code > 299) $ throwIO $ CloudError $ extractMessage resp
-  case eitherDecode' $ responseBody resp of
-   Left msg -> throwIO $ CloudJsonError $ T.pack msg
+  let body = responseBody resp
+  -- decode the body as the return type
+  case eitherDecode' body of
+   Left msg -> throwIO $ CloudJsonError (T.pack msg) body
    Right x -> do
-     logWarnings (ccWarn cc) (decode' $ responseBody resp)
+     -- decode the body a second time as type Warnings to get any warnings
+     logWarnings (ccWarn cc) (decode' body)
      return x
 
 newtype StatePair = StatePair ([Selector], StateTransition)

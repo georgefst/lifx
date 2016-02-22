@@ -41,7 +41,7 @@ import Lifx.Util
 
 data LifxException = NoSuchInterface String [String]
                    | CloudError T.Text
-                   | CloudJsonError T.Text
+                   | CloudJsonError T.Text L.ByteString
                    | IllegalCharacter Char
                    deriving (Show, Typeable)
 
