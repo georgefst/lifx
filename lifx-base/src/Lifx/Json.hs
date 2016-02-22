@@ -6,7 +6,7 @@ import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Arrow (first)
 import Control.Monad
 import Data.Aeson hiding (Result)
-import Data.Aeson.Types (Parser, Pair)
+import Data.Aeson.Types (Parser, Pair, modifyFailure)
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put

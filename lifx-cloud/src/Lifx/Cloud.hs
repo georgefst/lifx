@@ -15,7 +15,7 @@ import Control.Concurrent
 import Control.Exception
 import Control.Monad
 import Data.Aeson
-import Data.Aeson.Encode.Pretty
+-- import Data.Aeson.Encode.Pretty
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as L
