@@ -229,7 +229,8 @@ instance FromJSON StateTransitionResult where
     mySelector        <- myOp .: "selector"
     myStateTransition <- parseJSON (Object myOp)
 
-    return $ StateTransitionResult (mySelector, myStateTransition) myResults
+    -- FIXME: actually handle multiple selectors
+    return $ StateTransitionResult ([mySelector], myStateTransition) myResults
 
   parseJSON _ = fail "expected a JSON object for state transition result"
 
