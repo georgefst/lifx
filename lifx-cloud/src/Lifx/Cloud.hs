@@ -14,7 +14,7 @@ import Control.Applicative
 import Control.Concurrent
 import Control.Exception
 import Control.Monad
-import Data.Aeson
+import Data.Aeson hiding (Result)
 -- import Data.Aeson.Encode.Pretty
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
@@ -82,6 +82,12 @@ newtype CloudMessage = CloudMessage { unCloudMessage :: T.Text }
 
 instance FromJSON CloudMessage where
   parseJSON (Object v) = CloudMessage <$> v .: "error"
+  parseJSON _ = mzero
+
+newtype ResultWrapper = ResultWrapper { unResultWrapper :: [Result] }
+
+instance FromJSON ResultWrapper where
+  parseJSON (Object v) = ResultWrapper <$> v .: "results"
   parseJSON _ = mzero
 
 isJsonMimeType :: Response a -> Bool
@@ -176,7 +182,7 @@ instance Connection CloudConnection where
     let durTxt = fmt "{}" (Only dur)
         params = [("duration", TE.encodeUtf8 durTxt)]
         req' = (urlEncodedBody params req)
-    performRequest cc req'
+    unResultWrapper <$> performRequest cc req'
 
   effect cc sel eff = do
     txt <- selectorsToTextThrowIO sel
@@ -191,7 +197,7 @@ instance Connection CloudConnection where
                  , ("peak",       Just $ fmt "{}" (Only $ ePeak eff))
                  ]
         req' = (urlEncodedBody params req)
-    performRequest cc req'
+    unResultWrapper <$> performRequest cc req'
 
   listScenes cc = do
     req <- endpoint cc "scenes"
@@ -202,14 +208,14 @@ instance Connection CloudConnection where
     let durTxt = fmt "{}" (Only dur)
         params = [("duration", TE.encodeUtf8 durTxt)]
         req' = (urlEncodedBody params req) { method = methodPut }
-    performRequest cc req'
+    unResultWrapper <$> performRequest cc req'
 
   cycleLights cc sel states = do
     txt <- selectorsToTextThrowIO sel
     req <- endpoint cc ("lights/" <> txt <> "/cycle")
     let states' = encode $ object ["states" .= states]
         req' = (jsonPut req states') { method = methodPost }
-    performRequest cc req'
+    unResultWrapper <$> performRequest cc req'
 
 endpoint :: CloudConnection -> T.Text -> IO Request
 endpoint cc ep = do

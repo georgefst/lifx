@@ -15,6 +15,12 @@ st = StateTransition
      , sDuration = 1.0
      }
 
+st2 = StateTransition
+      { sPower = Nothing
+      , sColor = white
+      , sDuration = 1.0
+      }
+
 fromRight = either error id
 
 main = do
@@ -29,14 +35,18 @@ main = do
   li <- listLights lc [SelAll] needEverything
   print li
   putStrLn ""
-  tr <- setStates lc [([SelAll], st)]
   {-
+  tr <- setStates lc [([SelAll], st)]
   tr <- togglePower lc [SelAll] 3.0
   tr <- effect lc [SelAll] defaultEffect { eColor = red
                                          , eType = Breathe
                                          , eCycles = 5
                                          , eFromColor = green
-                                         , ePowerOn = False
+                                         , ePowerOn = True
                                          }
+  tr <- listScenes lc
+  let scn = fromRight $ fromText "44f42e8c-96fe-4663-a280-a72e65249162"
+  tr <- activateScene lc scn 10.0
   -}
+  tr <- cycleLights lc [SelAll] [st, st2]
   print tr
