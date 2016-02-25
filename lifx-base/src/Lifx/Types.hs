@@ -71,6 +71,7 @@ type LiFrac = Double
 type Color = HSBK LiFrac
 type MaybeColor = HSBK (Maybe LiFrac)
 
+-- https://community.lifx.com/t/comprehensive-list-of-recognized-color-names/1067/2
 white, red, orange, yellow, green, cyan, blue, purple, pink :: MaybeColor
 white  = HSBK Nothing    (Just 0) Nothing Nothing
 red    = HSBK (Just 0)   (Just 1) Nothing Nothing
