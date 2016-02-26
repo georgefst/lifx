@@ -50,3 +50,4 @@ main = do
   -}
   tr <- cycleLights lc [SelAll] [st, st2]
   print tr
+  closeConnection lc

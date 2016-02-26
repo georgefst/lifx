@@ -529,3 +529,4 @@ moreMain cmd lan args = do
   atomically $ do
     c <- readTVar counter
     forM_ [1..c] $ \_ -> waitTSem sem
+  closeLan lan
