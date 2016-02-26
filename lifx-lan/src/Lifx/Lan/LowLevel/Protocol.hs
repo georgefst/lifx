@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Lifx.Lan.LowLevel.Protocol
     ( Lan,
       Bulb(..),
@@ -6,6 +8,7 @@ module Lifx.Lan.LowLevel.Protocol
       sendMsg,
       openLan,
       openLan',
+      closeLan,
       discoverBulbs,
       deviceId,
       defaultRetryParams,
@@ -59,7 +62,8 @@ import Network.Socket
       defaultHints,
       bind,
       socketPort,
-      aNY_PORT )
+      aNY_PORT,
+      close )
 import Network.Socket.ByteString ( sendManyTo, recvFrom )
 import System.Mem.Weak
 import Text.Printf ( printf )
@@ -111,6 +115,7 @@ data Lan
     , stSource :: !Word32
     , stCallbacks :: TArray Word8 Callback
     , stLog :: String -> IO ()
+    , stLogText :: T.Text -> IO ()
     , stSocket :: Socket
     , stBcast :: SockAddr
     , stThread :: Weak ThreadId
@@ -147,18 +152,19 @@ newState :: Text -> Word32 -> Socket -> SockAddr -> Weak ThreadId
 newState ifname src sock bcast wthr logFunc = do
   seq <- newTVar 0
   cbacks <- newListArray (0, 255) (map noSeq [0..255])
-  let lg = mkLogState logFunc
+  let (lg, lgt) = mkLogState logFunc
   return Lan { stSeq = seq
              , stSource = src
              , stCallbacks = cbacks
              , stLog = lg
+             , stLogText = lgt
              , stSocket = sock
              , stBcast = bcast
              , stThread = wthr
              , stIfName = ifname
              }
-  where mkLogState Nothing = \_ -> return ()
-        mkLogState (Just f) = f . T.pack
+  where mkLogState Nothing = ((\_ -> return ()), (\_ -> return ()))
+        mkLogState (Just f) = ((f . T.pack), f)
         noSeq i st sa _ _ =
           stLog st $ "No callback for sequence #" ++ show i ++ strFrom sa
 
@@ -295,22 +301,29 @@ openLan' ifname mport mlog = do
       bcast = SockAddrInet (fromIntegral port) 0xffffffff -- 255.255.255.255
       source = mkSource hostAddr (fromIntegral hostPort)
   tmv <- newEmptyTMVarIO
-  thr <- forkIO (dispatcher tmv)
+  thr <- forkFinally (dispatcher tmv) (\_ -> close sock)
   wthr <- mkWeakThreadId thr
   atomically $ do
     st <- newState ifname source sock bcast wthr mlog
     putTMVar tmv st
     return st
 
+closeLan :: Lan -> IO ()
+closeLan lan = endThread (stLogText lan) "dispatch" (stThread lan)
+
+closeSock :: (T.Text -> IO ()) -> Socket -> a -> IO ()
+closeSock lg sock _ =
+  catchJust notAsync (close sock) $
+  \e -> lg $ "Exception closing LAN protocol socket: " <> T.pack (show e)
+
 ethMtu = 1500
 
 dispatcher :: TMVar Lan -> IO ()
 dispatcher tmv = do
   st <- atomically $ takeTMVar tmv
-  forever $ do
+  untilKilled (stLogText st) "discovery" $ do
     (bs, sa) <- recvFrom (stSocket st) ethMtu
     runCallback st sa $ L.fromStrict bs
-  -- close sock
 
 {-
    LIFX requires each client on the network to have a unique,

@@ -27,6 +27,7 @@ module Lifx.Lan.LowLevel
       RetryParams(..),
       openLan,
       openLan',
+      closeLan,
       discoverBulbs,
       deviceId,
       defaultRetryParams,

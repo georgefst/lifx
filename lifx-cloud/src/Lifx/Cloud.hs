@@ -217,6 +217,8 @@ instance Connection CloudConnection where
         req' = (jsonPut req states') { method = methodPost }
     unResultWrapper <$> performRequest cc req'
 
+  closeConnection _ = return ()
+
 endpoint :: CloudConnection -> T.Text -> IO Request
 endpoint cc ep = do
   let url = T.unpack $ ccRoot cc <> ep

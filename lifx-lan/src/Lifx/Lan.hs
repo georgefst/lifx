@@ -12,6 +12,7 @@ import Lifx
 import qualified Lifx as E( EffectType( Pulse ) )
 import Lifx.Lan.LowLevel
 import qualified Lifx.Lan.LowLevel as W( Waveform( Pulse ) )
+import Lifx.Lan.LowLevel.Util (untilKilled, endThread)
 
 import Control.Concurrent
 import Control.Concurrent.MVar
@@ -99,7 +100,7 @@ openLanConnection ls = do
   m2 <- tvEmptyMap
   m3 <- tvEmptyMap
   tmv <- newEmptyTMVarIO
-  thr <- forkIO (discoveryThread tmv)
+  thr <- forkFinally (discoveryThread tmv) (\_ -> closeLan lan)
   wthr <- mkWeakThreadId thr
   atomically $ do
     let lc = LanConnection lan ls m1 m2 m3 wthr
@@ -451,7 +452,7 @@ discoveryThread tmv = do
   forM_ [1..3] $ \_ -> do
     db lc
     td fastDiscoveryTime
-  forever $ do
+  untilKilled (lsLog $ lcSettings lc) "discovery" $ do
     db lc
     td discoveryTime
   where
@@ -754,3 +755,6 @@ instance Connection LanConnection where
 
   activateScene lc scene dur = undefined
   cycleLights lc sel states = undefined
+
+  closeConnection lc =
+    endThread (lsLog $ lcSettings lc) "discovery" (lcThread lc)

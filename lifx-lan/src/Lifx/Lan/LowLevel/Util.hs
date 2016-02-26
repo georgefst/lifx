@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Lifx.Lan.LowLevel.Util
     ( putFloat32le,
       getFloat32le,
@@ -7,18 +9,25 @@ module Lifx.Lan.LowLevel.Util
       getBool16,
       bounds,
       bitBool,
-      extract ) where
+      extract,
+      endThread,
+      untilKilled,
+      notAsync ) where
 
 import Control.Applicative ( (<$>) )
-import Control.Monad ( when )
+import Control.Concurrent
+import Control.Exception
+import Control.Monad ( when, forever )
 import Data.Binary ( Put, Get )
 import Data.Binary.Put ( putWord32le, putWord16le )
 import Data.Binary.Get ( getWord32le, getWord16le )
 import Data.Bits ( Bits((.&.), bit, shiftR, clearBit {- zeroBits -}) )
 import Data.Int ( Int16, Int64 )
+import Data.Monoid
 import Data.ReinterpretCast ( wordToFloat, floatToWord )
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
+import System.Mem.Weak
 
 bounds :: (Integral a, Bits a, Show a) => String -> Int -> a -> Put
 bounds name n val =
@@ -54,3 +63,32 @@ getBool16 :: Get Bool
 getBool16 = do
   x <- getWord16le
   return $ x /= 0
+
+-- like killThread, but handles dereferencing weak thread,
+-- and prints a message if dereferencing fails
+endThread :: (T.Text -> IO ()) -> T.Text -> Weak ThreadId -> IO ()
+endThread lg name wthr = do
+  mthr <- deRefWeak wthr
+  case mthr of
+   Nothing -> lg $ "Couldn't kill " <> name <> " thread"
+   (Just thr) -> killThread thr
+
+-- like forever, but if an exception happens, print the exception
+-- and keep on going forever, unless it's an AsyncException like
+-- ThreadKilled.
+untilKilled :: (T.Text -> IO ()) -> T.Text -> IO () -> IO ()
+untilKilled lg name loop =
+  forever $ catchJust notAsync (forever loop) $
+  \e -> lg $ "Exception in " <> name <> " thread: " <> T.pack (show e)
+
+-- Returns Nothing if argument is an AsyncException.
+-- Otherwise, returns argument.
+notAsync :: SomeException -> Maybe SomeException
+notAsync e =
+  if isAsync (fromException e)
+  then Nothing
+  else Just e
+
+isAsync :: Maybe AsyncException -> Bool
+isAsync (Just _ ) = True
+isAsync Nothing = False
