@@ -358,7 +358,7 @@ ifaceAddr ifname = do
       ifnames = map NI.name ifaces
   iface <- case miface of
     Just x -> return x
-    Nothing -> throw $ NoSuchInterface ifname ifnames
+    Nothing -> throw $ NoSuchInterface (T.pack ifname) (map T.pack ifnames)
   let (NI.IPv4 addr) = NI.ipv4 iface
   return addr
 

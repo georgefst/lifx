@@ -39,7 +39,7 @@ import Text.Read hiding (String)
 
 import Lifx.Util
 
-data LifxException = NoSuchInterface String [String]
+data LifxException = NoSuchInterface T.Text [T.Text]
                    | CloudError T.Text
                    | CloudJsonError T.Text L.ByteString
                    | IllegalCharacter Char
