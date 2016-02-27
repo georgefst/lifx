@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+import Control.Arrow
 import Control.Concurrent
 import Control.Monad
 import Data.Char
@@ -33,7 +34,7 @@ dly = threadDelay 1000000
 chkTransitionResult :: String
                     -> (([Selector], StateTransition), StateTransitionResult, Int)
                     -> IO ()
-chkTransitionResult msg (op@(sels, trans), tr, idx) = do
+chkTransitionResult msg (op, tr, idx) = do
   let msg' = msg ++ ": result index " ++ show idx
   assertEqual (msg' ++ ": tOperation") op (tOperation tr)
   forM_ (tResults tr) $ \r ->
@@ -50,6 +51,29 @@ setStates' conn msg pairs = do
   let triples = zip3 pairs trs [0..]
   mapM_ (chkTransitionResult msg) triples
   return trs
+
+chkTransitionResultDevId :: String
+                            -> (([DeviceId], StateTransition), StateTransitionResult, Int)
+                            -> IO ()
+chkTransitionResultDevId msg ((devs, _), tr, idx) = do
+  let msg' = msg ++ ": result index " ++ show idx
+      results = tResults tr
+  assertEqual (msg ++ ": length") (length devs) (length results)
+  forM_ (zip3 devs results [1..]) $ \(d, r, i) ->
+    assertEqual (msg' ++ ": device index " ++ show i) d (rId r)
+
+setStatesDevId :: Connection c
+                  => c
+                  -> String
+                  -> [([DeviceId], StateTransition)]
+                  -> IO [StateTransitionResult]
+setStatesDevId conn msg pairs = do
+  trs <- setStates' conn msg $ map (first (map SelDevId)) pairs
+  let triples = zip3 pairs trs [0..]
+  mapM_ (chkTransitionResultDevId msg) triples
+  return trs
+
+step = putStrLn
 
 main = do
   {-
@@ -68,8 +92,10 @@ main = do
   print li
   putStrLn ""
 
-  setStates' lc "stuff"
-    [(sels, StateTransition { sPower = Just On
+  step "reset to white"
+
+  setStatesDevId lc "stuff"
+    [(devs, StateTransition { sPower = Just On
                             , sColor = justColor $ HSBK 0 0 1 5000
                             , sDuration = 0
                             })]
@@ -89,6 +115,9 @@ main = do
   let scn = fromRight $ fromText "44f42e8c-96fe-4663-a280-a72e65249162"
   tr <- activateScene lc scn 10.0
   -}
+
+  step "cycleLights"
+
   tr <- cycleLights lc sels [st, st2]
   print tr
   closeConnection lc
