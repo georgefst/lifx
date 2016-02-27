@@ -57,6 +57,14 @@ instance FromJSON Selector where
      Left msg -> fail msg
      Right sel -> return sel
 
+newtype WrapSelectors = WrapSelectors { unWrapSelectors :: [Selector] }
+
+instance FromJSON WrapSelectors where
+  parseJSON (String txt) =
+    case parseSelectors txt of
+     Left msg -> fail msg
+     Right sels -> return (WrapSelectors sels)
+
 parseIdStruct :: FromJSON a => Maybe Value -> Parser (Maybe a, Maybe Label)
 parseIdStruct (Just (Object v)) = do
   i <- v .:? "id"
@@ -226,11 +234,10 @@ instance FromJSON StateTransitionResult where
     myOp      <- v .: "operation"
     myResults <- v .: "results"
 
-    mySelector        <- myOp .: "selector"
+    mySelectors       <- myOp .: "selector"
     myStateTransition <- parseJSON (Object myOp)
 
-    -- FIXME: actually handle multiple selectors
-    return $ StateTransitionResult ([mySelector], myStateTransition) myResults
+    return $ StateTransitionResult (unWrapSelectors mySelectors, myStateTransition) myResults
 
   parseJSON _ = fail "expected a JSON object for state transition result"
 

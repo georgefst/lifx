@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lifx.SelectorParser (parseSelector) where
+module Lifx.SelectorParser (parseSelector, parseSelectors) where
 
 import Control.Applicative
 import Data.Attoparsec.Text
@@ -12,13 +12,19 @@ import Lifx.Types
 parseSelector :: T.Text -> Either String Selector
 parseSelector = parseOnly (selectorString <* endOfInput)
 
+parseSelectors :: T.Text -> Either String [Selector]
+parseSelectors = parseOnly (selectorList <* endOfInput)
+
 selectorString :: Parser Selector
 selectorString = selAll <|> selLabel <|> selDevId <|>
                  selGroup <|> selGroupId <|> selLocation <|> selLocationId
 
+selectorList :: Parser [Selector]
+selectorList = selectorString `sepBy1` (char ',')
+
 selParse :: LifxId a => (a -> Selector) -> Parser Selector
 selParse cnstr = do
-  txt <- takeText
+  txt <- takeWhile1 (/= ',')
   case fromText txt of
    Left msg -> fail msg
    Right x -> return $ cnstr x

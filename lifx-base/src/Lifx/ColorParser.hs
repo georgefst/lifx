@@ -61,4 +61,4 @@ colorDecRGB = do
   return $ rgbToHsbk r g b
 
 rgbToHsbk :: Int -> Int -> Int -> MaybeColor
-rgbToHsbk = undefined
+rgbToHsbk = undefined -- TODO
