@@ -5,6 +5,7 @@ import Control.Concurrent
 import Control.Monad
 import Data.Char
 import qualified Data.Text as T
+import Test.Tasty
 import Test.Tasty.HUnit
 
 import Lifx.Lan
@@ -73,9 +74,7 @@ setStatesDevId conn msg pairs = do
   mapM_ (chkTransitionResultDevId msg) triples
   return trs
 
-step = putStrLn
-
-main = do
+main = defaultMain $ testCaseSteps "the one test" $ \step -> do
   {-
   lc <- openLanConnection defaultLanSettings
   threadDelay 1000000
@@ -87,10 +86,13 @@ main = do
   lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
   let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
       cs = defaultCloudSettings { csToken = lifxToken }
+
+  step "listing lights"
+
   lc <- openCloudConnection cs
   li <- listLights lc sels needEverything
-  print li
-  putStrLn ""
+  -- print li
+  -- putStrLn ""
 
   step "reset to white"
 
@@ -99,6 +101,8 @@ main = do
                             , sColor = justColor $ HSBK 0 0 1 5000
                             , sDuration = 0
                             })]
+
+  step "delay"
 
   dly
 
@@ -119,5 +123,7 @@ main = do
   step "cycleLights"
 
   tr <- cycleLights lc sels [st, st2]
-  print tr
+  -- print tr
+
+  step "closing connection"
   closeConnection lc
