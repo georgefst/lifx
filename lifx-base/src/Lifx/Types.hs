@@ -23,6 +23,7 @@ import Data.Monoid hiding (Product)
 import qualified Data.Set as S
 import Data.Text (Text(..))
 import qualified Data.Text as T
+import Data.Text.Buildable
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
 import Data.Text.Format
@@ -489,7 +490,7 @@ instance LifxId SceneId where
 instance FromJSON SceneId where
   parseJSON = implParseJson
 
-textualize :: (T.Text, Maybe Double) -> Maybe T.Text
+textualize :: Buildable a => (T.Text, Maybe a) -> Maybe T.Text
 textualize (_, Nothing) = Nothing
 textualize (key, Just value) = Just $ fmt "{}:{}" (key, value)
 
@@ -499,9 +500,13 @@ colorToText c@(HSBK h s b k)
   | otherwise =
       -- kelvin has to go before saturation because of weird behavior:
       -- https://community.lifx.com/t/interpolating-colors-whites/573/8
-      let hsbk = zip ["kelvin", "hue", "saturation", "brightness"] [k, h, s, b]
-          components = mapMaybe textualize hsbk
-      in Just $ T.intercalate " " components
+      -- Also, kelvin has to be an Int and not a Double like the others,
+      -- or else we get CloudError "Unable to parse color: kelvin:5000.00"
+      let k' = ("kelvin", fmap round k :: Maybe Int)
+          hsb = zip ["hue", "saturation", "brightness"] [h, s, b]
+          components1 = mapMaybe textualize [k']
+          components2 = mapMaybe textualize hsb
+      in Just $ T.intercalate " " (components1 ++ components2)
 
 selectorToText :: Selector -> T.Text
 selectorToText SelAll = "all"
