@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Control.Concurrent
+import Control.Monad
 import Data.Char
 import qualified Data.Text as T
+import Test.Tasty.HUnit
 
 import Lifx.Lan
 import Lifx.Lan.LowLevel
@@ -28,6 +30,27 @@ justColor = fmap Just
 
 dly = threadDelay 1000000
 
+chkTransitionResult :: String
+                    -> (([Selector], StateTransition), StateTransitionResult, Int)
+                    -> IO ()
+chkTransitionResult msg (op@(sels, trans), tr, idx) = do
+  let msg' = msg ++ ": result index " ++ show idx
+  assertEqual (msg' ++ ": tOperation") op (tOperation tr)
+  forM_ (tResults tr) $ \r ->
+    assertEqual (msg' ++ ": device " ++ show (rId r)) Ok (rStatus r)
+
+setStates' :: Connection c
+              => c
+              -> String
+              -> [([Selector], StateTransition)]
+              -> IO [StateTransitionResult]
+setStates' conn msg pairs = do
+  trs <- setStates conn pairs
+  assertEqual (msg ++ ": result length") (length pairs) (length trs)
+  let triples = zip3 pairs trs [0..]
+  mapM_ (chkTransitionResult msg) triples
+  return trs
+
 main = do
   {-
   lc <- openLanConnection defaultLanSettings
@@ -45,10 +68,11 @@ main = do
   print li
   putStrLn ""
 
-  setStates lc [(sels, StateTransition { sPower = Just On
-                                       , sColor = justColor $ HSBK 0 0 1 5000
-                                       , sDuration = 0
-                                       })]
+  setStates' lc "stuff"
+    [(sels, StateTransition { sPower = Just On
+                            , sColor = justColor $ HSBK 0 0 1 5000
+                            , sDuration = 0
+                            })]
 
   dly
 
