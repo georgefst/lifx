@@ -30,7 +30,7 @@ fromRight = either error id
 justColor :: Color -> MaybeColor
 justColor = fmap Just
 
-dly = threadDelay 1000000
+dly = threadDelay 100000
 
 chkTransitionResult :: String
                     -> (([Selector], StateTransition), StateTransitionResult, Int)
@@ -74,37 +74,51 @@ setStatesDevId conn msg pairs = do
   mapM_ (chkTransitionResultDevId msg) triples
   return trs
 
-main = defaultMain $ testCaseSteps "the one test" $ \step -> do
+main = do
   {-
   lc <- openLanConnection defaultLanSettings
   threadDelay 1000000
   -}
 
   let devs = map (fromRight . fromText) ["d073d5029e03", "d073d502b95f"]
-      sels = map SelDevId devs
 
   lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
   let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
       cs = defaultCloudSettings { csToken = lifxToken }
 
-  step "listing lights"
-
   lc <- openCloudConnection cs
-  li <- listLights lc sels needEverything
-  -- print li
-  -- putStrLn ""
 
+  defaultMain $ testCaseSteps "list lights" (testListLights lc devs)
+
+  closeConnection lc
+
+knownState :: Connection c
+              => c
+              -> [DeviceId]
+              -> (String -> IO ())
+              -> IO ()
+knownState conn devs step = do
   step "reset to white"
-
-  setStatesDevId lc "stuff"
+  setStatesDevId conn "stuff"
     [(devs, StateTransition { sPower = Just On
                             , sColor = justColor $ HSBK 0 0 1 5000
                             , sDuration = 0
                             })]
-
-  step "delay"
-
   dly
+
+testListLights :: (Connection c)
+                  => c
+                  -> [DeviceId]
+                  -> (String -> IO ())
+                  -> IO ()
+testListLights conn devs step = do
+  knownState conn devs step
+  step "listing lights"
+
+  let sels = map SelDevId devs
+  li <- listLights conn sels needEverything
+  -- print li
+  -- putStrLn ""
 
   {-
   tr <- setStates lc [([SelAll], st)]
@@ -122,8 +136,8 @@ main = defaultMain $ testCaseSteps "the one test" $ \step -> do
 
   step "cycleLights"
 
-  tr <- cycleLights lc sels [st, st2]
+  cycleLights conn sels [st, st2]
+  return ()
   -- print tr
 
-  step "closing connection"
-  closeConnection lc
+  -- step "closing connection"
