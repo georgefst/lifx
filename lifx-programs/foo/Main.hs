@@ -97,6 +97,7 @@ main = do
   defaultMain $ testGroup "group"
     [ testCaseSteps "list lights" (testListLights lc lc devs)
     , testCaseSteps "toggle power" (testTogglePower lc lc devs)
+    , testCaseSteps "set states" (testSetStates lc lc devs)
     ]
 
   closeConnection lc
@@ -113,7 +114,7 @@ knownState conn devs step = do
   step "reset to white"
   [tr] <- setStatesDevId conn "reset to white"
           [(devs, StateTransition { sPower = Just On
-                                  , sColor = justColor $ defaultColor
+                                  , sColor = justColor defaultColor
                                   , sDuration = 0
                                   })]
   dly
@@ -203,6 +204,38 @@ testTogglePower conn1 conn2 devs step = do
   checkColor (zip3 devs (repeat Off) (repeat defaultColor)) li
   checkLabels (tResults tr) li
   checkLabels pwrResult li
+
+stateFromColor :: MaybeColor -> StateTransition
+stateFromColor c = StateTransition { sPower = Just On
+                                   , sColor = c
+                                   , sDuration = 0
+                                   }
+
+colors :: [MaybeColor]
+colors = [red, orange, yellow, green, cyan, blue, purple, pink]
+
+completeColors :: [Color]
+completeColors = map f colors
+  where f c = definitelyColor $ combineColors (justColor defaultColor) c
+
+testSetStates :: (Connection c1, Connection c2)
+                 => c1
+                 -> c2
+                 -> [DeviceId]
+                 -> (String -> IO ())
+                 -> IO ()
+testSetStates conn1 conn2 devs step = do
+  tr <- knownState conn1 devs step
+  let sels = map SelDevId devs
+  step "setting states"
+  trs <- setStatesDevId conn1 "setting states"
+         $ zip (map (replicate 1) devs) (map stateFromColor colors)
+  dly
+  step "listing lights"
+  li <- listLights conn2 sels needEverything
+  checkColor (zip3 devs (repeat On) completeColors) li
+  checkLabels (tResults tr) li
+
   -- print li
   -- putStrLn ""
 
