@@ -66,8 +66,8 @@ chkTransitionResultDevId msg ((devs, _), tr, idx) = do
   let msg' = msg ++ ": result index " ++ show idx
       results = tResults tr
   assertEqual (msg ++ ": length") (length devs) (length results)
-  forM_ (zip3 devs results [1..]) $ \(d, r, i) ->
-    assertEqual (msg' ++ ": device index " ++ show i) d (rId r)
+  forM_ (zip (sort devs) (sort results)) $ \(d, r) ->
+    assertEqual msg' d (rId r)
 
 setStatesDevId :: Connection c
                   => c
