@@ -80,11 +80,20 @@ setStatesDevId conn msg pairs = do
   mapM_ (chkTransitionResultDevId msg) triples
   return trs
 
+someTests :: (Connection c1, Connection c2)
+             => c1
+             -> c2
+             -> [DeviceId]
+             -> [TestTree]
+someTests conn1 conn2 devs =
+  [ testCaseSteps "list lights"  (testListLights  conn1 conn2 devs)
+  , testCaseSteps "toggle power" (testTogglePower conn1 conn2 devs)
+  , testCaseSteps "set states"   (testSetStates   conn1 conn2 devs)
+  ]
+
 main = do
-  {-
   lc <- openLanConnection defaultLanSettings
   threadDelay 1000000
-  -}
 
   let devs = map (fromRight . fromText) ["d073d5029e03", "d073d502b95f"]
 
@@ -92,15 +101,17 @@ main = do
   let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
       cs = defaultCloudSettings { csToken = lifxToken }
 
-  lc <- openCloudConnection cs
+  cc <- openCloudConnection cs
 
-  defaultMain $ testGroup "group"
-    [ testCaseSteps "list lights" (testListLights lc lc devs)
-    , testCaseSteps "toggle power" (testTogglePower lc lc devs)
-    , testCaseSteps "set states" (testSetStates lc lc devs)
+  defaultMain $ testGroup "Tests"
+    [ testGroup "Cloud" (someTests cc cc devs)
+    , testGroup "Lan"   (someTests lc lc devs)
+    , testGroup "CloudAndLan" (someTests cc lc devs)
+    , testGroup "LanAndCloud" (someTests lc cc devs)
     ]
 
   closeConnection lc
+  closeConnection cc
 
 -- LIFX cloud seems to not change the hue if the saturation is 0.
 -- So, set saturation to 0.1 in order to reset all four components.
