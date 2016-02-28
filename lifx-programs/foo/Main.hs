@@ -105,15 +105,16 @@ knownState :: Connection c
               => c
               -> [DeviceId]
               -> (String -> IO ())
-              -> IO ()
+              -> IO StateTransitionResult
 knownState conn devs step = do
   step "reset to white"
-  setStatesDevId conn "reset to white"
-    [(devs, StateTransition { sPower = Just On
-                            , sColor = justColor $ defaultColor
-                            , sDuration = 0
-                            })]
+  [tr] <- setStatesDevId conn "reset to white"
+          [(devs, StateTransition { sPower = Just On
+                                  , sColor = justColor $ defaultColor
+                                  , sDuration = 0
+                                  })]
   dly
+  return tr
 
 fst3 :: (a, b, c) -> a
 fst3 (x, _, _ ) = x
@@ -154,18 +155,32 @@ checkColor triple linfo = do
       pairs = zip triple' linfo'
   mapM_ checkOneColor pairs
 
+checkOneLabel :: (Result, LightInfo) -> IO ()
+checkOneLabel (result, linfo) = do
+  assertEqual "checkLabels" (rId result) (lId linfo)
+  assertEqual "checkLabels" (rLabel result) (lLabel linfo)
+
+checkLabels :: [Result] -> [LightInfo] -> IO ()
+checkLabels results linfo = do
+  assertEqual "checkLabels length" (length results) (length linfo)
+  let results' = sortBy (comparing rId) results
+      linfo' = sortBy (comparing lId) linfo
+      pairs = zip results' linfo'
+  mapM_ checkOneLabel pairs
+
 testListLights :: (Connection c)
                   => c
                   -> [DeviceId]
                   -> (String -> IO ())
                   -> IO ()
 testListLights conn devs step = do
-  knownState conn devs step
+  tr <- knownState conn devs step
   step "listing lights"
 
   let sels = map SelDevId devs
   li <- listLights conn sels needEverything
   checkColor (zip3 devs (repeat On) (repeat defaultColor)) li
+  checkLabels (tResults tr) li
   -- print li
   -- putStrLn ""
 
