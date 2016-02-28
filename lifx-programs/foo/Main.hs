@@ -36,7 +36,7 @@ justColor = fmap Just
 definitelyColor :: MaybeColor -> Color
 definitelyColor = fmap fromJust
 
-dly = threadDelay 100000
+dly = threadDelay 500000
 
 chkTransitionResult :: String
                     -> (([Selector], StateTransition), StateTransitionResult, Int)
@@ -94,7 +94,7 @@ main = do
 
   lc <- openCloudConnection cs
 
-  defaultMain $ testCaseSteps "list lights" (testListLights lc devs)
+  defaultMain $ testCaseSteps "list lights" (testListLights lc lc devs)
 
   closeConnection lc
 
@@ -133,17 +133,18 @@ assertCloseEnough fudge msg expected actual =
 
 assertColorEqual :: String -> Color -> Color -> IO ()
 assertColorEqual msg expected actual = do
-  assertCloseEnough (360 / 65534) (msg ++ ": hue") (hue expected) (hue actual)
-  assertCloseEnough (1 / 65534) (msg ++ ": saturation") (saturation expected) (saturation actual)
-  assertCloseEnough (1 / 65534) (msg ++ ": brightness") (brightness expected) (brightness actual)
+  assertCloseEnough (360 / 1000) (msg ++ ": hue") (hue expected) (hue actual)
+  assertCloseEnough (1 / 1000) (msg ++ ": saturation") (saturation expected) (saturation actual)
+  assertCloseEnough (1 / 1000) (msg ++ ": brightness") (brightness expected) (brightness actual)
   assertCloseEnough 0.5 (msg ++ ": kelvin") (kelvin expected) (kelvin actual)
 
 checkOneColor :: ((DeviceId, Power, Color), LightInfo)
                  -> IO ()
 checkOneColor ((did, pwr, color), linfo) = do
   assertEqual "checkColor" did (lId linfo)
-  assertEqual "checkColor" (Just pwr) (lPower linfo)
-  assertColorEqual "checkColor" color (definitelyColor $ lColor linfo)
+  let msg = "checkColor " ++ show did
+  assertEqual msg (Just pwr) (lPower linfo)
+  assertColorEqual msg color (definitelyColor $ lColor linfo)
 
 checkColor :: [(DeviceId, Power, Color)]
               -> [LightInfo]
@@ -168,17 +169,17 @@ checkLabels results linfo = do
       pairs = zip results' linfo'
   mapM_ checkOneLabel pairs
 
-testListLights :: (Connection c)
-                  => c
+testListLights :: (Connection c1, Connection c2)
+                  => c1
+                  -> c2
                   -> [DeviceId]
                   -> (String -> IO ())
                   -> IO ()
-testListLights conn devs step = do
-  tr <- knownState conn devs step
+testListLights conn1 conn2 devs step = do
+  tr <- knownState conn1 devs step
   step "listing lights"
-
   let sels = map SelDevId devs
-  li <- listLights conn sels needEverything
+  li <- listLights conn2 sels needEverything
   checkColor (zip3 devs (repeat On) (repeat defaultColor)) li
   checkLabels (tResults tr) li
   -- print li
