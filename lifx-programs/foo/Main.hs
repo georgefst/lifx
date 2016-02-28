@@ -102,8 +102,10 @@ main = do
 
   closeConnection lc
 
+-- LIFX cloud seems to not change the hue if the saturation is 0.
+-- So, set saturation to 0.1 in order to reset all four components.
 defaultColor :: Color
-defaultColor = HSBK 0 0 0.5 5000
+defaultColor = HSBK 0 0.1 0.5 5000
 
 knownState :: Connection c
               => c
