@@ -4,6 +4,8 @@ import Control.Arrow
 import Control.Concurrent
 import Control.Monad
 import Data.Char
+import Data.List
+import Data.Ord
 import qualified Data.Text as T
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -92,6 +94,9 @@ main = do
 
   closeConnection lc
 
+defaultColor :: MaybeColor
+defaultColor = justColor $ HSBK 0 0 0.5 5000
+
 knownState :: Connection c
               => c
               -> [DeviceId]
@@ -99,12 +104,32 @@ knownState :: Connection c
               -> IO ()
 knownState conn devs step = do
   step "reset to white"
-  setStatesDevId conn "stuff"
+  setStatesDevId conn "reset to white"
     [(devs, StateTransition { sPower = Just On
-                            , sColor = justColor $ HSBK 0 0 1 5000
+                            , sColor = defaultColor
                             , sDuration = 0
                             })]
   dly
+
+fst3 :: (a, b, c) -> a
+fst3 (x, _, _ ) = x
+
+checkOneColor :: ((DeviceId, Power, MaybeColor), LightInfo)
+                 -> IO ()
+checkOneColor ((did, pwr, color), linfo) = do
+  assertEqual "checkColor" did (lId linfo)
+  assertEqual "checkColor" (Just pwr) (lPower linfo)
+  assertEqual "checkColor" color (lColor linfo)
+
+checkColor :: [(DeviceId, Power, MaybeColor)]
+              -> [LightInfo]
+              -> IO ()
+checkColor triple linfo = do
+  assertEqual "checkColor length" (length triple) (length linfo)
+  let triple' = sortBy (comparing fst3) triple
+      linfo' = sortBy (comparing lId) linfo
+      pairs = zip triple' linfo'
+  mapM_ checkOneColor pairs
 
 testListLights :: (Connection c)
                   => c
@@ -117,6 +142,7 @@ testListLights conn devs step = do
 
   let sels = map SelDevId devs
   li <- listLights conn sels needEverything
+  checkColor (zip3 devs (repeat On) (repeat defaultColor)) li
   -- print li
   -- putStrLn ""
 
@@ -134,10 +160,10 @@ testListLights conn devs step = do
   tr <- activateScene lc scn 10.0
   -}
 
-  step "cycleLights"
+  -- step "cycleLights"
 
-  cycleLights conn sels [st, st2]
-  return ()
+  -- cycleLights conn sels [st, st2]
+  -- return ()
   -- print tr
 
   -- step "closing connection"
