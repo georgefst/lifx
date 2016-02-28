@@ -215,9 +215,12 @@ wrapStateService cb st sa hdr bs = f $ checkHeaderFields hdr bs
         f (Right payload) = bulb (ssService payload) (ssPort payload)
         frm = strFrom sa
         bulb serv port
-          | serv /= serviceUDP = stLog st $ "service: expected "
+          | serv /= serviceUDP = return ()
+{-
+                                 stLog st $ "service: expected "
                                  ++ show serviceUDP ++ " but got "
                                  ++ show serv ++ frm
+-}
           | otherwise = cb $ Bulb st (substPort sa port) (hdrTarget hdr)
         substPort (SockAddrInet _ ha) port = SockAddrInet (fromIntegral port) ha
         substPort other _ = other
