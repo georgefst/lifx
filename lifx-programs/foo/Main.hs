@@ -5,6 +5,7 @@ import Control.Concurrent
 import Control.Monad
 import Data.Char
 import Data.List
+import Data.Maybe
 import Data.Ord
 import qualified Data.Text as T
 import Test.Tasty
@@ -31,6 +32,9 @@ fromRight = either error id
 
 justColor :: Color -> MaybeColor
 justColor = fmap Just
+
+definitelyColor :: MaybeColor -> Color
+definitelyColor = fmap fromJust
 
 dly = threadDelay 100000
 
@@ -94,8 +98,8 @@ main = do
 
   closeConnection lc
 
-defaultColor :: MaybeColor
-defaultColor = justColor $ HSBK 0 0 0.5 5000
+defaultColor :: Color
+defaultColor = HSBK 0 0 0.5 5000
 
 knownState :: Connection c
               => c
@@ -106,7 +110,7 @@ knownState conn devs step = do
   step "reset to white"
   setStatesDevId conn "reset to white"
     [(devs, StateTransition { sPower = Just On
-                            , sColor = defaultColor
+                            , sColor = justColor $ defaultColor
                             , sDuration = 0
                             })]
   dly
@@ -114,14 +118,33 @@ knownState conn devs step = do
 fst3 :: (a, b, c) -> a
 fst3 (x, _, _ ) = x
 
-checkOneColor :: ((DeviceId, Power, MaybeColor), LightInfo)
+assertCloseEnough :: (Num a, Ord a, Show a)
+                     => a
+                     -> String
+                     -> a
+                     -> a
+                     -> IO ()
+assertCloseEnough fudge msg expected actual =
+  if abs (expected - actual) < fudge
+  then return ()
+  else assertFailure (msg ++ ": " ++ show expected ++ " and " ++
+                      show actual ++ " not within " ++ show fudge)
+
+assertColorEqual :: String -> Color -> Color -> IO ()
+assertColorEqual msg expected actual = do
+  assertCloseEnough (360 / 65534) (msg ++ ": hue") (hue expected) (hue actual)
+  assertCloseEnough (1 / 65534) (msg ++ ": saturation") (saturation expected) (saturation actual)
+  assertCloseEnough (1 / 65534) (msg ++ ": brightness") (brightness expected) (brightness actual)
+  assertCloseEnough 0.5 (msg ++ ": kelvin") (kelvin expected) (kelvin actual)
+
+checkOneColor :: ((DeviceId, Power, Color), LightInfo)
                  -> IO ()
 checkOneColor ((did, pwr, color), linfo) = do
   assertEqual "checkColor" did (lId linfo)
   assertEqual "checkColor" (Just pwr) (lPower linfo)
-  assertEqual "checkColor" color (lColor linfo)
+  assertColorEqual "checkColor" color (definitelyColor $ lColor linfo)
 
-checkColor :: [(DeviceId, Power, MaybeColor)]
+checkColor :: [(DeviceId, Power, Color)]
               -> [LightInfo]
               -> IO ()
 checkColor triple linfo = do
