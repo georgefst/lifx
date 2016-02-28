@@ -88,7 +88,8 @@ someTests :: (Connection c1, Connection c2)
 someTests conn1 conn2 devs =
   [ testCaseSteps "list lights"  (testListLights  conn1 conn2 devs)
   , testCaseSteps "toggle power" (testTogglePower conn1 conn2 devs)
-  , testCaseSteps "set states"   (testSetStates   conn1 conn2 devs)
+  , testCaseSteps "set states (hue and saturation)" (testSetStatesHS conn1 conn2 devs)
+  , testCaseSteps "set states (brightness)" (testSetStatesB conn1 conn2 devs)
   ]
 
 main = do
@@ -240,16 +241,18 @@ colors :: [MaybeColor]
 colors = [red, orange, yellow, green, cyan, blue, purple, pink]
 
 completeColors :: [Color]
-completeColors = map f colors
-  where f c = definitelyColor $ combineColors (justColor defaultColor) c
+completeColors = map makeComplete colors
 
-testSetStates :: (Connection c1, Connection c2)
-                 => c1
-                 -> c2
-                 -> [DeviceId]
-                 -> (String -> IO ())
-                 -> IO ()
-testSetStates conn1 conn2 devs step = do
+makeComplete :: MaybeColor -> Color
+makeComplete c = definitelyColor $ combineColors (justColor defaultColor) c
+
+testSetStatesHS :: (Connection c1, Connection c2)
+                   => c1
+                   -> c2
+                   -> [DeviceId]
+                   -> (String -> IO ())
+                   -> IO ()
+testSetStatesHS conn1 conn2 devs step = do
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
   step "setting states"
@@ -259,6 +262,25 @@ testSetStates conn1 conn2 devs step = do
   step "listing lights"
   li <- listLights conn2 sels needEverything
   checkColor (zip3 devs (repeat On) completeColors) li
+  checkLabels (tResults tr) li
+
+testSetStatesB :: (Connection c1, Connection c2)
+                  => c1
+                  -> c2
+                  -> [DeviceId]
+                  -> (String -> IO ())
+                  -> IO ()
+testSetStatesB conn1 conn2 devs step = do
+  tr <- knownState conn1 devs step
+  let sels = map SelDevId devs
+  step "setting states"
+  let brites = map (\x -> HSBK Nothing Nothing (Just $ x / 10) Nothing) [1..9]
+  trs <- setStatesDevId conn1 "setting states"
+         $ zip (map (replicate 1) devs) (map stateFromColor brites)
+  dly
+  step "listing lights"
+  li <- listLights conn2 sels needEverything
+  checkColor (zip3 devs (repeat On) (map makeComplete brites)) li
   checkLabels (tResults tr) li
 
   -- print li
