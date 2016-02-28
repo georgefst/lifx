@@ -94,7 +94,10 @@ main = do
 
   lc <- openCloudConnection cs
 
-  defaultMain $ testCaseSteps "list lights" (testListLights lc lc devs)
+  defaultMain $ testGroup "group"
+    [ testCaseSteps "list lights" (testListLights lc lc devs)
+    , testCaseSteps "toggle power" (testTogglePower lc lc devs)
+    ]
 
   closeConnection lc
 
@@ -182,6 +185,24 @@ testListLights conn1 conn2 devs step = do
   li <- listLights conn2 sels needEverything
   checkColor (zip3 devs (repeat On) (repeat defaultColor)) li
   checkLabels (tResults tr) li
+
+testTogglePower :: (Connection c1, Connection c2)
+                   => c1
+                   -> c2
+                   -> [DeviceId]
+                   -> (String -> IO ())
+                   -> IO ()
+testTogglePower conn1 conn2 devs step = do
+  tr <- knownState conn1 devs step
+  let sels = map SelDevId devs
+  step "toggling power"
+  pwrResult <- togglePower conn1 sels 0
+  dly
+  step "listing lights"
+  li <- listLights conn2 sels needEverything
+  checkColor (zip3 devs (repeat Off) (repeat defaultColor)) li
+  checkLabels (tResults tr) li
+  checkLabels pwrResult li
   -- print li
   -- putStrLn ""
 
