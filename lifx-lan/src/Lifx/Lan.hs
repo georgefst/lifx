@@ -564,13 +564,19 @@ setOneLightState lc st cl = do
       lbl = maybeFromCached (clLabel cl)
       putResult stat = putMVar mv (Result did lbl stat)
       timeout = putResult TimedOut
-      newColor = sColor st
+      newColor = desaturateKelvin (sColor st)
       skipGet = isEmptyColor newColor || isCompleteColor newColor
   getOneLight lc skipGet cl timeout $
     \( _ , oldColor ) -> setOneLightColor lc oldColor newColor (sDuration st) cl timeout $
       setOneLightPower lc (sPower st) (sDuration st) cl timeout $
         putResult Ok
   return mv
+
+-- If Kelvin is set, set saturation to 0 (white), unless saturation is also
+-- explicitly set.
+desaturateKelvin :: MaybeColor -> MaybeColor
+desaturateKelvin (HSBK h Nothing b k@(Just _ )) = HSBK h (Just 0) b k
+desaturateKelvin x = x
 
 maybeFromCached :: CachedThing a -> Maybe a
 maybeFromCached NotCached = Nothing
@@ -680,22 +686,24 @@ effectOneLight lc eff cl = do
       lbl = maybeFromCached (clLabel cl)
       putResult stat = putMVar mv (Result did lbl stat)
       timeout = putResult TimedOut
-      nd2setColor = not $ isEmptyColor $ eFromColor eff
-      nd2combineColor = (not ((isEmptyColor $ eFromColor eff) ||
-                              (isCompleteColor $ eFromColor eff))) ||
-                        (not $ isCompleteColor $ eColor eff)
+      fromColor = eFromColor eff
+      color = eColor eff
+      nd2setColor = not $ isEmptyColor $ fromColor
+      nd2combineColor = (not ((isEmptyColor $ fromColor) ||
+                              (isCompleteColor $ fromColor))) ||
+                        (not $ isCompleteColor $ color)
       nd2restoreColor = nd2setColor && not (ePersist eff)
       nd2getPwr = ePowerOn eff
       skipGet = not nd2restoreColor && not nd2getPwr && not nd2combineColor
   getOneLight lc skipGet cl timeout $
     \(origPwr, origColor) ->
-      setOneLightColor lc origColor (eFromColor eff) 0 cl timeout $
+      setOneLightColor lc origColor (fromColor) 0 cl timeout $
         let nd2ChangePwr = ePowerOn eff && (origPwr == Off)
             (newPwr, restorePwr) = if nd2ChangePwr
                                    then (Just On, Just Off)
                                    else (Nothing, Nothing)
         in setOneLightPower lc newPwr 0 cl timeout $
-           setOneLightWaveform lc origColor eff cl timeout $
+           setOneLightWaveform lc origColor color eff cl timeout $
            if nd2ChangePwr || nd2restoreColor
            then do
              forkIO $ do
@@ -710,16 +718,17 @@ effectOneLight lc eff cl = do
 
 setOneLightWaveform :: LanConnection
                        -> MaybeColor
+                       -> MaybeColor
                        -> Effect
                        -> CachedLight
                        -> IO ()
                        -> IO ()
                        -> IO ()
-setOneLightWaveform lc origColor eff cl cbFail cbSucc =
+setOneLightWaveform lc origColor color eff cl cbFail cbSucc =
   reliableAction rp (setWaveform bulb swf) cbSucc cbFail
   where rp = lsRetryParams $ lcSettings lc
         bulb = clBulb cl
-        combinedColor = origColor `combineColors` eColor eff
+        combinedColor = origColor `combineColors` color
         swf = SetWaveform
               { swTransient = not (ePersist eff)
               , swColor = colorFracTo16 $ definitelyColor $ combinedColor
