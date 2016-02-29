@@ -88,6 +88,7 @@ someTests :: (Connection c1, Connection c2)
 someTests conn1 conn2 devs =
   [ testCaseSteps "list lights"  (testListLights  conn1 conn2 devs)
   , testCaseSteps "toggle power" (testTogglePower conn1 conn2 devs)
+  , testCaseSteps "set states (power)" (testSetPower conn1 conn2 devs)
   , testCaseSteps "set states (hue and saturation)" (testSetStatesHS conn1 conn2 devs)
   , testCaseSteps "set states (brightness)" (testSetStatesB conn1 conn2 devs)
   , testCaseSteps "set states (kelvin)"     (testSetStatesK conn1 conn2 devs)
@@ -178,8 +179,10 @@ checkColor triple linfo = do
 
 checkOneLabel :: (Result, LightInfo) -> IO ()
 checkOneLabel (result, linfo) = do
+  let msg = "checkLabels " ++ show (rId result)
   assertEqual "checkLabels" (rId result) (lId linfo)
-  assertEqual "checkLabels" (rLabel result) (lLabel linfo)
+  assertEqual msg (rLabel result) (lLabel linfo)
+  assertEqual msg Ok (rStatus result)
 
 checkLabels :: [Result] -> [LightInfo] -> IO ()
 checkLabels results linfo = do
@@ -219,9 +222,9 @@ testTogglePower conn1 conn2 devs step = do
 
   step "listing lights"
   li <- listLights conn2 sels needEverything
+  checkLabels pwrResult li
   checkColor (zip3 devs (repeat Off) (repeat defaultColor)) li
   checkLabels (tResults tr) li
-  checkLabels pwrResult li
 
   step "toggling power (to on)"
   pwrResult' <- togglePower conn1 sels 0
@@ -229,9 +232,45 @@ testTogglePower conn1 conn2 devs step = do
 
   step "listing lights"
   li' <- listLights conn2 sels needEverything
+  checkLabels pwrResult' li'
   checkColor (zip3 devs (repeat On) (repeat defaultColor)) li'
   checkLabels (tResults tr) li'
-  checkLabels pwrResult' li'
+
+testSetPower :: (Connection c1, Connection c2)
+                => c1
+                -> c2
+                -> [DeviceId]
+                -> (String -> IO ())
+                -> IO ()
+testSetPower conn1 conn2 devs step = do
+  knownState conn1 devs step
+  let sels = map SelDevId devs
+
+  step "setting power (to off)"
+  [tr] <- setStatesDevId conn1 "power off"
+          [(devs, StateTransition { sPower = Just Off
+                                  , sColor = emptyColor
+                                  , sDuration = 0
+                                  })]
+  dly
+
+  step "listing lights"
+  li <- listLights conn2 sels needEverything
+  checkColor (zip3 devs (repeat Off) (repeat defaultColor)) li
+  checkLabels (tResults tr) li
+
+  step "setting power (to on)"
+  [tr'] <- setStatesDevId conn1 "power on"
+           [(devs, StateTransition { sPower = Just On
+                                   , sColor = emptyColor
+                                   , sDuration = 0
+                                   })]
+  dly
+
+  step "listing lights"
+  li' <- listLights conn2 sels needEverything
+  checkColor (zip3 devs (repeat On) (repeat defaultColor)) li'
+  checkLabels (tResults tr') li'
 
 stateFromColor :: MaybeColor -> StateTransition
 stateFromColor c = StateTransition { sPower = Just On
