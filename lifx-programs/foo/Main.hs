@@ -91,6 +91,7 @@ someTests conn1 conn2 devs =
   , testCaseSteps "set states (hue and saturation)" (testSetStatesHS conn1 conn2 devs)
   , testCaseSteps "set states (brightness)" (testSetStatesB conn1 conn2 devs)
   , testCaseSteps "set states (kelvin)"     (testSetStatesK conn1 conn2 devs)
+  , testCaseSteps "set states (saturation and kelvin)" (testSetStatesSK conn1 conn2 devs)
   ]
 
 main = do
@@ -284,6 +285,7 @@ testSetStatesB conn1 conn2 devs step = do
   checkColor (zip3 devs (repeat On) (map makeComplete brites)) li
   checkLabels (tResults tr) li
 
+-- saturation should be set to 0 when kelvin is set
 testSetStatesK :: (Connection c1, Connection c2)
                   => c1
                   -> c2
@@ -303,6 +305,28 @@ testSetStatesK conn1 conn2 devs step = do
   li <- listLights conn2 sels needEverything
   let kelvins' = map (\x -> x { saturation = Just 0 }) kelvins
   checkColor (zip3 devs (repeat On) (map makeComplete kelvins')) li
+  checkLabels (tResults tr) li
+
+-- set both kelvin and saturation, to make sure saturation is not
+-- overridden if specified explicitly
+testSetStatesSK :: (Connection c1, Connection c2)
+                   => c1
+                   -> c2
+                   -> [DeviceId]
+                   -> (String -> IO ())
+                   -> IO ()
+testSetStatesSK conn1 conn2 devs step = do
+  tr <- knownState conn1 devs step
+  let sels = map SelDevId devs
+  step "setting states"
+  let satkelv = map (\x -> HSBK Nothing (Just 0.5) Nothing (Just $ fromInteger x))
+                [3000, 3500 .. 6500]
+  trs <- setStatesDevId conn1 "setting states"
+         $ zip (map (replicate 1) devs) (map stateFromColor satkelv)
+  dly
+  step "listing lights"
+  li <- listLights conn2 sels needEverything
+  checkColor (zip3 devs (repeat On) (map makeComplete satkelv)) li
   checkLabels (tResults tr) li
 
   -- print li
