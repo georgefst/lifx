@@ -93,6 +93,7 @@ someTests conn1 conn2 devs =
   , testCaseSteps "set states (brightness)" (testSetStatesB conn1 conn2 devs)
   , testCaseSteps "set states (kelvin)"     (testSetStatesK conn1 conn2 devs)
   , testCaseSteps "set states (saturation and kelvin)" (testSetStatesSK conn1 conn2 devs)
+  , testCaseSteps "set states (hue and power)" (testSetStatesHP conn1 conn2 devs)
   ]
 
 main = do
@@ -366,6 +367,29 @@ testSetStatesSK conn1 conn2 devs step = do
   step "listing lights"
   li <- listLights conn2 sels needEverything
   checkColor (zip3 devs (repeat On) (map makeComplete satkelv)) li
+  checkLabels (tResults tr) li
+
+-- set hue and power
+testSetStatesHP :: (Connection c1, Connection c2)
+                   => c1
+                   -> c2
+                   -> [DeviceId]
+                   -> (String -> IO ())
+                   -> IO ()
+testSetStatesHP conn1 conn2 devs step = do
+  tr <- knownState conn1 devs step
+  let sels = map SelDevId devs
+  step "setting states"
+  let hues = map (\x -> HSBK (Just $ fromInteger x) Nothing Nothing Nothing)
+             [0, 45 .. 315]
+      powers = cycle [On, Off]
+  trs <- setStatesDevId conn1 "setting states"
+         $ zip (map (replicate 1) devs)
+               (zipWith3 StateTransition (map Just powers) hues (repeat 0))
+  dly
+  step "listing lights"
+  li <- listLights conn2 sels needEverything
+  checkColor (zip3 devs powers (map makeComplete hues)) li
   checkLabels (tResults tr) li
 
   -- print li
