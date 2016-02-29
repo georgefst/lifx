@@ -15,6 +15,7 @@ import Control.Concurrent
 import Control.Exception
 import Control.Monad
 import Data.Aeson hiding (Result)
+import Data.Aeson.Types (Parser)
 -- import Data.Aeson.Encode.Pretty
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
@@ -115,13 +116,22 @@ newtype Warnings = Warnings [T.Text]
 instance FromJSON Warnings where
   parseJSON (Object v) = do
     ws <- v .: "warnings"
-    Warnings <$> forM ws (\w -> w .: "warning")
+    Warnings <$> forM ws warnToText
   parseJSON _ = mzero
+
+warnToText :: Object -> Parser T.Text
+warnToText w = do
+  warning <- w .: "warning"
+  unkp <- w .:? "unknown_params" :: Parser (Maybe Object)
+  return $ case unkp of
+            Nothing -> warning
+            (Just p) -> warning <> ": " <> T.intercalate ", " (H.keys p)
 
 logWarnings :: (T.Text -> IO ()) -> Maybe Warnings -> IO ()
 logWarnings _ Nothing = return ()
 logWarnings _ (Just (Warnings [])) = return ()
-logWarnings log (Just (Warnings w)) = log (T.intercalate "; " w)
+logWarnings log (Just (Warnings w)) =
+  log $ "LIFX cloud warning: " <> (T.intercalate "; " w)
 
 performRequest :: FromJSON a => CloudConnection -> Request -> IO a
 performRequest cc req = do
