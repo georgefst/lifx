@@ -298,7 +298,7 @@ testSetStatesHS conn1 conn2 devs step = do
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
   step "setting states"
-  trs <- setStatesDevId conn1 "setting states"
+  setStatesDevId conn1 "setting states"
          $ zip (map (replicate 1) devs) (map stateFromColor colors)
   dly
   step "listing lights"
@@ -317,7 +317,7 @@ testSetStatesB conn1 conn2 devs step = do
   let sels = map SelDevId devs
   step "setting states"
   let brites = map (\x -> HSBK Nothing Nothing (Just $ x / 10) Nothing) [1..9]
-  trs <- setStatesDevId conn1 "setting states"
+  setStatesDevId conn1 "setting states"
          $ zip (map (replicate 1) devs) (map stateFromColor brites)
   dly
   step "listing lights"
@@ -338,7 +338,7 @@ testSetStatesK conn1 conn2 devs step = do
   step "setting states"
   let kelvins = map (\x -> HSBK Nothing Nothing Nothing (Just $ fromInteger x))
                 [3000, 3500 .. 6500]
-  trs <- setStatesDevId conn1 "setting states"
+  setStatesDevId conn1 "setting states"
          $ zip (map (replicate 1) devs) (map stateFromColor kelvins)
   dly
   step "listing lights"
@@ -361,7 +361,7 @@ testSetStatesSK conn1 conn2 devs step = do
   step "setting states"
   let satkelv = map (\x -> HSBK Nothing (Just 0.5) Nothing (Just $ fromInteger x))
                 [3000, 3500 .. 6500]
-  trs <- setStatesDevId conn1 "setting states"
+  setStatesDevId conn1 "setting states"
          $ zip (map (replicate 1) devs) (map stateFromColor satkelv)
   dly
   step "listing lights"
@@ -383,7 +383,7 @@ testSetStatesHP conn1 conn2 devs step = do
   let hues = map (\x -> HSBK (Just $ fromInteger x) Nothing Nothing Nothing)
              [0, 45 .. 315]
       powers = cycle [On, Off]
-  trs <- setStatesDevId conn1 "setting states"
+  setStatesDevId conn1 "setting states"
          $ zip (map (replicate 1) devs)
                (zipWith3 StateTransition (map Just powers) hues (repeat 0))
   dly
