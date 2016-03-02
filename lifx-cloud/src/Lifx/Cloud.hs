@@ -204,7 +204,9 @@ instance Connection CloudConnection where
                  , ("cycles",     Just $ fmt "{}" (Only $ eCycles eff))
                  , ("persist",    Just $ showDown $ ePersist eff)
                  , ("power_on",   Just $ showDown $ ePowerOn eff)
-                 , ("peak",       Just $ fmt "{}" (Only $ ePeak eff))
+                 , ("peak", case eType eff of
+                             Breathe -> Just $ fmt "{}" (Only $ ePeak eff)
+                             _       -> Nothing)
                  ]
         req' = (urlEncodedBody params req)
     unResultWrapper <$> performRequest cc req'
