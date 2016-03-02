@@ -11,22 +11,9 @@ import qualified Data.Text as T
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Lifx.Lan
-import Lifx.Lan.LowLevel
 import Lifx
 import Lifx.Cloud
-
-st = StateTransition
-     { sPower = Nothing
-     , sColor = blue
-     , sDuration = 1.0
-     }
-
-st2 = StateTransition
-      { sPower = Nothing
-      , sColor = white
-      , sDuration = 1.0
-      }
+import Lifx.Lan
 
 fromRight = either error id
 
@@ -94,7 +81,18 @@ someTests conn1 conn2 devs =
   , testCaseSteps "set states (kelvin)"     (testSetStatesK conn1 conn2 devs)
   , testCaseSteps "set states (saturation and kelvin)" (testSetStatesSK conn1 conn2 devs)
   , testCaseSteps "set states (hue and power)" (testSetStatesHP conn1 conn2 devs)
-  , testCaseSteps "effect" (testEffect conn1 conn2 devs)
+  , testGroup "pulse effect"   (effectTests conn1 conn2 devs Pulse)
+  , testGroup "breathe effect" (effectTests conn1 conn2 devs Breathe)
+  ]
+
+effectTests :: (Connection c1, Connection c2)
+               => c1
+               -> c2
+               -> [DeviceId]
+               -> EffectType
+               -> [TestTree]
+effectTests conn1 conn2 devs typ =
+  [ testCaseSteps "effect" (testEffect conn1 conn2 devs typ)
   ]
 
 main = do
@@ -399,17 +397,21 @@ testEffect :: (Connection c1, Connection c2)
               => c1
               -> c2
               -> [DeviceId]
+              -> EffectType
               -> (String -> IO ())
               -> IO ()
-testEffect conn1 conn2 devs step = do
+testEffect conn1 conn2 devs typ step = do
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
-      eff = defaultEffect { eColor = blue, ePeriod = 0.1, ePowerOn = False }
+      eff = defaultEffect { eType = typ
+                          , eColor = blue
+                          , ePeriod = 0.2
+                          , ePowerOn = False }
 
   step "performing effect"
   effResult <- effect conn1 sels eff
   dly
-  threadDelay 100000
+  threadDelay 200000
 
   step "listing lights" -- effect should have had no lasting... uh, effect
   li <- listLights conn2 sels needEverything
