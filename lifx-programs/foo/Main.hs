@@ -81,19 +81,21 @@ someTests conn1 conn2 devs =
   , testCaseSteps "set states (kelvin)"     (testSetStatesK conn1 conn2 devs)
   , testCaseSteps "set states (saturation and kelvin)" (testSetStatesSK conn1 conn2 devs)
   , testCaseSteps "set states (hue and power)" (testSetStatesHP conn1 conn2 devs)
-  , testGroup "pulse effect"   (effectTests conn1 conn2 devs Pulse)
-  , testGroup "breathe effect" (effectTests conn1 conn2 devs Breathe)
+  , testGroup "pulse effect"   (effectTests conn1 conn2 devs
+                                defaultEffect { eType = Pulse, eCycles = 1.0 })
+  , testGroup "breathe effect" (effectTests conn1 conn2 devs
+                                defaultEffect { eType = Breathe, eCycles = 1.5 })
   ]
 
 effectTests :: (Connection c1, Connection c2)
                => c1
                -> c2
                -> [DeviceId]
-               -> EffectType
+               -> Effect
                -> [TestTree]
-effectTests conn1 conn2 devs typ =
-  [ testCaseSteps "effect" (testEffect conn1 conn2 devs typ)
-  , testCaseSteps "effect (persist)" (testEffectPersist conn1 conn2 devs typ)
+effectTests conn1 conn2 devs eff =
+  [ testCaseSteps "effect" (testEffect conn1 conn2 devs eff)
+  , testCaseSteps "effect (persist)" (testEffectPersist conn1 conn2 devs eff)
   ]
 
 main = do
@@ -410,21 +412,21 @@ testEffect :: (Connection c1, Connection c2)
               => c1
               -> c2
               -> [DeviceId]
-              -> EffectType
+              -> Effect
               -> (String -> IO ())
               -> IO ()
-testEffect conn1 conn2 devs typ step = do
+testEffect conn1 conn2 devs defaultEff step = do
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
-      eff = defaultEffect { eType = typ
-                          , eColor = blue
-                          , ePeriod = 0.2
-                          , ePowerOn = False }
+      eff = defaultEff { eColor = blue
+                       , ePeriod = 0.2
+                       , ePowerOn = False
+                       }
 
   step "performing effect"
   effResult <- effect conn1 sels eff
   dly
-  threadDelay 200000
+  threadDelay 300000
 
   step "listing lights" -- effect should have had no lasting... uh, effect
   li <- listLights conn2 sels needEverything
@@ -436,22 +438,22 @@ testEffectPersist :: (Connection c1, Connection c2)
                      => c1
                      -> c2
                      -> [DeviceId]
-                     -> EffectType
+                     -> Effect
                      -> (String -> IO ())
                      -> IO ()
-testEffectPersist conn1 conn2 devs typ step = do
+testEffectPersist conn1 conn2 devs defaultEff step = do
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
-      eff = defaultEffect { eType = typ
-                          , eColor = blue
-                          , ePeriod = 0.2
-                          , ePersist = True
-                          , ePowerOn = False }
+      eff = defaultEff { eColor = blue
+                       , ePeriod = 0.2
+                       , ePersist = True
+                       , ePowerOn = False
+                       }
 
   step "performing effect"
   effResult <- effect conn1 sels eff
   dly
-  threadDelay 200000
+  threadDelay 300000
 
   step "listing lights" -- effect should persist
   li <- listLights conn2 sels needEverything
