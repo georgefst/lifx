@@ -94,8 +94,9 @@ effectTests :: (Connection c1, Connection c2)
                -> Effect
                -> [TestTree]
 effectTests conn1 conn2 devs eff =
-  [ testCaseSteps "effect" (testEffect conn1 conn2 devs eff)
+  [ testCaseSteps "effect"           (testEffect        conn1 conn2 devs eff)
   , testCaseSteps "effect (persist)" (testEffectPersist conn1 conn2 devs eff)
+  , testCaseSteps "effect (from)"    (testEffectFrom    conn1 conn2 devs eff)
   ]
 
 main = do
@@ -459,6 +460,33 @@ testEffectPersist conn1 conn2 devs defaultEff step = do
   li <- listLights conn2 sels needEverything
   checkLabels effResult li
   checkColor (zip3 devs (repeat On) (repeat $ makeComplete blue)) li
+  checkLabels (tResults tr) li
+
+testEffectFrom :: (Connection c1, Connection c2)
+                  => c1
+                  -> c2
+                  -> [DeviceId]
+                  -> Effect
+                  -> (String -> IO ())
+                  -> IO ()
+testEffectFrom conn1 conn2 devs defaultEff step = do
+  tr <- knownState conn1 devs step
+  let sels = map SelDevId devs
+      eff = defaultEff { eColor = blue
+                       , eFromColor = green
+                       , ePeriod = 0.2
+                       , ePowerOn = False
+                       }
+
+  step "performing effect"
+  effResult <- effect conn1 sels eff
+  dly
+  threadDelay 300000
+
+  step "listing lights" -- effect should have had no lasting... uh, effect
+  li <- listLights conn2 sels needEverything
+  checkLabels effResult li
+  checkColor (zip3 devs (repeat On) (repeat defaultColor)) li
   checkLabels (tResults tr) li
 
   -- print li
