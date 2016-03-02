@@ -172,9 +172,9 @@ assertCloseEnough360 fudge msg expected actual =
 assertColorEqual :: String -> Color -> Color -> IO ()
 assertColorEqual msg expected actual = do
   -- https://community.lifx.com/t/some-weird-observations-when-writing-automated-tests/1080
-  assertCloseEnough360 (360 / 1000) (msg ++ ": hue") (hue expected) (hue actual)
-  assertCloseEnough (1 / 1000) (msg ++ ": saturation") (saturation expected) (saturation actual)
-  assertCloseEnough (1 / 1000) (msg ++ ": brightness") (brightness expected) (brightness actual)
+  assertCloseEnough360 (360 / 500) (msg ++ ": hue") (hue expected) (hue actual)
+  assertCloseEnough (1 / 500) (msg ++ ": saturation") (saturation expected) (saturation actual)
+  assertCloseEnough (1 / 500) (msg ++ ": brightness") (brightness expected) (brightness actual)
   assertCloseEnough 3 (msg ++ ": kelvin") (kelvin expected) (kelvin actual)
 
 checkOneColor :: ((DeviceId, Power, Color), LightInfo)
@@ -481,7 +481,7 @@ testEffectFrom conn1 conn2 devs defaultEff step = do
   step "performing effect"
   effResult <- effect conn1 sels eff
   dly
-  threadDelay 300000
+  threadDelay 3000000
 
   step "listing lights" -- effect should have had no lasting... uh, effect
   li <- listLights conn2 sels needEverything
