@@ -154,10 +154,22 @@ assertCloseEnough fudge msg expected actual =
   else assertFailure (msg ++ ": " ++ show expected ++ " and " ++
                       show actual ++ " not within " ++ show fudge)
 
+assertCloseEnough360 :: (Num a, Ord a, Show a)
+                        => a
+                        -> String
+                        -> a
+                        -> a
+                        -> IO ()
+assertCloseEnough360 fudge msg expected actual =
+  if abs (expected - actual) < fudge || abs (expected + 360 - actual) < fudge
+  then return ()
+  else assertFailure (msg ++ ": " ++ show expected ++ " and " ++
+                      show actual ++ " not within " ++ show fudge)
+
 assertColorEqual :: String -> Color -> Color -> IO ()
 assertColorEqual msg expected actual = do
   -- https://community.lifx.com/t/some-weird-observations-when-writing-automated-tests/1080
-  assertCloseEnough (360 / 1000) (msg ++ ": hue") (hue expected) (hue actual)
+  assertCloseEnough360 (360 / 1000) (msg ++ ": hue") (hue expected) (hue actual)
   assertCloseEnough (1 / 1000) (msg ++ ": saturation") (saturation expected) (saturation actual)
   assertCloseEnough (1 / 1000) (msg ++ ": brightness") (brightness expected) (brightness actual)
   assertCloseEnough 3 (msg ++ ": kelvin") (kelvin expected) (kelvin actual)
