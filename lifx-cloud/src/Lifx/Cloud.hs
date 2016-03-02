@@ -204,6 +204,7 @@ instance Connection CloudConnection where
                  , ("cycles",     Just $ fmt "{}" (Only $ eCycles eff))
                  , ("persist",    Just $ showDown $ ePersist eff)
                  , ("power_on",   Just $ showDown $ ePowerOn eff)
+        -- https://community.lifx.com/t/peak-parameter-for-pulse-endpoint/1083
                  , ("peak", case eType eff of
                              Breathe -> Just $ fmt "{}" (Only $ ePeak eff)
                              _       -> Nothing)

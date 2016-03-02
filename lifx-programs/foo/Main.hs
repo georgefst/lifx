@@ -121,6 +121,7 @@ main = do
 
 -- LIFX cloud seems to not change the hue if the saturation is 0.
 -- So, set saturation to 0.1 in order to reset all four components.
+-- https://community.lifx.com/t/some-weird-observations-when-writing-automated-tests/1080
 defaultColor :: Color
 defaultColor = HSBK 0 0.1 0.5 5000
 
@@ -156,6 +157,7 @@ assertCloseEnough fudge msg expected actual =
 
 assertColorEqual :: String -> Color -> Color -> IO ()
 assertColorEqual msg expected actual = do
+  -- https://community.lifx.com/t/some-weird-observations-when-writing-automated-tests/1080
   assertCloseEnough (360 / 1000) (msg ++ ": hue") (hue expected) (hue actual)
   assertCloseEnough (1 / 1000) (msg ++ ": saturation") (saturation expected) (saturation actual)
   assertCloseEnough (1 / 1000) (msg ++ ": brightness") (brightness expected) (brightness actual)
