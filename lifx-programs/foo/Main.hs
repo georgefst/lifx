@@ -75,6 +75,7 @@ someTests :: (Connection c1, Connection c2)
 someTests conn1 conn2 devs =
   [ testCaseSteps "list lights"  (testListLights  conn1 conn2 devs)
   , testCaseSteps "toggle power" (testTogglePower conn1 conn2 devs)
+  , testCaseSteps "toggle power (mixed)" (testTogglePowerPartial conn1 conn2 devs)
   , testCaseSteps "set states (power)" (testSetPower conn1 conn2 devs)
   , testCaseSteps "set states (hue and saturation)" (testSetStatesHS conn1 conn2 devs)
   , testCaseSteps "set states (brightness)" (testSetStatesB conn1 conn2 devs)
@@ -252,6 +253,36 @@ testTogglePower conn1 conn2 devs step = do
   li' <- listLights conn2 sels needEverything
   checkLabels pwrResult' li'
   checkColor (zip3 devs (repeat On) (repeat defaultColor)) li'
+  checkLabels (tResults tr) li'
+
+testTogglePowerPartial :: (Connection c1, Connection c2)
+                          => c1
+                          -> c2
+                          -> [DeviceId]
+                          -> (String -> IO ())
+                          -> IO ()
+testTogglePowerPartial conn1 conn2 devs step = do
+  tr <- knownState conn1 devs step
+  let sels = map SelDevId devs
+
+  step "toggling power (first light only, to off)"
+  pwrResult <- togglePower conn1 (take 1 sels) 0
+  dly
+
+  step "listing lights"
+  li <- listLights conn2 sels needEverything
+  -- checkLabels pwrResult li
+  checkColor (zip3 devs (Off : repeat On) (repeat defaultColor)) li
+  checkLabels (tResults tr) li
+
+  step "toggling power (all lights, mixed result)"
+  pwrResult' <- togglePower conn1 sels 0
+  dly
+
+  step "listing lights"
+  li' <- listLights conn2 sels needEverything
+  checkLabels pwrResult' li'
+  checkColor (zip3 devs (On : repeat Off) (repeat defaultColor)) li'
   checkLabels (tResults tr) li'
 
 testSetPower :: (Connection c1, Connection c2)
