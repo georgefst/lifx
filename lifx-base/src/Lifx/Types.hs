@@ -17,7 +17,7 @@ import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as L
 import Data.Hourglass
 import Data.Int
-import Data.List (find)
+import Data.List (find, partition)
 import Data.Maybe
 import Data.Monoid hiding (Product)
 import qualified Data.Set as S
@@ -361,6 +361,21 @@ class Connection t where
   setStates :: t -> [([Selector], StateTransition)] -> IO [StateTransitionResult]
 
   togglePower :: t -> [Selector] -> FracSeconds -> IO [Result]
+  togglePower conn sels dur = do
+    -- https://community.lifx.com/t/toggle-power-endpoint-when-existing-state-is-mixed/1097
+    li <- listLights conn sels [NeedPower]
+    let available (LightInfo { lConnected = True, lPower = (Just _ ) }) = True
+        available _ = False
+        (up, down) = partition available li
+        anyLitesOn = Just On `elem` map lPower up
+        transition =
+          StateTransition { sPower = Just (if anyLitesOn then Off else On)
+                          , sColor = emptyColor
+                          , sDuration = dur
+                          }
+        timedOut x = Result (lId x) Nothing TimedOut
+    results <- setState conn (map (SelDevId . lId) up) transition
+    return $ map timedOut down ++ results
 
   effect :: t -> [Selector] -> Effect -> IO [Result]
 

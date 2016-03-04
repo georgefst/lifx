@@ -752,9 +752,11 @@ instance Connection LanConnection where
     result <- doSetStates lc pairs
     listOfMVarToList result
 
+{- use default implementation
   togglePower lc sel dur = do
     result <- doTogglePower lc sel dur
     listOfMVarToList result
+-}
 
   effect lc sel eff = do
     result <- doEffect lc sel eff
