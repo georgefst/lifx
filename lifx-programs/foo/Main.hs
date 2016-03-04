@@ -266,6 +266,7 @@ testTogglePowerPartial conn1 conn2 devs step = do
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
 
+  -- FIXME: won't work if there is only one light
   step "toggling power (first light only, to off)"
   pwrResult <- togglePower conn1 (take 1 sels) 0
   dly
