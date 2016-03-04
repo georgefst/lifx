@@ -68,8 +68,8 @@ setStatesDevId conn msg pairs = do
   return trs
 
 someTests :: (Connection c1, Connection c2)
-             => c1
-             -> c2
+             => IO c1
+             -> IO c2
              -> [DeviceId]
              -> [TestTree]
 someTests conn1 conn2 devs =
@@ -90,8 +90,8 @@ someTests conn1 conn2 devs =
   ]
 
 effectTests :: (Connection c1, Connection c2)
-               => c1
-               -> c2
+               => IO c1
+               -> IO c2
                -> [DeviceId]
                -> Effect
                -> [TestTree]
@@ -102,26 +102,27 @@ effectTests conn1 conn2 devs eff =
   ]
 
 main = do
-  lc <- openLanConnection defaultLanSettings
-  threadDelay 1000000
-
   let devs = map (fromRight . fromText) ["d073d5029e03", "d073d502b95f"]
 
-  lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
-  let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
-      cs = defaultCloudSettings { csToken = lifxToken }
+  defaultMain $ withResource initCloud closeConnection
+    $ \cr -> withResource initLan closeConnection
+             $ \lr -> testGroup "Hardware Tests"
+                      [ testGroup "Cloud" (someTests cr cr devs)
+                      , testGroup "Lan"   (someTests lr lr devs)
+                      , testGroup "CloudAndLan" (someTests cr lr devs)
+                      , testGroup "LanAndCloud" (someTests lr cr devs)
+                      ]
 
-  cc <- openCloudConnection cs
-
-  defaultMain $ testGroup "Tests"
-    [ testGroup "Cloud" (someTests cc cc devs)
-    , testGroup "Lan"   (someTests lc lc devs)
-    , testGroup "CloudAndLan" (someTests cc lc devs)
-    , testGroup "LanAndCloud" (someTests lc cc devs)
-    ]
-
-  closeConnection lc
-  closeConnection cc
+  where
+    initCloud = do
+      lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
+      let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
+          cs = defaultCloudSettings { csToken = lifxToken }
+      openCloudConnection cs
+    initLan = do
+      lc <- openLanConnection defaultLanSettings
+      threadDelay 1000000
+      return lc
 
 -- LIFX cloud seems to not change the hue if the saturation is 0.
 -- So, set saturation to 0.1 in order to reset all four components.
@@ -212,13 +213,20 @@ checkLabels results linfo = do
       pairs = zip results' linfo'
   mapM_ checkOneLabel pairs
 
+getConnections :: IO a -> IO b -> IO (a, b)
+getConnections r1 r2 = do
+  c1 <- r1
+  c2 <- r2
+  return (c1, c2)
+
 testListLights :: (Connection c1, Connection c2)
-                  => c1
-                  -> c2
+                  => IO c1
+                  -> IO c2
                   -> [DeviceId]
                   -> (String -> IO ())
                   -> IO ()
-testListLights conn1 conn2 devs step = do
+testListLights rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
   step "listing lights"
   let sels = map SelDevId devs
@@ -227,12 +235,13 @@ testListLights conn1 conn2 devs step = do
   checkLabels (tResults tr) li
 
 testTogglePower :: (Connection c1, Connection c2)
-                   => c1
-                   -> c2
+                   => IO c1
+                   -> IO c2
                    -> [DeviceId]
                    -> (String -> IO ())
                    -> IO ()
-testTogglePower conn1 conn2 devs step = do
+testTogglePower rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
 
@@ -257,12 +266,13 @@ testTogglePower conn1 conn2 devs step = do
   checkLabels (tResults tr) li'
 
 testTogglePowerPartial :: (Connection c1, Connection c2)
-                          => c1
-                          -> c2
+                          => IO c1
+                          -> IO c2
                           -> [DeviceId]
                           -> (String -> IO ())
                           -> IO ()
-testTogglePowerPartial conn1 conn2 devs step = do
+testTogglePowerPartial rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
 
@@ -289,12 +299,13 @@ testTogglePowerPartial conn1 conn2 devs step = do
   checkLabels (tResults tr) li'
 
 testSetStateHSBK :: (Connection c1, Connection c2)
-                    => c1
-                    -> c2
+                    => IO c1
+                    -> IO c2
                     -> [DeviceId]
                     -> (String -> IO ())
                     -> IO ()
-testSetStateHSBK conn1 conn2 devs step = do
+testSetStateHSBK rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
       myColor = makeComplete cyan
@@ -311,12 +322,13 @@ testSetStateHSBK conn1 conn2 devs step = do
   checkLabels (tResults tr) li
 
 testSetPower :: (Connection c1, Connection c2)
-                => c1
-                -> c2
+                => IO c1
+                -> IO c2
                 -> [DeviceId]
                 -> (String -> IO ())
                 -> IO ()
-testSetPower conn1 conn2 devs step = do
+testSetPower rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   knownState conn1 devs step
   let sels = map SelDevId devs
 
@@ -362,12 +374,13 @@ makeComplete :: MaybeColor -> Color
 makeComplete c = definitelyColor $ combineColors (justColor defaultColor) c
 
 testSetStatesHS :: (Connection c1, Connection c2)
-                   => c1
-                   -> c2
+                   => IO c1
+                   -> IO c2
                    -> [DeviceId]
                    -> (String -> IO ())
                    -> IO ()
-testSetStatesHS conn1 conn2 devs step = do
+testSetStatesHS rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
   step "setting states"
@@ -380,12 +393,13 @@ testSetStatesHS conn1 conn2 devs step = do
   checkLabels (tResults tr) li
 
 testSetStatesB :: (Connection c1, Connection c2)
-                  => c1
-                  -> c2
+                  => IO c1
+                  -> IO c2
                   -> [DeviceId]
                   -> (String -> IO ())
                   -> IO ()
-testSetStatesB conn1 conn2 devs step = do
+testSetStatesB rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
   step "setting states"
@@ -400,12 +414,13 @@ testSetStatesB conn1 conn2 devs step = do
 
 -- saturation should be set to 0 when kelvin is set
 testSetStatesK :: (Connection c1, Connection c2)
-                  => c1
-                  -> c2
+                  => IO c1
+                  -> IO c2
                   -> [DeviceId]
                   -> (String -> IO ())
                   -> IO ()
-testSetStatesK conn1 conn2 devs step = do
+testSetStatesK rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
   step "setting states"
@@ -423,12 +438,13 @@ testSetStatesK conn1 conn2 devs step = do
 -- set both kelvin and saturation, to make sure saturation is not
 -- overridden if specified explicitly
 testSetStatesSK :: (Connection c1, Connection c2)
-                   => c1
-                   -> c2
+                   => IO c1
+                   -> IO c2
                    -> [DeviceId]
                    -> (String -> IO ())
                    -> IO ()
-testSetStatesSK conn1 conn2 devs step = do
+testSetStatesSK rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
   step "setting states"
@@ -444,12 +460,13 @@ testSetStatesSK conn1 conn2 devs step = do
 
 -- set hue and power
 testSetStatesHP :: (Connection c1, Connection c2)
-                   => c1
-                   -> c2
+                   => IO c1
+                   -> IO c2
                    -> [DeviceId]
                    -> (String -> IO ())
                    -> IO ()
-testSetStatesHP conn1 conn2 devs step = do
+testSetStatesHP rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
   step "setting states"
@@ -466,13 +483,14 @@ testSetStatesHP conn1 conn2 devs step = do
   checkLabels (tResults tr) li
 
 testEffect :: (Connection c1, Connection c2)
-              => c1
-              -> c2
+              => IO c1
+              -> IO c2
               -> [DeviceId]
               -> Effect
               -> (String -> IO ())
               -> IO ()
-testEffect conn1 conn2 devs defaultEff step = do
+testEffect rsrc1 rsrc2 devs defaultEff step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
       eff = defaultEff { eColor = blue
@@ -492,13 +510,14 @@ testEffect conn1 conn2 devs defaultEff step = do
   checkLabels (tResults tr) li
 
 testEffectPersist :: (Connection c1, Connection c2)
-                     => c1
-                     -> c2
+                     => IO c1
+                     -> IO c2
                      -> [DeviceId]
                      -> Effect
                      -> (String -> IO ())
                      -> IO ()
-testEffectPersist conn1 conn2 devs defaultEff step = do
+testEffectPersist rsrc1 rsrc2 devs defaultEff step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
       eff = defaultEff { eColor = blue
@@ -519,13 +538,14 @@ testEffectPersist conn1 conn2 devs defaultEff step = do
   checkLabels (tResults tr) li
 
 testEffectFrom :: (Connection c1, Connection c2)
-                  => c1
-                  -> c2
+                  => IO c1
+                  -> IO c2
                   -> [DeviceId]
                   -> Effect
                   -> (String -> IO ())
                   -> IO ()
-testEffectFrom conn1 conn2 devs defaultEff step = do
+testEffectFrom rsrc1 rsrc2 devs defaultEff step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
       eff = defaultEff { eColor = blue
