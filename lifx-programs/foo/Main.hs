@@ -86,7 +86,8 @@ someTests conn1 conn2 devs =
   , testGroup "pulse effect"   (effectTests conn1 conn2 devs
                                 defaultEffect { eType = Pulse, eCycles = 1.0 })
   , testGroup "breathe effect" (effectTests conn1 conn2 devs
-                                defaultEffect { eType = Breathe, eCycles = 1.5 })
+                                defaultEffect { eType = Breathe, eCycles = 1.5 }
+                                ++ breatheOnlyTests conn1 conn2 devs)
   ]
 
 effectTests :: (Connection c1, Connection c2)
@@ -99,6 +100,16 @@ effectTests conn1 conn2 devs eff =
   [ testCaseSteps "effect"           (testEffect        conn1 conn2 devs eff)
   , testCaseSteps "effect (persist)" (testEffectPersist conn1 conn2 devs eff)
   , testCaseSteps "effect (from)"    (testEffectFrom    conn1 conn2 devs eff)
+  ]
+
+breatheOnlyTests :: (Connection c1, Connection c2)
+                    => IO c1
+                    -> IO c2
+                    -> [DeviceId]
+                    -> [TestTree]
+breatheOnlyTests conn1 conn2 devs =
+  [ testCaseSteps "breathe (from, persist)"
+    (testBreatheFromPersist conn1 conn2 devs)
   ]
 
 main = do
@@ -563,6 +574,40 @@ testEffectFrom rsrc1 rsrc2 devs defaultEff step = do
   li <- listLights conn2 sels needEverything
   checkLabels effResult li
   checkColor (zip3 devs (repeat On) (repeat defaultColor)) li
+  checkLabels (tResults tr) li
+
+hueColor :: LiFrac -> MaybeColor
+hueColor h = HSBK (Just h) (Just 1) Nothing Nothing
+
+testBreatheFromPersist :: (Connection c1, Connection c2)
+                          => IO c1
+                          -> IO c2
+                          -> [DeviceId]
+                          -> (String -> IO ())
+                          -> IO ()
+testBreatheFromPersist rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
+  tr <- knownState conn1 devs step
+  let sels = map SelDevId devs
+      eff = defaultEffect { eType = Breathe
+                          , eColor = hueColor 100
+                          , eFromColor = hueColor 200
+                          , ePeriod = 0.2
+                          , eCycles = 1.25
+                          , ePersist = True
+                          , ePowerOn = False
+                          }
+
+  step "performing effect"
+  effResult <- effect conn1 sels eff
+  dly
+  threadDelay 3000000
+
+  step "listing lights"
+  li <- listLights conn2 sels [NeedLabel, NeedPower, NeedColor]
+  checkLabels effResult li
+  -- we expect the breathe to stop halfway between the two colors
+  checkColor (zip3 devs (repeat On) (repeat $ makeComplete $ hueColor 150)) li
   checkLabels (tResults tr) li
 
   -- print li
