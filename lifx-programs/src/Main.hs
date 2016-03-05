@@ -36,6 +36,7 @@ import Lifx hiding (Pulse, NeedGroup)
 import qualified Lifx.Program.CmdParser as C
 import Lifx.Program.Column
 import Lifx.Program.ProductShortName
+import Lifx.Program.TargetMatch
 
 {-
 myTime :: Word64 -> String

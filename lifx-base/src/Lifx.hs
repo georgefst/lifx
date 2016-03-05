@@ -9,11 +9,6 @@ module Lifx
        , LifxId (..)
        , Product (..)
        , productFromId
-       , Targets (..)
-       , TargetMatch (..)
-       , LiteIds (..)
-       , mkLiteIds
-       , tmatch
        , padByteString
        , readEither'
        , Selector (..)

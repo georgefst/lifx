@@ -51,6 +51,7 @@ executable lites
   other-modules: Lifx.Program.CmdParser
                , Lifx.Program.Column
                , Lifx.Program.ProductShortName
+               , Lifx.Program.TargetMatch
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:

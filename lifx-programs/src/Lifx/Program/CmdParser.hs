@@ -11,6 +11,7 @@ import qualified System.Console.CmdArgs.Text as TXT (Text(..))
 import System.Exit
 
 import Lifx
+import Lifx.Program.TargetMatch
 
 data LiteArgs =
   LiteArgs
