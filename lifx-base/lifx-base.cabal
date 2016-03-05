@@ -46,6 +46,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules: Lifx
+                 , Lifx.Internal
 
   other-modules: Lifx.ColorParser
                , Lifx.ProductTable

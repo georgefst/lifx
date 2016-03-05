@@ -31,8 +31,10 @@ import System.Console.CmdArgs.Explicit
 import System.Exit
 import System.Hourglass
 
-import Lifx.Lan.LowLevel
 import Lifx hiding (Pulse, NeedGroup)
+import Lifx.Internal
+import Lifx.Lan.LowLevel
+
 import qualified Lifx.Program.CmdParser as C
 import Lifx.Program.Column
 import Lifx.Program.ProductShortName

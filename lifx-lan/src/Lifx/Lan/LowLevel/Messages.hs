@@ -40,6 +40,8 @@ import qualified Data.Text.Encoding.Error as TEE
 import Data.Word ( Word16, Word32, Word64 )
 
 import Lifx
+import Lifx.Internal
+
 import Lifx.Lan.LowLevel.Util
 import Lifx.Lan.LowLevel.Types
 import Lifx.Lan.LowLevel.Protocol

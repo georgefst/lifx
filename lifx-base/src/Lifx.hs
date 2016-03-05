@@ -9,7 +9,6 @@ module Lifx
        , LifxId (..)
        , Product (..)
        , productFromId
-       , padByteString
        , Selector (..)
        , Connection (..)
        , FracSeconds
@@ -30,7 +29,6 @@ module Lifx
        , parseColor
        , parseSelector
        , parseSelectors
-       , fmt
        , defaultEffect
        , InfoNeeded (..)
        , needEverything

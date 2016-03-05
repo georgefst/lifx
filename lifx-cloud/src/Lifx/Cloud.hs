@@ -36,6 +36,8 @@ import Data.Version
 import System.IO
 
 import Lifx
+import Lifx.Internal
+
 import Lifx.Cloud.Json
 
 import Paths_lifx_cloud
