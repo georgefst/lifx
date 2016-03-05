@@ -135,7 +135,7 @@ instance FromJSON LightInfo where
 
     myFirmwareVersion <- case myFirmwareVersStr of
                           Nothing -> return Nothing
-                          Just s -> case readEither' s of
+                          Just s -> case readEither s of
                                      Left msg -> fail msg
                                      Right vers -> return $ Just vers
 

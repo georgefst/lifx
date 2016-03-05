@@ -10,7 +10,6 @@ module Lifx
        , Product (..)
        , productFromId
        , padByteString
-       , readEither'
        , Selector (..)
        , Connection (..)
        , FracSeconds

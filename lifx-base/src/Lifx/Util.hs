@@ -35,21 +35,6 @@ import Text.Read hiding (String)
 
 ---- Utilities: move elsewhere?
 
--- readEither has been in Text.Read since base 4.6,
--- but we have our own copy here to work with base 4.5.
--- BSD3, (c) The University of Glasgow 2001
-readEither' :: Read a => String -> Either String a
-readEither' s =
-  case [ x | (x,"") <- readPrec_to_S read' minPrec s ] of
-    [x] -> Right x
-    []  -> Left "Prelude.read: no parse"
-    _   -> Left "Prelude.read: ambiguous parse"
- where
-  read' =
-    do x <- readPrec
-       lift skipSpaces
-       return x
-
 fmt :: Params ps => Format -> ps -> T.Text
 fmt f p = LT.toStrict $ format f p
 

@@ -9,6 +9,7 @@ import System.Console.CmdArgs.Explicit
 import System.Console.CmdArgs.Text (TextFormat(..), showText, defaultWrap)
 import qualified System.Console.CmdArgs.Text as TXT (Text(..))
 import System.Exit
+import Text.Read (readEither)
 
 import Lifx
 import Lifx.Program.TargetMatch
@@ -88,7 +89,7 @@ iFlag = flagReq ["I", "interface"] ifaceUpdate "STRING"
 widthFlag = flagReq ["w", "width"] updWidth "INTEGER"
             "Width in columns for listing."
   where updWidth arg args = do
-          w <- readEither' arg
+          w <- readEither arg
           return $ args { aCmd = CmdList w }
 
 labFlag = flagReq ["L", "new-label"] updLabel "STRING" "New label."
@@ -111,7 +112,7 @@ mkCFlag name range f =
         whatIs x = x
         updColor f' lc = lc { lcColor = f' $ lcColor lc }
         cflagUpdate arg args = do
-          num <- readEither' arg
+          num <- readEither arg
           let newCmd = updColor (`f` num) (aCmd args)
           return $ args { aCmd = newCmd }
 
@@ -149,7 +150,7 @@ updPulse :: Read a
             -> LiteArgs
             -> Either String LiteArgs
 updPulse f1 f2 arg args = do
-  x <- readEither' (f1 arg)
+  x <- readEither (f1 arg)
   let updPulse2 f lc = lc { lcPulse = f $ lcPulse lc }
       newCmd = updPulse2 (f2 x) (aCmd args)
   return $ args { aCmd = newCmd }
@@ -158,7 +159,7 @@ durFlag = flagReq ["d", "duration"] durFlagUpdate "FLOAT"
           "Number of seconds that change should occur over"
   where
     durFlagUpdate arg args = do
-      x <- readEither' arg
+      x <- readEither arg
       return $ args { aDuration = x }
 
 targFlags =
