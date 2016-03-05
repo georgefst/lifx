@@ -27,14 +27,17 @@ module Lifx
        , colorToText
        , selectorToText
        , selectorsToText
+       , parseColor
+       , parseSelector
+       , parseSelectors
        , fmt
-       , stateTransitionToPairs
        , defaultEffect
        , InfoNeeded (..)
        , needEverything
        ) where
 
+import Lifx.ColorParser
+import Lifx.SelectorParser
 import Lifx.Util
 import Lifx.Types
-import Lifx.Json
 import Lifx.ProductTable

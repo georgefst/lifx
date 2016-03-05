@@ -20,7 +20,7 @@ import Data.Int
 import Data.List (find, partition)
 import Data.Maybe
 import Data.Monoid hiding (Product)
-import qualified Data.Set as S
+-- import qualified Data.Set as S
 import Data.Text (Text(..))
 import qualified Data.Text as T
 import Data.Text.Buildable

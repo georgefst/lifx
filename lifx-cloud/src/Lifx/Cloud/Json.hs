@@ -1,25 +1,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lifx.Json where
+module Lifx.Cloud.Json where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Arrow (first)
 import Control.Monad
 import Data.Aeson hiding (Result)
 import Data.Aeson.Types (Parser, Pair, modifyFailure)
-import Data.Binary
-import Data.Binary.Get
-import Data.Binary.Put
+-- import Data.Binary
+-- import Data.Binary.Get
+-- import Data.Binary.Put
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
-import qualified Data.ByteString.Base16 as B16
+-- import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as L
 import Data.Hourglass
 import Data.Int
 import Data.List (find)
 import Data.Maybe
 import Data.Monoid (Monoid(..))
-import qualified Data.Set as S
+-- import qualified Data.Set as S
 import Data.Text (Text(..))
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -35,10 +35,12 @@ import Text.ParserCombinators.ReadP (skipSpaces)
 import Text.ParserCombinators.ReadPrec (readPrec_to_S)
 import Text.Read hiding (String)
 
-import Lifx.ColorParser
-import Lifx.SelectorParser
-import Lifx.Types
-import Lifx.Util
+import Lifx
+import Lifx.Cloud.Util
+-- import Lifx.ColorParser
+-- import Lifx.SelectorParser
+-- import Lifx.Types
+-- import Lifx.Util
 
 instance FromJSON Power where
   parseJSON (String "on") = return On

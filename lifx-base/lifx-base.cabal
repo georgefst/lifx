@@ -48,7 +48,6 @@ library
   exposed-modules: Lifx
 
   other-modules: Lifx.ColorParser
-               , Lifx.Json
                , Lifx.ProductTable
                , Lifx.SelectorParser
                , Lifx.Types
