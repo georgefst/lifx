@@ -12,10 +12,6 @@ module Lifx
        , padByteString
        , readEither'
        , Selector (..)
-{-
-       , selectAll, selectLabel, selectDeviceId
-       , selectGroup, selectGroupId, selectLocation, selectLocationId
--}
        , Connection (..)
        , FracSeconds
        , LightInfo (..)

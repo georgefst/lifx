@@ -339,24 +339,6 @@ class Connection t where
 
   closeConnection :: t -> IO ()
 
-{-
-selectAll        :: Selector
-selectLabel      :: Label      -> Selector
-selectDeviceId   :: DeviceId   -> Selector
-selectGroup      :: Label      -> Selector
-selectGroupId    :: GroupId    -> Selector
-selectLocation   :: Label      -> Selector
-selectLocationId :: LocationId -> Selector
-
-selectAll        = SelAll
-selectLabel      = SelLabel
-selectDeviceId   = SelDevId
-selectGroup      = SelGroup
-selectGroupId    = SelGroupId
-selectLocation   = SelLocation
-selectLocationId = SelLocationId
--}
-
 type FracSeconds = Double
 
 data InfoNeeded = NeedLabel | NeedPower | NeedColor | NeedGroup | NeedLocation

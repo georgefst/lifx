@@ -38,47 +38,6 @@ import Lifx.Program.Column
 import Lifx.Program.ProductShortName
 import Lifx.Program.TargetMatch
 
-{-
-myTime :: Word64 -> String
-myTime nanos =
-  let (q, r) = quotRem nanos 1000000000
-      elapp = ElapsedP (fromIntegral q) (fromIntegral r)
-  in timePrint ISO8601_DateAndTime elapp
-
-myCb :: Bulb -> IO ()
-myCb bulb = do
-  print bulb
-  getHostInfo bulb $ \shi -> do
-    print shi
-    getLight bulb $ \sl -> do
-      print sl
-      setPower bulb True 1000 $
-        setColor bulb (HSBK 32768 65535 65535 3000) 0 $ do
-          -- positive numbers mean more time spent on original color
-          let swf = SetWaveform False (HSBK 0 0 65535 9000) 1000 10 (-20000) Pulse
-          setWaveform bulb swf $
-            getHostFirmware bulb $ \shf -> do
-              print shf
-              let vHex = printf "%x" (shfVersion shf)
-              putStrLn $ "build " ++ myTime (shfBuild shf) ++ ", version " ++ vHex
-              getWifiFirmware bulb $ \swf -> do
-                print swf
-                let vHex' = printf "%x" (swfVersion swf)
-                putStrLn $ "build " ++ myTime (swfBuild swf) ++ ", version " ++ vHex'
-                getVersion bulb $ \sv -> do
-                  print sv
-                  printf "%x %x %x\n" (svVendor sv) (svProduct sv) (svVersion sv)
-                  getInfo bulb $ \si -> do
-                    print si
-                    putStrLn $ "current time = " ++ myTime (siTime si)
-                    print $ nsToDuration $ fromIntegral $ siUptime si
-                    print $ nsToDuration $ fromIntegral $ siDowntime si
-                    putStrLn "done!"
-
-deriving instance Show Duration
-deriving instance Read TimeOfDay
--}
-
 nsToDuration :: NanoSeconds -> (Int64, Duration)
 nsToDuration (NanoSeconds ns) =
   (days, Duration (Hours hours) (Minutes minutes)
