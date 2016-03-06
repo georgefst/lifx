@@ -65,7 +65,12 @@ mkIdentifier :: T.Text -> T.Text -> T.Text
 mkIdentifier v p = T.toLower $ T.map underscorify $ T.concat [v, " ", p]
   where underscorify c = if isAlphaNum c then c else '_'
 
-productFromId :: Word32 -> Word32 -> Maybe Product
+-- | Given a
+-- <http://lan.developer.lifx.com/docs/lifx-products Vendor ID and Product ID>,
+-- returns a Product describing the product.
+productFromId :: Word32            -- ^ Vendor ID
+                 -> Word32         -- ^ Product ID
+                 -> Maybe Product
 productFromId v p = M.lookup (VidPid v p) products
 
 fromRight = either error id

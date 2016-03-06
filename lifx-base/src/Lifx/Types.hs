@@ -40,16 +40,24 @@ import Text.Read hiding (String)
 
 import Lifx.Util
 
-data LifxException = NoSuchInterface T.Text [T.Text]
-                   | CloudError T.Text
-                   | CloudJsonError T.Text L.ByteString
-                   | IllegalCharacter Char
-                   deriving (Show, Typeable)
+-- | Exception raised by LIFX functions.
+data LifxException =
+    -- | Specified LAN interface does not exist; list contains valid interfaces
+    NoSuchInterface T.Text [T.Text]
+    -- | LIFX cloud servers returned the given error message
+  | CloudError T.Text
+    -- | Was unable to parse the JSON returned by LIFX cloud servers
+  | CloudJsonError T.Text L.ByteString
+    -- | The given character is not allowed in a label
+  | IllegalCharacter Char
+  deriving (Show, Typeable)
 
 instance Exception LifxException
 
+-- | The power state of a bulb
 data Power = Off | On deriving (Show, Read, Eq, Ord)
 
+-- | Color of light, specified as hue, saturation, brightness, and kelvin.
 data HSBK a =
   HSBK
   { hue :: a
@@ -67,9 +75,15 @@ instance Functor HSBK where
                   }
 
 
+-- | Type used for fractional numbers in this package
 type LiFrac = Double
 
+-- | A color specified as floating point hue (0.0 - 360.0),
+-- saturation (0.0 - 1.0), brightness (0.0 - 1.0), and kelvin (2500.0 - 9000.0)
 type Color = HSBK LiFrac
+
+-- | Same as Color, but each of the HSBK components is a Maybe, so it's
+-- possible to specify a subset of HSBK.
 type MaybeColor = HSBK (Maybe LiFrac)
 
 -- https://community.lifx.com/t/comprehensive-list-of-recognized-color-names/1067/2
@@ -84,6 +98,10 @@ blue   = HSBK (Just 250) (Just 1) Nothing Nothing
 purple = HSBK (Just 280) (Just 1) Nothing Nothing
 pink   = HSBK (Just 325) (Just 1) Nothing Nothing
 
+-- | Combines two MaybeColors, so that if either color has Just in a
+-- particular component, that value appears in the output.  If both
+-- colors have Just in a component, the second color takes precedence
+-- over the first for that component.
 combineColors :: MaybeColor -> MaybeColor -> MaybeColor
 combineColors x y = HSBK
   { hue = hue x `combineMaybe` hue y
@@ -97,16 +115,40 @@ combineMaybe x Nothing = x
 combineMaybe _ x@(Just _ ) = x
 
 
+-- | The 6-byte ID of a single light, which is also its MAC address.
 newtype DeviceId   = DeviceId B.ByteString   deriving (Eq, Ord)
+
+-- | The 16-byte ID of a group.
 newtype GroupId    = GroupId B.ByteString    deriving (Eq, Ord)
+
+-- | The 16-byte ID of a location.
 newtype LocationId = LocationId B.ByteString deriving (Eq, Ord)
+
+-- | The human-readable label of a light, group, or location.
+-- May be up to 32 bytes of UTF-8 encoded text.
 newtype Label      = Label B.ByteString      deriving (Eq, Ord)
+
+-- | The 32-byte
+-- <http://api.developer.lifx.com/docs/authentication authentication token>
+-- used by the HTTP API.
 newtype AuthToken  = AuthToken B.ByteString  deriving (Eq, Ord)
 
+-- | This class contains methods for encoding and decoding the
+-- various ID types.  For most of the ID types, which are binary,
+-- the Text representation is a base16 string encoding of the
+-- ByteString representation.  For the Label type, which is text,
+-- the ByteString representation is the UTF-8 encoding of the
+-- Text representation.
 class LifxId t where
+  -- | Convert an ID to a ByteString
   toByteString :: t -> B.ByteString
+  -- | Create an ID from a ByteString.  Returns an error message
+  -- if the input is invalid.
   fromByteString :: B.ByteString -> Either String t
+  -- | Convert an ID to Text
   toText :: t -> Text
+  -- | Create an ID from Text.  Returns an error message if the
+  -- input is invalid.
   fromText :: Text -> Either String t
 
 checkLength :: String -> Int -> B.ByteString -> Either String B.ByteString
@@ -266,6 +308,8 @@ instance FromJSON AuthToken where
   parseJSON = implParseJson
 
 
+-- | Represents a <http://api.developer.lifx.com/docs/selectors selector>
+-- for addressing a set of lights.
 data Selector = SelAll
               | SelLabel Label
               | SelDevId DeviceId
@@ -276,34 +320,56 @@ data Selector = SelAll
                 deriving (Show, Read, Eq, Ord)
 
 
+-- | A MaybeColor where all components are Nothing.
+emptyColor :: MaybeColor
 emptyColor = HSBK Nothing Nothing Nothing Nothing
 
+-- | Are all components of this MaybeColor Nothing?
 isEmptyColor (HSBK Nothing Nothing Nothing Nothing) = True
 isEmptyColor _ = False
 
+-- | Are all components of this MaybeColor Just?
 isCompleteColor (HSBK (Just _ ) (Just _ ) (Just _ ) (Just _ )) = True
 isCompleteColor _ = False
 
 
+-- | Specifies what a bulb is capable of
 data Capabilities =
   Capabilities
   { cHasColor             :: !Bool
   , cHasVariableColorTemp :: !Bool
   } deriving (Show, Read, Eq, Ord)
 
+-- | Information about a particular model of bulb
 data Product =
   Product
-  { pCompanyName  :: Text
+  { -- | Human-readable name of the company that made this bulb.
+    pCompanyName  :: Text
+    -- | Human-readable name of the model of this bulb.
   , pProductName  :: Text
+    -- | A slightly-less-human-readable string which identifies this model.
   , pIdentifier   :: Text
+    -- | Information about whether this bulb supports full color,
+    -- or a variable color temperature of white.
   , pCapabilities :: Capabilities
   } deriving (Show, Read, Eq, Ord)
 
 
 ----------------------------------------------------------------------
 
+-- | Class representing a connection to a collection of bulbs.
+-- In the case of a LAN connection, this would be all bulbs on the LAN.
+-- In the case of a cloud connection, this would be all bulbs associated
+-- with the cloud account for a particular access token.
 class Connection t where
-  listLights :: t -> [Selector] -> [InfoNeeded] -> IO [LightInfo]
+  -- | Retrieve information about some or all lights.
+  listLights :: t                  -- ^ The connection
+                -> [Selector]      -- ^ The lights to list
+                -> [InfoNeeded]    -- ^ A hint about what information is desired
+                                   -- in the results.  This information is used
+                                   -- by LanConnection, but is ignored by
+                                   -- CloudConnection.
+                -> IO [LightInfo]
 
   setState :: t -> [Selector] -> StateTransition -> IO [Result]
   setState conn sels trans = do
