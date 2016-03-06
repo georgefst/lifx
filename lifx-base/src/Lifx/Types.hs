@@ -82,7 +82,7 @@ type LiFrac = Double
 -- saturation (0.0 - 1.0), brightness (0.0 - 1.0), and kelvin (2500.0 - 9000.0)
 type Color = HSBK LiFrac
 
--- | Same as Color, but each of the HSBK components is a Maybe, so it's
+-- | Same as 'Color', but each of the HSBK components is a 'Maybe', so it's
 -- possible to specify a subset of HSBK.
 type MaybeColor = HSBK (Maybe LiFrac)
 
@@ -98,9 +98,9 @@ blue   = HSBK (Just 250) (Just 1) Nothing Nothing
 purple = HSBK (Just 280) (Just 1) Nothing Nothing
 pink   = HSBK (Just 325) (Just 1) Nothing Nothing
 
--- | Combines two MaybeColors, so that if either color has Just in a
+-- | Combines two 'MaybeColor's, so that if either color has 'Just' in a
 -- particular component, that value appears in the output.  If both
--- colors have Just in a component, the second color takes precedence
+-- colors have 'Just' in a component, the second color takes precedence
 -- over the first for that component.
 combineColors :: MaybeColor -> MaybeColor -> MaybeColor
 combineColors x y = HSBK
@@ -115,7 +115,8 @@ combineMaybe x Nothing = x
 combineMaybe _ x@(Just _ ) = x
 
 
--- | The 6-byte ID of a single light, which is also its MAC address.
+-- | The 6-byte ID of a single light, which is also its
+-- <https://en.wikipedia.org/wiki/MAC_address MAC address>.
 newtype DeviceId   = DeviceId B.ByteString   deriving (Eq, Ord)
 
 -- | The 16-byte ID of a group.
@@ -129,25 +130,25 @@ newtype LocationId = LocationId B.ByteString deriving (Eq, Ord)
 newtype Label      = Label B.ByteString      deriving (Eq, Ord)
 
 -- | The 32-byte
--- <http://api.developer.lifx.com/docs/authentication authentication token>
+-- <http://api.developer.lifx.com/docs/authentication access token>
 -- used by the HTTP API.
 newtype AuthToken  = AuthToken B.ByteString  deriving (Eq, Ord)
 
 -- | This class contains methods for encoding and decoding the
 -- various ID types.  For most of the ID types, which are binary,
--- the Text representation is a base16 string encoding of the
--- ByteString representation.  For the Label type, which is text,
--- the ByteString representation is the UTF-8 encoding of the
--- Text representation.
+-- the 'T.Text' representation is a base16 string encoding of the
+-- 'B.ByteString' representation.  For the 'Label' type, which is text,
+-- the 'B.ByteString' representation is the UTF-8 encoding of the
+-- 'T.Text' representation.
 class LifxId t where
-  -- | Convert an ID to a ByteString
+  -- | Convert an ID to a 'B.ByteString'
   toByteString :: t -> B.ByteString
-  -- | Create an ID from a ByteString.  Returns an error message
+  -- | Create an ID from a 'B.ByteString'.  Returns an error message
   -- if the input is invalid.
   fromByteString :: B.ByteString -> Either String t
-  -- | Convert an ID to Text
+  -- | Convert an ID to 'T.Text'
   toText :: t -> Text
-  -- | Create an ID from Text.  Returns an error message if the
+  -- | Create an ID from 'T.Text'.  Returns an error message if the
   -- input is invalid.
   fromText :: Text -> Either String t
 
@@ -320,15 +321,15 @@ data Selector = SelAll
                 deriving (Show, Read, Eq, Ord)
 
 
--- | A MaybeColor where all components are Nothing.
+-- | A 'MaybeColor' where all components are 'Nothing'.
 emptyColor :: MaybeColor
 emptyColor = HSBK Nothing Nothing Nothing Nothing
 
--- | Are all components of this MaybeColor Nothing?
+-- | Are all components of this 'MaybeColor' 'Nothing'?
 isEmptyColor (HSBK Nothing Nothing Nothing Nothing) = True
 isEmptyColor _ = False
 
--- | Are all components of this MaybeColor Just?
+-- | Are all components of this 'MaybeColor' 'Just'?
 isCompleteColor (HSBK (Just _ ) (Just _ ) (Just _ ) (Just _ )) = True
 isCompleteColor _ = False
 
@@ -371,12 +372,22 @@ class Connection t where
                                    -- CloudConnection.
                 -> IO [LightInfo]
 
-  setState :: t -> [Selector] -> StateTransition -> IO [Result]
+  -- | Apply a state transition to a set of lights.
+  setState :: t                    -- ^ The connection
+              -> [Selector]        -- ^ The lights to operate on
+              -> StateTransition   -- ^ The state to apply to the lights
+              -> IO [Result]
   setState conn sels trans = do
     [tr] <- setStates conn [(sels, trans)]
     return (tResults tr)
 
-  setStates :: t -> [([Selector], StateTransition)] -> IO [StateTransitionResult]
+  -- | Apply one or more state transitions to different sets of lights
+  -- simultaneously.
+  setStates :: t                                  -- ^ The connection
+               -> [([Selector], StateTransition)] -- ^ Pairs of state
+                                                  -- transitions and the lights
+                                                  -- to apply them to
+               -> IO [StateTransitionResult]
 
   togglePower :: t -> [Selector] -> FracSeconds -> IO [Result]
   togglePower conn sels dur = do
@@ -405,16 +416,21 @@ class Connection t where
 
   closeConnection :: t -> IO ()
 
+-- | An amount of time, specified as a floating-point number of seconds.
 type FracSeconds = Double
 
+-- | Hints about what information is needed from 'listLights'.
 data InfoNeeded = NeedLabel | NeedPower | NeedColor | NeedGroup | NeedLocation
                 | NeedProduct | NeedTemperature | NeedUptime
                 | NeedFirmwareVersion | NeedHardwareVersion
                 deriving (Show, Read, Eq, Ord, Bounded, Enum)
 
+-- | A list of all possible values of 'InfoNeeded', thus requesting as much
+-- information as possible be returned.
 needEverything :: [InfoNeeded]
 needEverything = [minBound .. maxBound]
 
+-- | Information about a light, returned by 'listLights'.
 data LightInfo =
   LightInfo
   { lId :: DeviceId
@@ -459,20 +475,34 @@ data StateTransitionResult =
   , tResults :: [Result]
   } deriving (Eq, Ord, Show, Read)
 
-data EffectType = Pulse | Breathe deriving (Eq, Ord, Show, Read)
+-- | The shape of the waveform of an 'Effect'.
+data EffectType = Pulse   -- ^ a square wave
+                | Breathe -- ^ a sine wave
+                  deriving (Eq, Ord, Show, Read)
 
+-- | Specifies details of the effect performed by 'effect'.
 data Effect =
   Effect
-  { eType :: EffectType
-  , eColor :: MaybeColor
-  , eFromColor :: MaybeColor
-  , ePeriod :: FracSeconds
-  , eCycles :: Double
-  , ePersist :: Bool
-  , ePowerOn :: Bool
-  , ePeak :: Double
+  { eType :: EffectType      -- ^ The shape of the waveform.  Default 'Pulse'.
+  , eColor :: MaybeColor     -- ^ The color of the effect.
+  , eFromColor :: MaybeColor -- ^ The color to start from.  'emptyColor'
+                             -- means start from the current color.
+                             -- Default 'emptyColor'.
+  , ePeriod :: FracSeconds   -- ^ The period of the waveform in seconds.
+                             -- Default 1.0.
+  , eCycles :: Double        -- ^ The total duration of the effect, as
+                             -- multiples of the period.  Default 1.0.
+  , ePersist :: Bool         -- ^ 'False' means return to original color
+                             -- when effect is complete.  Default 'False'.
+  , ePowerOn :: Bool         -- ^ Turn power on if it is off?  Default 'True'.
+  , ePeak :: Double          -- ^ For 'Breathe', specifies where in the period
+                             -- the effect is brightest.  For 'Pulse', specifies
+                             -- the duty cycle of the pulse on LanConnection, or
+                             -- is ignored on CloudConnection.  0.0 - 1.0.
+                             -- Default 0.5.
   } deriving (Eq, Ord, Show, Read)
 
+-- | Returns an 'Effect' with default settings.
 defaultEffect :: Effect
 defaultEffect = Effect
   { eType = Pulse
@@ -502,6 +532,7 @@ data SceneState =
   , ssColor :: MaybeColor
   } deriving (Eq, Ord, Show, Read)
 
+-- | Scenes are uniquely identified by a 'U.UUID'.
 newtype SceneId = SceneId { unSceneId :: U.UUID }
                 deriving (Eq, Ord, Show, Read {- , Hashable -})
 
