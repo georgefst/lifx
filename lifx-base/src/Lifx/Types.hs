@@ -42,19 +42,23 @@ import Lifx.Util
 
 -- | Exception raised by LIFX functions.
 data LifxException =
-    -- | Specified LAN interface does not exist; list contains valid interfaces
+    -- | Specified LAN interface does not exist.
+    --
+    -- requested interface name / list of valid interface names
     NoSuchInterface T.Text [T.Text]
-    -- | LIFX cloud servers returned the given error message
+    -- | LIFX cloud servers returned the given error message.
   | CloudError T.Text
-    -- | Was unable to parse the JSON returned by LIFX cloud servers
+    -- | Was unable to parse the JSON returned by LIFX cloud servers.
+    --
+    -- error message / response body
   | CloudJsonError T.Text L.ByteString
-    -- | The given character is not allowed in a label
+    -- | The given character is not allowed in a label.
   | IllegalCharacter Char
   deriving (Show, Typeable)
 
 instance Exception LifxException
 
--- | The power state of a bulb
+-- | The power state of a bulb.
 data Power = Off | On deriving (Show, Read, Eq, Ord)
 
 -- | Color of light, specified as
@@ -77,11 +81,11 @@ instance Functor HSBK where
                   }
 
 
--- | Type used for fractional numbers in this package
+-- | Type used for fractional numbers in this package.
 type LiFrac = Double
 
 -- | A color specified as floating point hue (0.0 - 360.0),
--- saturation (0.0 - 1.0), brightness (0.0 - 1.0), and kelvin (2500.0 - 9000.0)
+-- saturation (0.0 - 1.0), brightness (0.0 - 1.0), and kelvin (2500.0 - 9000.0).
 type Color = HSBK LiFrac
 
 -- | Same as 'Color', but each of the HSBK components is a 'Maybe', so it's
@@ -143,12 +147,12 @@ newtype AuthToken  = AuthToken B.ByteString  deriving (Eq, Ord)
 -- the 'B.ByteString' representation is the UTF-8 encoding of the
 -- 'T.Text' representation, padded with @0@ bytes to be 32 bytes long.
 class LifxId t where
-  -- | Convert an ID to a 'B.ByteString'
+  -- | Convert an ID to a 'B.ByteString'.
   toByteString :: t -> B.ByteString
   -- | Create an ID from a 'B.ByteString'.  Returns an error message
   -- if the input is invalid.
   fromByteString :: B.ByteString -> Either String t
-  -- | Convert an ID to 'T.Text'
+  -- | Convert an ID to 'T.Text'.
   toText :: t -> Text
   -- | Create an ID from 'T.Text'.  Returns an error message if the
   -- input is invalid.
@@ -336,21 +340,23 @@ isCompleteColor (HSBK (Just _ ) (Just _ ) (Just _ ) (Just _ )) = True
 isCompleteColor _ = False
 
 
--- | Specifies what a bulb is capable of
+-- | Specifies what a bulb is capable of.
 data Capabilities =
   Capabilities
   { cHasColor             :: !Bool
   , cHasVariableColorTemp :: !Bool
   } deriving (Show, Read, Eq, Ord)
 
--- | Information about a particular model of bulb
+-- | Information about a particular model of bulb.
 data Product =
   Product
-  { -- | Human-readable name of the company that made this bulb.
+  { -- | Human-readable name of the company that made this bulb,
+    -- such as \"LIFX\".
     pCompanyName  :: Text
-    -- | Human-readable name of the model of this bulb.
+    -- | Human-readable name of the model of this bulb, as as \"Original 1000\".
   , pProductName  :: Text
-    -- | A slightly-less-human-readable string which identifies this model.
+    -- | A slightly-less-human-readable string which identifies this model,
+    -- such as \"lifx_original_a21\".
   , pIdentifier   :: Text
     -- | Information about whether this bulb supports full color,
     -- or a variable color temperature of white.
@@ -365,32 +371,38 @@ data Product =
 -- In the case of a cloud connection, this would be all bulbs associated
 -- with the cloud account for a particular access token.
 class Connection t where
-  -- | Retrieve information about some or all lights.
-  listLights :: t                  -- ^ The connection
-                -> [Selector]      -- ^ The lights to list
+  -- | Retrieve information about some or all lights.  Corresponds to
+  -- <http://api.developer.lifx.com/docs/list-lights List Lights> endpoint.
+  listLights :: t                  -- ^ The connection.
+                -> [Selector]      -- ^ The lights to list.
                 -> [InfoNeeded]    -- ^ A hint about what information is desired
                                    -- in the results.  This information is used
                                    -- by @LanConnection@, but is ignored by
                                    -- @CloudConnection@.
                 -> IO [LightInfo]
 
-  -- | Apply a state transition to a set of lights.
-  setState :: t                    -- ^ The connection
-              -> [Selector]        -- ^ The lights to operate on
-              -> StateTransition   -- ^ The state to apply to the lights
+  -- | Apply a state transition to a set of lights.  Corresponds to
+  -- <http://api.developer.lifx.com/docs/set-state Set State> endpoint.
+  setState :: t                    -- ^ The connection.
+              -> [Selector]        -- ^ The lights to operate on.
+              -> StateTransition   -- ^ The state to apply to the lights.
               -> IO [Result]
   setState conn sels trans = do
     [tr] <- setStates conn [(sels, trans)]
     return (tResults tr)
 
   -- | Apply one or more state transitions to different sets of lights
-  -- simultaneously.
-  setStates :: t                                  -- ^ The connection
+  -- simultaneously.  Corresponds to
+  -- <http://api.developer.lifx.com/docs/set-states Set States> endpoint.
+  setStates :: t                                  -- ^ The connection.
                -> [([Selector], StateTransition)] -- ^ Pairs of state
                                                   -- transitions and the lights
-                                                  -- to apply them to
+                                                  -- to apply them to.
                -> IO [StateTransitionResult]
 
+  -- | Turn the specifies lights on if all of them are off.  Turn the
+  -- specifies lights off if any of them are on.  Corresponds to
+  -- <http://api.developer.lifx.com/docs/toggle-power Toggle Power> endpoint.
   togglePower :: t -> [Selector] -> FracSeconds -> IO [Result]
   togglePower conn sels dur = do
     -- https://community.lifx.com/t/toggle-power-endpoint-when-existing-state-is-mixed/1097
@@ -408,14 +420,30 @@ class Connection t where
     results <- setState conn (map (SelDevId . lId) up) transition
     return $ map timedOut down ++ results
 
+  -- | Perform the specified effect on the specified lights.  Corresponds to
+  -- <http://api.developer.lifx.com/docs/breathe-effect Breathe Effect> or
+  -- <http://api.developer.lifx.com/docs/pulse-effect Pulse Effect> endpoint,
+  -- depending on 'EffectType'.
   effect :: t -> [Selector] -> Effect -> IO [Result]
 
+  -- | Lists the scenes associated with this 'Connection'.  Corresponds to
+  -- <http://api.developer.lifx.com/docs/list-scenes List Scenes> endpoint.
   listScenes :: t -> IO [Scene]
 
+  -- | Activates a specified scene.  Corresponds to
+  -- <http://api.developer.lifx.com/docs/activate-scene Activate Scene>
+  -- endpoint.
   activateScene :: t -> SceneId -> FracSeconds -> IO [Result]
 
+  -- | Determines which 'StateTransition' most closely matches the
+  -- current state of the specified lights, and then activates the
+  -- next 'StateTransition' in the list, wrapping around to the
+  -- beginning if necessary.  Corresponds to
+  -- <http://api.developer.lifx.com/docs/cycle Cycle> endpoint.
   cycleLights :: t -> [Selector] -> [StateTransition] -> IO [Result]
 
+  -- | Terminates the 'Connection' and frees any resources associated
+  -- with it.
   closeConnection :: t -> IO ()
 
 -- | An amount of time, specified as a floating-point number of seconds.

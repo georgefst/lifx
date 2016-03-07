@@ -35,6 +35,7 @@ module Lifx
          -- * IDs
        , LifxId (..)
        , DeviceId, GroupId, LocationId, Label, AuthToken
+       , SceneId (..)
          -- * Selectors
        , Selector (..)
        , selectorToText
@@ -60,7 +61,6 @@ module Lifx
        , StateTransitionResult (..)
        , Scene (..)
        , SceneState (..)
-       , SceneId (..)
        ) where
 
 import Lifx.ColorParser
