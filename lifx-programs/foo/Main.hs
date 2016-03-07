@@ -130,7 +130,7 @@ main = do
 
   defaultMain $ testGroup "color" $
     [ testCase "testRGB" testRGB
-    ] ++ colorErrorTests
+    ] ++ colorErrorTests ++ selectorErrorTests
 
   where
     initCloud = do
@@ -838,4 +838,19 @@ colorErrorTests =
   ]
   where tst c = testCaseInfo c $ msg $ parseColor (T.pack c)
         msg (Left x) = return x
-        msg (Right _) = assertFailure "unexpectedly successful" >> undefined
+        msg (Right _ ) = assertFailure "unexpectedly successful" >> undefined
+
+selectorErrorTests =
+  [ tst "allow"
+  , tst "id:aabbccddeeff00"
+  , tst "id:bbccddeeffgg"
+  , tst "id:aabbccddeef"
+  , tst "group_id:0123456789"
+  , tst "group_id:whatever"
+  , tst "group_id:"
+  , tst "location_id:aaaaaaaaaaaaaaaa"
+  , tst "location_id:aaaaaaaaaaaaaaaaa"
+  ]
+  where tst s = testCaseInfo s $ msg $ parseSelector (T.pack s)
+        msg (Left x) = return x
+        msg (Right _ ) = assertFailure "unexpectedly successful" >> undefined
