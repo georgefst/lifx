@@ -1,10 +1,11 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, MultiWayIf #-}
 
 module Lifx.ColorParser (parseColor) where
 
 import Control.Applicative
 import Data.Attoparsec.Text
 import Data.Char
+import Data.Fixed (mod')
 import qualified Data.Text as T
 
 import Lifx.Types
@@ -66,4 +67,22 @@ colorDecRGB = do
   return $ rgbToHsbk r g b
 
 rgbToHsbk :: Int -> Int -> Int -> MaybeColor
-rgbToHsbk = undefined -- TODO
+rgbToHsbk r' g' b' =
+  let
+    rgb = map ((/ 255) . fromIntegral) [r', g', b']
+    [r, g, b] = rgb
+    -- https://en.wikipedia.org/wiki/HSL_and_HSV#Hue_and_chroma
+    mx = maximum rgb
+    mn = minimum rgb
+    c = mx - mn
+    wrap x = if x < 0 then x + 6 else x
+    h' = if | c == 0 -> 0
+            | mx == r   -> wrap ((g - b) / c)
+            | mx == g   -> 2 +  ((b - r) / c)
+            | otherwise -> 4 +  ((r - g) / c)
+    h = 60 * h'
+    -- https://en.wikipedia.org/wiki/HSL_and_HSV#Lightness
+    v = mx
+    -- https://en.wikipedia.org/wiki/HSL_and_HSV#Saturation
+    s = if c == 0 then 0 else c / v
+  in HSBK (Just h) (Just s) (Just v) Nothing
