@@ -9,6 +9,11 @@ import qualified Data.Text as T
 
 import Lifx.Types
 
+-- | Parses a string as a color, returning either an error message or
+-- a 'MaybeColor' which contains the HSBK color (or partial HSBK color)
+-- specified by the string.  Accepts colors in
+-- <http://api.developer.lifx.com/docs/colors the same format> as the
+-- LIFX Cloud API.
 parseColor :: T.Text -> Either String MaybeColor
 parseColor = parseOnly (colorString <* endOfInput)
 

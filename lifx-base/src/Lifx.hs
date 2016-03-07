@@ -28,6 +28,9 @@ module Lifx
        , colorToText
        , parseColor
          -- ** Named colors
+         -- | The same <https://community.lifx.com/t/comprehensive-list-of-recognized-color-names/1067/2 nine named colors>
+         -- recognized by the LIFX Cloud API.  They only specify the hue
+         -- and saturation.  (Or in the case of white, just the saturation.)
        , white, red, orange, yellow, green, cyan, blue, purple, pink
          -- * IDs
        , LifxId (..)

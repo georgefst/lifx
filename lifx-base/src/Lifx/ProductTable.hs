@@ -67,7 +67,7 @@ mkIdentifier v p = T.toLower $ T.map underscorify $ T.concat [v, " ", p]
 
 -- | Given a
 -- <http://lan.developer.lifx.com/docs/lifx-products Vendor ID and Product ID>,
--- returns a Product describing the product.
+-- returns a 'Product' describing the product.
 productFromId :: Word32            -- ^ Vendor ID
                  -> Word32         -- ^ Product ID
                  -> Maybe Product

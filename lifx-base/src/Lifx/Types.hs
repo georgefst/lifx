@@ -57,7 +57,9 @@ instance Exception LifxException
 -- | The power state of a bulb
 data Power = Off | On deriving (Show, Read, Eq, Ord)
 
--- | Color of light, specified as hue, saturation, brightness, and kelvin.
+-- | Color of light, specified as
+-- <https://en.wikipedia.org/wiki/HSL_and_HSV hue, saturation, brightness>,
+-- and <https://en.wikipedia.org/wiki/Color_temperature kelvin>.
 data HSBK a =
   HSBK
   { hue :: a
@@ -139,7 +141,7 @@ newtype AuthToken  = AuthToken B.ByteString  deriving (Eq, Ord)
 -- the 'T.Text' representation is a base16 string encoding of the
 -- 'B.ByteString' representation.  For the 'Label' type, which is text,
 -- the 'B.ByteString' representation is the UTF-8 encoding of the
--- 'T.Text' representation.
+-- 'T.Text' representation, padded with @0@ bytes to be 32 bytes long.
 class LifxId t where
   -- | Convert an ID to a 'B.ByteString'
   toByteString :: t -> B.ByteString
@@ -368,8 +370,8 @@ class Connection t where
                 -> [Selector]      -- ^ The lights to list
                 -> [InfoNeeded]    -- ^ A hint about what information is desired
                                    -- in the results.  This information is used
-                                   -- by LanConnection, but is ignored by
-                                   -- CloudConnection.
+                                   -- by @LanConnection@, but is ignored by
+                                   -- @CloudConnection@.
                 -> IO [LightInfo]
 
   -- | Apply a state transition to a set of lights.
@@ -552,6 +554,9 @@ textualize :: Buildable a => (T.Text, Maybe a) -> Maybe T.Text
 textualize (_, Nothing) = Nothing
 textualize (key, Just value) = Just $ fmt "{}:{}" (key, value)
 
+-- | When given 'emptyColor', returns 'Nothing'.  Otherwise, returns
+-- 'Just' a non-empty string which, when fed to 'Lifx.parseColor', would
+-- parse as the given color.
 colorToText :: MaybeColor -> Maybe T.Text
 colorToText c@(HSBK h s b k)
   | isEmptyColor c = Nothing
