@@ -376,7 +376,7 @@ class Connection t where
   listLights :: t                  -- ^ The connection.
                 -> [Selector]      -- ^ The lights to list.
                 -> [InfoNeeded]    -- ^ A hint about what information is desired
-                                   -- in the results.  This information is used
+                                   -- in the results.  This hint is used
                                    -- by @LanConnection@, but is ignored by
                                    -- @CloudConnection@.
                 -> IO [LightInfo]
@@ -403,7 +403,10 @@ class Connection t where
   -- | Turn the specifies lights on if all of them are off.  Turn the
   -- specifies lights off if any of them are on.  Corresponds to
   -- <http://api.developer.lifx.com/docs/toggle-power Toggle Power> endpoint.
-  togglePower :: t -> [Selector] -> FracSeconds -> IO [Result]
+  togglePower :: t              -- ^ The connection.
+                 -> [Selector]  -- ^ The lights to operate on.
+                 -> FracSeconds -- ^ Duration of fade.
+                 -> IO [Result]
   togglePower conn sels dur = do
     -- https://community.lifx.com/t/toggle-power-endpoint-when-existing-state-is-mixed/1097
     li <- listLights conn sels [NeedPower]
@@ -424,27 +427,38 @@ class Connection t where
   -- <http://api.developer.lifx.com/docs/breathe-effect Breathe Effect> or
   -- <http://api.developer.lifx.com/docs/pulse-effect Pulse Effect> endpoint,
   -- depending on 'EffectType'.
-  effect :: t -> [Selector] -> Effect -> IO [Result]
+  effect :: t              -- ^ The connection.
+            -> [Selector]  -- ^ The lights to operate on.
+            -> Effect      -- ^ The effect to perform.
+            -> IO [Result]
 
   -- | Lists the scenes associated with this 'Connection'.  Corresponds to
   -- <http://api.developer.lifx.com/docs/list-scenes List Scenes> endpoint.
-  listScenes :: t -> IO [Scene]
+  listScenes :: t -- ^ The connection.
+                -> IO [Scene]
 
   -- | Activates a specified scene.  Corresponds to
   -- <http://api.developer.lifx.com/docs/activate-scene Activate Scene>
   -- endpoint.
-  activateScene :: t -> SceneId -> FracSeconds -> IO [Result]
+  activateScene :: t              -- ^ The connection.
+                   -> SceneId     -- ^ ID of the scene to activate.
+                   -> FracSeconds -- ^ Duration of fade.
+                   -> IO [Result]
 
   -- | Determines which 'StateTransition' most closely matches the
   -- current state of the specified lights, and then activates the
   -- next 'StateTransition' in the list, wrapping around to the
   -- beginning if necessary.  Corresponds to
   -- <http://api.developer.lifx.com/docs/cycle Cycle> endpoint.
-  cycleLights :: t -> [Selector] -> [StateTransition] -> IO [Result]
+  cycleLights :: t                    -- ^ The connection.
+                 -> [Selector]        -- ^ The lights to operate on.
+                 -> [StateTransition] -- ^ States to cycle through
+                 -> IO [Result]
 
   -- | Terminates the 'Connection' and frees any resources associated
   -- with it.
-  closeConnection :: t -> IO ()
+  closeConnection :: t        -- ^ The connection to terminate.
+                     -> IO ()
 
 -- | An amount of time, specified as a floating-point number of seconds.
 type FracSeconds = Double
@@ -527,8 +541,8 @@ data Effect =
   , ePowerOn :: Bool         -- ^ Turn power on if it is off?  Default 'True'.
   , ePeak :: Double          -- ^ For 'Breathe', specifies where in the period
                              -- the effect is brightest.  For 'Pulse', specifies
-                             -- the duty cycle of the pulse on LanConnection, or
-                             -- is ignored on CloudConnection.  0.0 - 1.0.
+                             -- the duty cycle of the pulse on @LanConnection@, or
+                             -- is ignored on @CloudConnection@.  0.0 - 1.0.
                              -- Default 0.5.
   } deriving (Eq, Ord, Show, Read)
 
@@ -599,6 +613,9 @@ colorToText c@(HSBK h s b k)
           components2 = mapMaybe textualize hsb
       in Just $ T.intercalate " " (components1 ++ components2)
 
+-- | Renders a 'Selector' in
+-- <http://api.developer.lifx.com/docs/selectors the same format> accepted
+-- by the LIFX Cloud API.
 selectorToText :: Selector -> T.Text
 selectorToText SelAll = "all"
 selectorToText (SelLabel x)      = "label:"       <> toText x
@@ -608,6 +625,7 @@ selectorToText (SelGroupId x)    = "group_id:"    <> toText x
 selectorToText (SelLocation x)   = "location:"    <> toText x
 selectorToText (SelLocationId x) = "location_id:" <> toText x
 
+-- | Renders a list of 'Selector's as a comma-separated string.
 selectorsToText :: [Selector] -> Either LifxException T.Text
 selectorsToText sels = do
   let illegalChars = ",/"

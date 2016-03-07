@@ -10,9 +10,9 @@ import qualified Data.Text as T
 import Lifx.Types
 import Lifx.Util
 
--- | Parses a string as a color, returning either an error message or
--- a 'MaybeColor' which contains the HSBK color (or partial HSBK color)
--- specified by the string.  Accepts colors in
+-- | Parses a string as a color, returning 'Nothing' on failure, or 'Just'
+-- a 'MaybeColor' on success which contains the HSBK color (or partial
+-- HSBK color) specified by the string.  Accepts colors in
 -- <http://api.developer.lifx.com/docs/colors the same format> as the
 -- LIFX Cloud API.
 parseColor :: T.Text -> Maybe MaybeColor

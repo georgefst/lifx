@@ -10,9 +10,14 @@ import qualified Data.Text as T
 import Lifx.Types
 import Lifx.Util
 
+-- | Parses a 'Selector', in
+-- <http://api.developer.lifx.com/docs/selectors the same format> accepted
+-- by the LIFX Cloud API.  Returns 'Nothing' if the string can't be parsed.
 parseSelector :: T.Text -> Maybe Selector
 parseSelector = parseAllMaybe selectorString
 
+-- | Parses a comma-separated list of 'Selector's.  Returns 'Nothing'
+-- if the string can't be parsed.
 parseSelectors :: T.Text -> Maybe [Selector]
 parseSelectors = parseAllMaybe selectorList
 
