@@ -37,10 +37,6 @@ import Text.Read hiding (String)
 
 import Lifx
 import Lifx.Cloud.Util
--- import Lifx.ColorParser
--- import Lifx.SelectorParser
--- import Lifx.Types
--- import Lifx.Util
 
 instance FromJSON Power where
   parseJSON (String "on") = return On
@@ -76,18 +72,18 @@ parseIdStruct _ = return (Nothing, Nothing)
 
 combineColorBrightness :: Maybe Value -> Maybe Double -> Parser MaybeColor
 combineColorBrightness c b = do
-  c' <- parseColor c
+  c' <- parseC c
   return $ addBrightness c' b
   where addBrightness cc Nothing = cc
         addBrightness cc br@(Just _ ) = cc { brightness = br }
-        parseColor Nothing = return emptyColor
-        parseColor (Just (Object v)) = do
+        parseC Nothing = return emptyColor
+        parseC (Just (Object v)) = do
           myHue        <- v .:? "hue"
           mySaturation <- v .:? "saturation"
           myBrightness <- v .:? "brightness"
           myKelvin     <- v .:? "kelvin"
           return $ HSBK myHue mySaturation myBrightness myKelvin
-        parseColor _ = fail "expected a JSON object for color"
+        parseC _ = fail "expected a JSON object for color"
 
 parseColorBrightness :: Object -> Parser MaybeColor
 parseColorBrightness v = do
@@ -183,8 +179,8 @@ instance FromJSON StateTransition where
     myColor1 <- case myColorTxt of
                  Nothing -> return emptyColor
                  Just txt -> case parseColor txt of
-                              Left msg -> fail msg
-                              Right c -> return c
+                              Nothing -> fail "couldn't parse color"
+                              Just c -> return c
 
     let myColor2 = emptyColor { brightness = myBrightness }
         myColor = myColor1 `combineColors` myColor2

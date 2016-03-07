@@ -1,26 +1,18 @@
 module Lifx.Util where
 
-import Control.Applicative ( Applicative((<*>)), (<$>) )
+import Control.Applicative
 import Control.Arrow (first)
 import Control.Monad
-import Data.Aeson hiding (Result)
-import Data.Aeson.Types (Parser)
+import Data.Attoparsec.Text
 import Data.Binary
-import Data.Binary.Get
-import Data.Binary.Put
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as B8
-import qualified Data.ByteString.Base16 as B16
-import qualified Data.ByteString.Lazy as L
 import Data.Int
 import Data.List (find)
 import Data.Maybe
 import Data.Monoid (Monoid(..))
-import qualified Data.Set as S
 import Data.Text (Text(..))
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
-import qualified Data.Text.Encoding.Error as TEE
 import Data.Text.Format
 import Data.Text.Format.Params
 import qualified Data.Text.Lazy as LT
@@ -34,6 +26,7 @@ import Text.Read hiding (String)
 
 ---- Utilities: move elsewhere?
 
+-- version of 'format' that returns a strict 'T.Text'
 fmt :: Params ps => Format -> ps -> T.Text
 fmt f p = LT.toStrict $ format f p
 
@@ -66,3 +59,10 @@ textToPaddedByteString :: Int -> T.Text -> B.ByteString
 textToPaddedByteString maxBytes txt =
   padByteString maxBytes $ textToByteString maxBytes txt
 
+-- attoparsec error messages are so comically bad, we just return
+-- Nothing instead of an error message.  This function also requires
+-- that all input be consumed.
+parseAllMaybe :: Parser a -> T.Text -> Maybe a
+parseAllMaybe p txt = case parseOnly (p <* endOfInput) txt of
+                       (Left _ ) -> Nothing
+                       (Right x) -> Just x

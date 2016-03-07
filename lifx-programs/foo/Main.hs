@@ -823,7 +823,7 @@ rgbTests =
 testRGB :: IO ()
 testRGB =
   forM_ rgbTests $ \(txt, expected) -> do
-    let actual = zeroColor `combineColors` (fromRight $ parseColor txt)
+    let actual = zeroColor `combineColors` (fromJust $ parseColor txt)
         zeroColor = justColor $ HSBK 0 0 0 0
     assertColorEqual (T.unpack txt) expected (definitelyColor actual)
 
@@ -836,9 +836,9 @@ colorErrorTests =
   , tst "hue:120 saturation:1.0 brightness:0.5 kelbin:5000"
   , tst "rgb:0x"
   ]
-  where tst c = testCaseInfo c $ msg $ parseColor (T.pack c)
-        msg (Left x) = return x
-        msg (Right _ ) = assertFailure "unexpectedly successful" >> undefined
+  where tst c = testCase c $ msg $ parseColor (T.pack c)
+        msg Nothing = return ()
+        msg (Just _ ) = assertFailure "unexpectedly successful"
 
 selectorErrorTests =
   [ tst "allow"

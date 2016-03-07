@@ -5,18 +5,18 @@ module Lifx.ColorParser (parseColor) where
 import Control.Applicative
 import Data.Attoparsec.Text
 import Data.Char
-import Data.Fixed (mod')
 import qualified Data.Text as T
 
 import Lifx.Types
+import Lifx.Util
 
 -- | Parses a string as a color, returning either an error message or
 -- a 'MaybeColor' which contains the HSBK color (or partial HSBK color)
 -- specified by the string.  Accepts colors in
 -- <http://api.developer.lifx.com/docs/colors the same format> as the
 -- LIFX Cloud API.
-parseColor :: T.Text -> Either String MaybeColor
-parseColor = parseOnly (colorString <* endOfInput)
+parseColor :: T.Text -> Maybe MaybeColor
+parseColor = parseAllMaybe colorString
 
 colorString :: Parser MaybeColor
 colorString = colorName <|> colorHSBK <|> colorHexRGB <|> colorDecRGB
