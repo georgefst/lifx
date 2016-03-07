@@ -1,37 +1,63 @@
+{-|
+Module      : Lifx
+Description : Types for use by packages that interface with LIFX smart bulbs
+Copyright   : (c) Patrick Pelletier, 2016
+License     : BSD3
+Maintainer  : code@funwithsoftware.org
+Stability   : experimental
+Portability : GHC
+
+This module contains some types for representing basic concepts used
+in interfacing with <https://www.lifx.com/ LIFX smart light bulbs>.
+It also contains the 'Connection' typeclass, which represents a
+connection to a collection of LIFX bulbs.  For an implementation of
+the 'Connection' class, you'll need another package, such as
+@lifx-lan@ or @lifx-cloud@.
+-}
+
 module Lifx
-       ( LifxException(..)
+       ( -- * Basic types
+         LifxException(..)
        , Power (..)
-       , HSBK (..)
-       , LiFrac , Color , MaybeColor
-       , white, red, orange, yellow, green, cyan, blue, purple, pink
-       , combineColors, emptyColor , isEmptyColor, isCompleteColor
-       , DeviceId, GroupId, LocationId, Label, AuthToken
-       , LifxId (..)
-       , Product (..)
-       , productFromId
-       , Selector (..)
-       , Connection (..)
+       , LiFrac
        , FracSeconds
-       , LightInfo (..)
+         -- * Colors
+       , HSBK (..)
+       , Color , MaybeColor
+       , combineColors, emptyColor , isEmptyColor, isCompleteColor
+       , colorToText
+       , parseColor
+         -- ** Named colors
+       , white, red, orange, yellow, green, cyan, blue, purple, pink
+         -- * IDs
+       , LifxId (..)
+       , DeviceId, GroupId, LocationId, Label, AuthToken
+         -- * Selectors
+       , Selector (..)
+       , selectorToText
+       , selectorsToText
+       , parseSelector
+       , parseSelectors
+         -- * Products
+       , Product (..)
        , Capabilities (..)
+       , productFromId
+         -- * Effects
+       , EffectType (..)
+       , Effect (..)
+       , defaultEffect
+         -- * Connections
+       , Connection (..)
+       , InfoNeeded (..)
+       , needEverything
+       , LightInfo (..)
        , StateTransition (..)
        , Result (..)
        , Status (..)
        , StateTransitionResult (..)
-       , EffectType (..)
-       , Effect (..)
        , Scene (..)
        , SceneState (..)
        , SceneId (..)
-       , colorToText
-       , selectorToText
-       , selectorsToText
-       , parseColor
-       , parseSelector
-       , parseSelectors
-       , defaultEffect
-       , InfoNeeded (..)
-       , needEverything
        ) where
 
 import Lifx.ColorParser
