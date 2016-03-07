@@ -128,10 +128,9 @@ main = do
                       ]
   -}
 
-  defaultMain $ testGroup "color"
+  defaultMain $ testGroup "color" $
     [ testCase "testRGB" testRGB
-    , testCase "testColorError" testColorError
-    ]
+    ] ++ colorErrorTests
 
   where
     initCloud = do
@@ -828,11 +827,15 @@ testRGB =
         zeroColor = justColor $ HSBK 0 0 0 0
     assertColorEqual (T.unpack txt) expected (definitelyColor actual)
 
-testColorError :: IO ()
-testColorError = do
-  tst "rgb:0,0,ff" "oh no!"
-  tst "brown" "oh no!"
-  tst "#ddffgg" "oh no!"
-  tst "#fffff"  "oh no!"
-  tst "#fffffff" "oh no!"
-  where tst c msg = assertEqual (T.unpack c) (Left msg) (parseColor c)
+colorErrorTests =
+  [ tst "rgb:0,0,ff"
+  , tst "brown"
+  , tst "#ddffgg"
+  , tst "#fffff"
+  , tst "#fffffff"
+  , tst "hue:120 saturation:1.0 brightness:0.5 kelbin:5000"
+  , tst "rgb:0x"
+  ]
+  where tst c = testCaseInfo c $ msg $ parseColor (T.pack c)
+        msg (Left x) = return x
+        msg (Right _) = assertFailure "unexpectedly successful" >> undefined
