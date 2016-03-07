@@ -851,6 +851,6 @@ selectorErrorTests =
   , tst "location_id:aaaaaaaaaaaaaaaa"
   , tst "location_id:aaaaaaaaaaaaaaaaa"
   ]
-  where tst s = testCaseInfo s $ msg $ parseSelector (T.pack s)
-        msg (Left x) = return x
-        msg (Right _ ) = assertFailure "unexpectedly successful" >> undefined
+  where tst s = testCase s $ msg $ parseSelector (T.pack s)
+        msg Nothing = return ()
+        msg (Just _ ) = assertFailure "unexpectedly successful"

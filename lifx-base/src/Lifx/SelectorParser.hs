@@ -8,12 +8,13 @@ import Data.Char
 import qualified Data.Text as T
 
 import Lifx.Types
+import Lifx.Util
 
-parseSelector :: T.Text -> Either String Selector
-parseSelector = parseOnly (selectorString <* endOfInput)
+parseSelector :: T.Text -> Maybe Selector
+parseSelector = parseAllMaybe selectorString
 
-parseSelectors :: T.Text -> Either String [Selector]
-parseSelectors = parseOnly (selectorList <* endOfInput)
+parseSelectors :: T.Text -> Maybe [Selector]
+parseSelectors = parseAllMaybe selectorList
 
 selectorString :: Parser Selector
 selectorString = selAll <|> selLabel <|> selDevId <|>

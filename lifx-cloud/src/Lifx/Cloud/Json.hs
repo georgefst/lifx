@@ -52,16 +52,16 @@ instance ToJSON Power where
 instance FromJSON Selector where
   parseJSON (String txt) =
     case parseSelector txt of
-     Left msg -> fail msg
-     Right sel -> return sel
+     Nothing -> fail "couldn't parse selector"
+     Just sel -> return sel
 
 newtype WrapSelectors = WrapSelectors { unWrapSelectors :: [Selector] }
 
 instance FromJSON WrapSelectors where
   parseJSON (String txt) =
     case parseSelectors txt of
-     Left msg -> fail msg
-     Right sels -> return (WrapSelectors sels)
+     Nothing -> fail "couldn't parse selectors"
+     Just sels -> return (WrapSelectors sels)
 
 parseIdStruct :: FromJSON a => Maybe Value -> Parser (Maybe a, Maybe Label)
 parseIdStruct (Just (Object v)) = do
