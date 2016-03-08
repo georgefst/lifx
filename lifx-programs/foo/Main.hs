@@ -6,6 +6,7 @@ import Control.Monad
 import Data.Char
 import Data.List
 import Data.Maybe
+import Data.Monoid
 import Data.Ord
 import qualified Data.Text as T
 import Test.Tasty
@@ -130,6 +131,7 @@ main = do
 
   defaultMain $ testGroup "color" $
     [ testCase "testRGB" testRGB
+    , testCase "selectorTest" selectorTest
     ] ++ colorErrorTests ++ selectorErrorTests
 
   where
@@ -839,6 +841,24 @@ colorErrorTests =
   where tst c = testCase c $ msg $ parseColor (T.pack c)
         msg Nothing = return ()
         msg (Just _ ) = assertFailure "unexpectedly successful"
+
+frt :: LifxId a => T.Text -> a
+frt = fromRight . fromText
+
+selectorTest :: IO ()
+selectorTest = do
+  let txt = "all,label:Banana,id:aabbccddeeff,group:Apple,location:Orange,"
+            <> "group_id:00112233445566778899aabbccddeeff,"
+            <> "location_id:defacedbadfacadedefacedbadfacade"
+      sels = [ SelAll
+             , SelLabel      $ frt "Banana"
+             , SelDevId      $ frt "aabbccddeeff"
+             , SelGroup      $ frt "Apple"
+             , SelLocation   $ frt "Orange"
+             , SelGroupId    $ frt "00112233445566778899aabbccddeeff"
+             , SelLocationId $ frt "defacedbadfacadedefacedbadfacade"
+             ]
+  assertEqual "selectorTest" (Just sels) (parseSelectors txt)
 
 selectorErrorTests =
   [ tst "allow"
