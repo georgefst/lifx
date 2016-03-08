@@ -132,13 +132,15 @@ main = do
                       ]
   -}
 
-  defaultMain $ testGroup "color" $
+  defaultMain $ testGroup "Pure Tests" $
     [ testCase "testRGB" testRGB
     , testCase "selectorTest" selectorTest
     , testCase "selectorsToTextErrorTest" selectorsToTextErrorTest
     , testCase "lifxIdTest" lifxIdTest
     , testCase "lifxIdByteStringErrorTest" lifxIdByteStringErrorTest
-    ] ++ colorErrorTests ++ selectorErrorTests
+    , testCase "colorErrorTest" colorErrorTest
+    , testCase "selectorErrorTest" selectorErrorTest
+    ]
 
   where
     initCloud = do
@@ -835,18 +837,18 @@ testRGB =
         zeroColor = justColor $ HSBK 0 0 0 0
     assertColorEqual (T.unpack txt) expected (definitelyColor actual)
 
-colorErrorTests =
-  [ tst "rgb:0,0,ff"
-  , tst "brown"
-  , tst "#ddffgg"
-  , tst "#fffff"
-  , tst "#fffffff"
-  , tst "hue:120 saturation:1.0 brightness:0.5 kelbin:5000"
-  , tst "rgb:0x"
-  ]
-  where tst c = testCase c $ msg $ parseColor (T.pack c)
-        msg Nothing = return ()
-        msg (Just _ ) = assertFailure "unexpectedly successful"
+colorErrorTest = do
+  tst "rgb:0,0,ff"
+  tst "brown"
+  tst "#ddffgg"
+  tst "#fffff"
+  tst "#fffffff"
+  tst "hue:120 saturation:1.0 brightness:0.5 kelbin:5000"
+  tst "rgb:0x"
+
+  where tst c = msg c $ parseColor (T.pack c)
+        msg _ Nothing = return ()
+        msg c (Just _ ) = assertFailure c
 
 frt :: LifxId a => T.Text -> a
 frt = fromRight . fromText
@@ -867,20 +869,20 @@ selectorTest = do
   assertEqual "parseSelectors" (Just sels) (parseSelectors txt)
   assertEqual "selectorsToText" txt (fromRight' $ selectorsToText sels)
 
-selectorErrorTests =
-  [ tst "allow"
-  , tst "id:aabbccddeeff00"
-  , tst "id:bbccddeeffgg"
-  , tst "id:aabbccddeef"
-  , tst "group_id:0123456789"
-  , tst "group_id:whatever"
-  , tst "group_id:"
-  , tst "location_id:aaaaaaaaaaaaaaaa"
-  , tst "location_id:aaaaaaaaaaaaaaaaa"
-  ]
-  where tst s = testCase s $ msg $ parseSelector (T.pack s)
-        msg Nothing = return ()
-        msg (Just _ ) = assertFailure "unexpectedly successful"
+selectorErrorTest = do
+  tst "allow"
+  tst "id:aabbccddeeff00"
+  tst "id:bbccddeeffgg"
+  tst "id:aabbccddeef"
+  tst "group_id:0123456789"
+  tst "group_id:whatever"
+  tst "group_id:"
+  tst "location_id:aaaaaaaaaaaaaaaa"
+  tst "location_id:aaaaaaaaaaaaaaaaa"
+
+  where tst s = msg s $ parseSelector (T.pack s)
+        msg _ Nothing = return ()
+        msg s (Just _ ) = assertFailure s
 
 selectorsToTextErrorTest :: IO ()
 selectorsToTextErrorTest = do
