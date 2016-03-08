@@ -898,9 +898,9 @@ testLifxId msg len dummy = do
 
 lifxIdTest :: IO ()
 lifxIdTest = do
-  testLifxId "DeviceId"    6 (undefined :: DeviceId)
-  testLifxId "GroupId"    16 (undefined :: GroupId)
-  testLifxId "LocationId" 16 (undefined :: LocationId)
-  testLifxId "Label"      32 (undefined :: Label)
-  testLifxId "AuthToken"  32 (undefined :: AuthToken)
-  testLifxId "SceneId"    16 (undefined :: SceneId)
+  testLifxId "DeviceId"     6 (undefined :: DeviceId)
+  testLifxId "GroupId"     16 (undefined :: GroupId)
+  testLifxId "LocationId"  16 (undefined :: LocationId)
+  testLifxId "Label"       32 (undefined :: Label)
+  testLifxId "AccessToken" 32 (undefined :: AccessToken)
+  testLifxId "SceneId"     16 (undefined :: SceneId)

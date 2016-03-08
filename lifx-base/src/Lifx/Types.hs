@@ -20,7 +20,6 @@ import Data.Int
 import Data.List (find, partition)
 import Data.Maybe
 import Data.Monoid hiding (Product)
--- import qualified Data.Set as S
 import Data.Text (Text(..))
 import qualified Data.Text as T
 import Data.Text.Buildable
@@ -138,7 +137,7 @@ newtype Label      = Label B.ByteString      deriving (Eq, Ord)
 -- | The 32-byte
 -- <http://api.developer.lifx.com/docs/authentication access token>
 -- used by the HTTP API.
-newtype AuthToken  = AuthToken B.ByteString  deriving (Eq, Ord)
+newtype AccessToken  = AccessToken B.ByteString  deriving (Eq, Ord)
 
 -- | This class contains methods for encoding and decoding the
 -- various ID types.  For most of the ID types, which are binary,
@@ -295,23 +294,23 @@ instance FromJSON Label where
 
 authTokenLen = 32
 
-instance LifxId AuthToken where
-  toByteString (AuthToken bs) = bs
-  fromByteString bs = AuthToken <$> checkLength "AuthToken" authTokenLen bs
-  toText (AuthToken bs) = idToText bs
-  fromText txt = AuthToken <$> textToId "AuthToken" authTokenLen txt
+instance LifxId AccessToken where
+  toByteString (AccessToken bs) = bs
+  fromByteString bs = AccessToken <$> checkLength "AccessToken" authTokenLen bs
+  toText (AccessToken bs) = idToText bs
+  fromText txt = AccessToken <$> textToId "AccessToken" authTokenLen txt
 
-instance Show AuthToken where
-  showsPrec _ (AuthToken bs) pre = implShow bs pre
+instance Show AccessToken where
+  showsPrec _ (AccessToken bs) pre = implShow bs pre
 
-instance Read AuthToken where
-  readsPrec _ s = implRead AuthToken authTokenLen s
+instance Read AccessToken where
+  readsPrec _ s = implRead AccessToken authTokenLen s
 
-instance Binary AuthToken where
-  put (AuthToken bs) = putByteString bs
-  get = AuthToken <$> getByteString authTokenLen
+instance Binary AccessToken where
+  put (AccessToken bs) = putByteString bs
+  get = AccessToken <$> getByteString authTokenLen
 
-instance FromJSON AuthToken where
+instance FromJSON AccessToken where
   parseJSON = implParseJson
 
 

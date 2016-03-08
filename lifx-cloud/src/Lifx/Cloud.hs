@@ -48,7 +48,7 @@ pkg_name = "lifx-cloud"
 data CloudSettings =
   CloudSettings
   { csManager :: IO Manager
-  , csToken :: AuthToken
+  , csToken :: AccessToken
   , csRoot :: T.Text
   , csLog :: T.Text -> IO ()
   }
@@ -65,7 +65,7 @@ defaultCloudSettings =
 data CloudConnection =
   CloudConnection
   { ccManager :: !Manager
-  , ccToken :: !AuthToken
+  , ccToken :: !AccessToken
   , ccRoot :: !T.Text
   , ccWarn :: T.Text -> IO ()
   }

@@ -34,7 +34,7 @@ module Lifx
        , white, red, orange, yellow, green, cyan, blue, purple, pink
          -- * IDs
        , LifxId (..)
-       , DeviceId, GroupId, LocationId, Label, AuthToken
+       , DeviceId, GroupId, LocationId, Label, AccessToken
        , SceneId (..)
          -- * Selectors
        , Selector (..)
