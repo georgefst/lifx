@@ -399,8 +399,8 @@ class Connection t where
                                                   -- to apply them to.
                -> IO [StateTransitionResult]
 
-  -- | Turn the specifies lights on if all of them are off.  Turn the
-  -- specifies lights off if any of them are on.  Corresponds to
+  -- | Turn the specified lights on if all of them are off.  Turn the
+  -- specified lights off if any of them are on.  Corresponds to
   -- <http://api.developer.lifx.com/docs/toggle-power Toggle Power> endpoint.
   togglePower :: t              -- ^ The connection.
                  -> [Selector]  -- ^ The lights to operate on.
@@ -443,6 +443,16 @@ class Connection t where
                    -> SceneId     -- ^ ID of the scene to activate.
                    -> FracSeconds -- ^ Duration of fade.
                    -> IO [Result]
+  activateScene conn sid dur = do
+    scenes <- listScenes conn
+    let sceneIds = map scId scenes
+        mscene = sid `lookup` zip sceneIds scenes
+    scene <- case mscene of
+              Nothing -> fail "can't find scene" -- FIXME: throw real exception
+              Just x -> return x
+    let states = map (sceneStateToStatePair dur) (scStates scene)
+    trs <- setStates conn states
+    return $ concatMap tResults trs
 
   -- | Determines which 'StateTransition' most closely matches the
   -- current state of the specified lights, and then activates the
@@ -458,6 +468,16 @@ class Connection t where
   -- with it.
   closeConnection :: t        -- ^ The connection to terminate.
                      -> IO ()
+
+sceneStateToStatePair :: FracSeconds
+                         -> SceneState
+                         -> ([Selector], StateTransition)
+sceneStateToStatePair dur scenest =
+  ([ssSel scenest],
+   StateTransition { sPower = ssPower scenest
+                   , sColor = ssColor scenest
+                   , sDuration = dur
+                   })
 
 -- | An amount of time, specified as a floating-point number of seconds.
 type FracSeconds = Double
