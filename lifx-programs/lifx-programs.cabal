@@ -107,7 +107,7 @@ executable foo
                      , lifx-cloud >= 0.1 && < 0.2
 
   -- Directories containing source files.
-  hs-source-dirs: foo
+  hs-source-dirs: tests
 
   -- Base language which the package is written in.
   default-language:    Haskell2010
