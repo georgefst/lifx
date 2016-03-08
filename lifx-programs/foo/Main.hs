@@ -137,6 +137,7 @@ main = do
     , testCase "selectorTest" selectorTest
     , testCase "selectorsToTextErrorTest" selectorsToTextErrorTest
     , testCase "lifxIdTest" lifxIdTest
+    , testCase "lifxIdByteStringErrorTest" lifxIdByteStringErrorTest
     ] ++ colorErrorTests ++ selectorErrorTests
 
   where
@@ -896,8 +897,41 @@ testLifxId msg len dummy = do
       bs' = toByteString y
   assertEqual msg bs bs'
 
+testLifxIdByteStringError :: (LifxId a, Show a, Eq a) => String -> Int -> a -> IO ()
+testLifxIdByteStringError msg len dummy = do
+  let bs = "abc"
+      x = fromByteString bs `asTypeOf` Right dummy
+      expected = "when constructing " ++ msg ++ " from ByteString, expected "
+                 ++ show len ++ " bytes, but got 3"
+  assertEqual msg (Left expected) x
+
+testLifxIdTextError :: (LifxId a, Show a, Eq a) => String -> Int -> a -> IO ()
+testLifxIdTextError msg len dummy = do
+  let txt = "aabbcc"
+      x = fromText txt `asTypeOf` Right dummy
+      expected = "when constructing " ++ msg ++ " from Text, expected "
+                 ++ show len ++ " bytes, but got 3"
+  assertEqual msg (Left expected) x
+  let txt' = "aabbccd"
+      x' = fromText txt' `asTypeOf` Right dummy
+      expected' = "Got crud \"d\" after " ++ msg
+  assertEqual msg (Left expected') x'
+  let txt'' = "00xx"
+      x'' = fromText txt'' `asTypeOf` Right dummy
+      expected'' = "Got crud \"xx\" after " ++ msg
+  assertEqual msg (Left expected'') x''
+
 lifxIdTest :: IO ()
 lifxIdTest = do
+  testLifxId "DeviceId"     6 (undefined :: DeviceId)
+  testLifxId "GroupId"     16 (undefined :: GroupId)
+  testLifxId "LocationId"  16 (undefined :: LocationId)
+  testLifxId "Label"       32 (undefined :: Label)
+  testLifxId "AccessToken" 32 (undefined :: AccessToken)
+  testLifxId "SceneId"     16 (undefined :: SceneId)
+
+lifxIdByteStringErrorTest :: IO ()
+lifxIdByteStringErrorTest = do
   testLifxId "DeviceId"     6 (undefined :: DeviceId)
   testLifxId "GroupId"     16 (undefined :: GroupId)
   testLifxId "LocationId"  16 (undefined :: LocationId)
