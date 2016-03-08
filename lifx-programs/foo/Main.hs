@@ -18,6 +18,8 @@ import Lifx.Lan
 
 fromRight = either error id
 
+fromRight' = either (error . show) id
+
 justColor :: Color -> MaybeColor
 justColor = fmap Just
 
@@ -132,6 +134,7 @@ main = do
   defaultMain $ testGroup "color" $
     [ testCase "testRGB" testRGB
     , testCase "selectorTest" selectorTest
+    , testCase "selectorsToTextErrorTest" selectorsToTextErrorTest
     ] ++ colorErrorTests ++ selectorErrorTests
 
   where
@@ -858,7 +861,8 @@ selectorTest = do
              , SelGroupId    $ frt "00112233445566778899aabbccddeeff"
              , SelLocationId $ frt "defacedbadfacadedefacedbadfacade"
              ]
-  assertEqual "selectorTest" (Just sels) (parseSelectors txt)
+  assertEqual "parseSelectors" (Just sels) (parseSelectors txt)
+  assertEqual "selectorsToText" txt (fromRight' $ selectorsToText sels)
 
 selectorErrorTests =
   [ tst "allow"
@@ -874,3 +878,10 @@ selectorErrorTests =
   where tst s = testCase s $ msg $ parseSelector (T.pack s)
         msg Nothing = return ()
         msg (Just _ ) = assertFailure "unexpectedly successful"
+
+selectorsToTextErrorTest :: IO ()
+selectorsToTextErrorTest = do
+  let sels = [ SelLabel $ frt "Hello, World!" ]
+      actual = selectorsToText sels
+      expected = Left $ IllegalCharacter ','
+  assertEqual "selectorsToTextErrorTest" actual expected

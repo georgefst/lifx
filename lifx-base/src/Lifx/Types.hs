@@ -54,7 +54,7 @@ data LifxException =
   | CloudJsonError T.Text L.ByteString
     -- | The given character is not allowed in a label.
   | IllegalCharacter Char
-  deriving (Show, Typeable)
+  deriving (Show, Eq, Typeable)
 
 instance Exception LifxException
 
