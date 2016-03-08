@@ -3,6 +3,7 @@
 import Control.Arrow
 import Control.Concurrent
 import Control.Monad
+import qualified Data.ByteString as B
 import Data.Char
 import Data.List
 import Data.Maybe
@@ -135,6 +136,7 @@ main = do
     [ testCase "testRGB" testRGB
     , testCase "selectorTest" selectorTest
     , testCase "selectorsToTextErrorTest" selectorsToTextErrorTest
+    , testCase "lifxIdTest" lifxIdTest
     ] ++ colorErrorTests ++ selectorErrorTests
 
   where
@@ -885,3 +887,20 @@ selectorsToTextErrorTest = do
       actual = selectorsToText sels
       expected = Left $ IllegalCharacter ','
   assertEqual "selectorsToTextErrorTest" actual expected
+
+testLifxId :: LifxId a => String -> Int -> a -> IO ()
+testLifxId msg len dummy = do
+  let bs = B.take len "abcdefghijklmnopqrstuvwxyz123456"
+      x = (fromRight $ fromByteString bs) `asTypeOf` dummy
+      y = (fromRight $ fromText (toText x)) `asTypeOf` dummy
+      bs' = toByteString y
+  assertEqual msg bs bs'
+
+lifxIdTest :: IO ()
+lifxIdTest = do
+  testLifxId "DeviceId"    6 (undefined :: DeviceId)
+  testLifxId "GroupId"    16 (undefined :: GroupId)
+  testLifxId "LocationId" 16 (undefined :: LocationId)
+  testLifxId "Label"      32 (undefined :: Label)
+  testLifxId "AuthToken"  32 (undefined :: AuthToken)
+  testLifxId "SceneId"    16 (undefined :: SceneId)
