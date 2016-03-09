@@ -599,7 +599,7 @@ getAppropriateScene :: Connection c
                        -> IO Scene
 getAppropriateScene conn devs = do
   scenes <- listScenes conn
-  case findAppropriateScene scenes of
+  case findAppropriateScene scenes devs of
    Nothing -> assertFailure ("Could not find a scene containing only "
                              ++ show devs) >> undefined
    Just scene -> return scene
@@ -613,26 +613,19 @@ testActivateScene :: (Connection c1, Connection c2)
 testActivateScene rsrc1 rsrc2 devs step = do
   (conn1, conn2) <- getConnections rsrc1 rsrc2
   tr <- knownState conn1 devs step
+  let sels = map SelDevId devs
+
   step "finding a scene to use"
-  scene <- getAppropriateScene conn1
+  scene <- getAppropriateScene conn1 devs
+
   step "activating scene"
   rs <- activateScene conn1 (scId scene) 0
   dly
+
   step "listing lights"
   li <- listLights conn2 sels [NeedLabel, NeedPower, NeedColor]
   checkLabels rs li
   checkScenes scene li
-
-{-
-consistentWith :: Eq a => Maybe a -> Maybe a -> Bool
-consistentWith Nothing _ = True
-consistentWith (Just x) (Just y) = x == y
-consistentWith _ _ = False
-
-assertConsistent :: Eq a => String -> Maybe a -> Maybe a -> IO ()
-assertConsistent _ Nothing _ = return ()
-assertConsistent msg expected actual = assertEqual msg expected actual
--}
 
 -- if expected is Nothing, we don't care what actual is
 assertConsistent :: Show a
@@ -642,25 +635,26 @@ assertConsistent :: Show a
                     -> Maybe a
                     -> IO ()
 assertConsistent _ _ Nothing _ = return ()
-assertConsistent f msg (Just expected) (Just actual) = f expected actual
+assertConsistent f msg (Just expected) (Just actual) = f msg expected actual
 assertConsistent _ msg (Just expected) Nothing =
-  assertFailure (msg ++ ": expected " ++ expected ++ " but got Nothing")
+  assertFailure (msg ++ ": expected " ++ show expected ++ " but got Nothing")
 
-assertConsistentEq       = assertConsistent assertEqual
-assertConsistentClose    = assertConsistent assertCloseEnough
-assertConsistentClose360 = assertConsistent assertCloseEnough360
+assertConsistentEq     = assertConsistent assertEqual
+assertConsistentHue    = assertConsistent (assertCloseEnough360 (360 / 500))
+assertConsistentSatBri = assertConsistent (assertCloseEnough (1 / 500))
+assertConsistentKelvin = assertConsistent (assertCloseEnough 3)
 
-assertConsistentColor :: String -> Color -> Color -> IO ()
+assertConsistentColor :: String -> MaybeColor -> MaybeColor -> IO ()
 assertConsistentColor msg expected actual = do
   -- https://community.lifx.com/t/some-weird-observations-when-writing-automated-tests/1080
-  assertConsistentClose360 (360 / 500) (msg ++ ": hue") (hue expected) (hue actual)
-  assertConsistentClose (1 / 500) (msg ++ ": saturation") (saturation expected) (saturation actual)
-  assertConsistentClose (1 / 500) (msg ++ ": brightness") (brightness expected) (brightness actual)
-  assertConsistentClose 3 (msg ++ ": kelvin") (kelvin expected) (kelvin actual)
+  assertConsistentHue    (msg ++ ": hue")        (hue expected) (hue actual)
+  assertConsistentSatBri (msg ++ ": saturation") (saturation expected) (saturation actual)
+  assertConsistentSatBri (msg ++ ": brightness") (brightness expected) (brightness actual)
+  assertConsistentKelvin (msg ++ ": kelvin")     (kelvin expected) (kelvin actual)
 
 checkScenes :: Scene -> [LightInfo] -> IO ()
 checkScenes scene li = do
-  let states = sortBy (comparing ssSel) scStates scene
+  let states = sortBy (comparing ssSel) (scStates scene)
       li' = sortBy (comparing lId) li
       pairs = zip states li'
   forM_ pairs $ \(state, linfo) -> do
