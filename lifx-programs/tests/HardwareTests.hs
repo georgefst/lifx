@@ -7,6 +7,7 @@ import Control.Concurrent
 import Control.Monad
 import qualified Data.ByteString as B
 import Data.Char
+import Data.Hourglass
 import Data.List
 import Data.Maybe
 import Data.Monoid
@@ -24,7 +25,7 @@ import Util
 hardwareTests =
   let devs = map (fromRight . fromText) ["d073d5029e03", "d073d502b95f"]
   in withResource initCloud closeConnection
-    $ \cr -> withResource initLan closeConnection
+    $ \cr -> withResource (initLan devs) closeConnection
              $ \lr -> testGroup "Hardware Tests"
                       [ testGroup "Cloud" (someTests cr cr devs)
                       , testGroup "Lan"   (someTests lr lr devs)
@@ -37,10 +38,29 @@ hardwareTests =
       let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
           cs = defaultCloudSettings { csToken = lifxToken }
       openCloudConnection cs
-    initLan = do
-      lc <- openLanConnection defaultLanSettings
+    initLan devs = do
+      lc <- openLanConnection (myLanSettings devs)
       threadDelay 1000000
       return lc
+
+myLanSettings devs =
+  defaultLanSettings { lsListScenes = return $ myScenes devs }
+
+longAgo = DateTime d t
+  where d = Date 1776 July 4
+        t = TimeOfDay (Hours 0) (Minutes 0) (Seconds 0) (NanoSeconds 0)
+
+myScenes devs =
+  [ Scene
+    { scId = fromRight $ fromText "0c18d0b8-e5c3-11e5-b5ac-0050c2490048"
+    , scName = "Hardcoded test scene for LAN"
+    , scUpdatedAt = longAgo
+    , scCreatedAt = longAgo
+    , scAccount = Nothing
+    , scStates = zipWith mkState devs (reverse colors)
+    }
+  ]
+  where mkState dev color = SceneState (SelDevId dev) (Just On) color
 
 dly = threadDelay 500000
 
@@ -107,6 +127,7 @@ someTests conn1 conn2 devs =
   , testGroup "breathe effect" (effectTests conn1 conn2 devs
                                 defaultEffect { eType = Breathe, eCycles = 1.5 }
                                 ++ breatheOnlyTests conn1 conn2 devs)
+  , testCaseSteps "activate scene" (testActivateScene conn1 conn2 devs)
   ]
 
 effectTests :: (Connection c1, Connection c2)
@@ -618,7 +639,7 @@ testActivateScene rsrc1 rsrc2 devs step = do
   step "finding a scene to use"
   scene <- getAppropriateScene conn1 devs
 
-  step "activating scene"
+  step $ "activating scene " ++ show (scName scene)
   rs <- activateScene conn1 (scId scene) 0
   dly
 
