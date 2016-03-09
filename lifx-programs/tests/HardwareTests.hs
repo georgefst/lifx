@@ -112,8 +112,7 @@ someTests :: (Connection c1, Connection c2)
              -> [DeviceId]
              -> [TestTree]
 someTests conn1 conn2 devs =
-  [ testCaseSteps "list lights"  (testListLights  conn1 conn2 devs)
-    {-
+  [ {- testCaseSteps "list lights"  (testListLights  conn1 conn2 devs)
   , testCaseSteps "toggle power" (testTogglePower conn1 conn2 devs)
   , testCaseSteps "toggle power (mixed)" (testTogglePowerPartial conn1 conn2 devs)
   , testCaseSteps "set state (hsbk)" (testSetStateHSBK conn1 conn2 devs)
@@ -128,9 +127,14 @@ someTests conn1 conn2 devs =
   , testGroup "breathe effect" (effectTests conn1 conn2 devs
                                 defaultEffect { eType = Breathe, eCycles = 1.5 }
                                 ++ breatheOnlyTests conn1 conn2 devs)
-    -}
   , testCaseSteps "activate scene" (testActivateScene conn1 conn2 devs)
-  , testCaseSteps "activate nonexistent scene" (testActivateSceneNonexistent conn1 conn2 devs)
+  , -} testCaseSteps "activate nonexistent scene" (testActivateSceneNonexistent conn1 conn2 devs)
+  , testCaseSteps "nonexistent device" (testNonexistentDevice conn1 conn2 devs)
+  , testCaseSteps "nonexistent label" (testNonexistentLabel conn1 conn2 devs)
+  , testCaseSteps "nonexistent group id" (testNonexistentGroupId conn1 conn2 devs)
+  , testCaseSteps "nonexistent group" (testNonexistentGroup conn1 conn2 devs)
+  , testCaseSteps "nonexistent location id" (testNonexistentLocationId conn1 conn2 devs)
+  , testCaseSteps "nonexistent location" (testNonexistentLocation conn1 conn2 devs)
   ]
 
 effectTests :: (Connection c1, Connection c2)
@@ -692,12 +696,94 @@ testActivateSceneNonexistent :: (Connection c1, Connection c2)
                                 -> [DeviceId]
                                 -> (String -> IO ())
                                 -> IO ()
-testActivateSceneNonexistent rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
-  tr <- knownState conn1 devs step
-  let sels = map SelDevId devs
+testActivateSceneNonexistent rsrc1 rsrc2 _ step = do
+  (conn1, _ ) <- getConnections rsrc1 rsrc2
 
   step "activating nonexistent scene"
   let badScene = "55213c0c-e5c9-11e5-80f7-0050c2490048"
   rs <- activateScene conn1 (fromRight $ fromText badScene) 0
+  dly
+
+testNonexistentDevice :: (Connection c1, Connection c2)
+                         => IO c1
+                         -> IO c2
+                         -> [DeviceId]
+                         -> (String -> IO ())
+                         -> IO ()
+testNonexistentDevice rsrc1 rsrc2 _ step = do
+  (conn1, _ ) <- getConnections rsrc1 rsrc2
+  let nonDev = fromRight $ fromText "0015edaabbcc"
+
+  step "trying nonexistent device"
+  togglePower conn1 [SelDevId nonDev] 1.0
+  dly
+
+testNonexistentLabel :: (Connection c1, Connection c2)
+                        => IO c1
+                        -> IO c2
+                        -> [DeviceId]
+                        -> (String -> IO ())
+                        -> IO ()
+testNonexistentLabel rsrc1 rsrc2 _ step = do
+  (conn1, _ ) <- getConnections rsrc1 rsrc2
+  let nonLab = fromRight $ fromText "mfgH2fYENVpO1SIu5w5wbmfVuLiqV6Ct"
+
+  step "trying nonexistent label"
+  togglePower conn1 [SelLabel nonLab] 1.0
+  dly
+
+testNonexistentGroupId :: (Connection c1, Connection c2)
+                          => IO c1
+                          -> IO c2
+                          -> [DeviceId]
+                          -> (String -> IO ())
+                          -> IO ()
+testNonexistentGroupId rsrc1 rsrc2 _ step = do
+  (conn1, _ ) <- getConnections rsrc1 rsrc2
+  let nonLab = fromRight $ fromText "feedfacedeadbeefdefacedbadfacade"
+
+  step "trying nonexistent group id"
+  togglePower conn1 [SelGroupId nonLab] 1.0
+  dly
+
+testNonexistentGroup :: (Connection c1, Connection c2)
+                        => IO c1
+                        -> IO c2
+                        -> [DeviceId]
+                        -> (String -> IO ())
+                        -> IO ()
+testNonexistentGroup rsrc1 rsrc2 _ step = do
+  (conn1, _ ) <- getConnections rsrc1 rsrc2
+  let nonLab = fromRight $ fromText "mfgH2fYENVpO1SIu5w5wbmfVuLiqV6Ct"
+
+  step "trying nonexistent group"
+  togglePower conn1 [SelGroup nonLab] 1.0
+  dly
+
+testNonexistentLocationId :: (Connection c1, Connection c2)
+                             => IO c1
+                             -> IO c2
+                             -> [DeviceId]
+                             -> (String -> IO ())
+                             -> IO ()
+testNonexistentLocationId rsrc1 rsrc2 _ step = do
+  (conn1, _ ) <- getConnections rsrc1 rsrc2
+  let nonLab = fromRight $ fromText "feedfacedeadbeefdefacedbadfacade"
+
+  step "trying nonexistent location id"
+  togglePower conn1 [SelLocationId nonLab] 1.0
+  dly
+
+testNonexistentLocation :: (Connection c1, Connection c2)
+                           => IO c1
+                           -> IO c2
+                           -> [DeviceId]
+                           -> (String -> IO ())
+                           -> IO ()
+testNonexistentLocation rsrc1 rsrc2 _ step = do
+  (conn1, _ ) <- getConnections rsrc1 rsrc2
+  let nonLab = fromRight $ fromText "mfgH2fYENVpO1SIu5w5wbmfVuLiqV6Ct"
+
+  step "trying nonexistent location"
+  togglePower conn1 [SelLocation nonLab] 1.0
   dly
