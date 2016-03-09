@@ -372,6 +372,9 @@ data Product =
 class Connection t where
   -- | Retrieve information about some or all lights.  Corresponds to
   -- <http://api.developer.lifx.com/docs/list-lights List Lights> endpoint.
+  -- Beware that on a @LanConnection@, it takes time for lights to be
+  -- discovered, so the list of lights will be empty immediately after
+  -- the connection is created.
   listLights :: t                  -- ^ The connection.
                 -> [Selector]      -- ^ The lights to list.
                 -> [InfoNeeded]    -- ^ A hint about what information is desired
