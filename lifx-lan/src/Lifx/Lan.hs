@@ -764,7 +764,6 @@ instance Connection LanConnection where
 
   listScenes lc = lsListScenes $ lcSettings lc
 
-  activateScene lc scene dur = undefined
   cycleLights lc sel states = undefined
 
   closeConnection lc =
