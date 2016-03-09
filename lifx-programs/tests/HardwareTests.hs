@@ -585,3 +585,86 @@ testBreatheFromPersistHSBK rsrc1 rsrc2 devs step = do
   -- we expect the breathe to stop halfway between the two colors
   checkColor (zip3 devs (repeat On) (repeat $ HSBK 150 0.5 0.3 4000)) li
   checkLabels (tResults tr) li
+
+findAppropriateScene :: [Scene] -> [DeviceId] -> Maybe Scene
+findAppropriateScene scenes devs =
+  let selsInScenes = map selsInScene scenes
+      selsInScene scene = sort $ map ssSel $ scStates scene
+      pairs = zip selsInScenes scenes
+  in map SelDevId (sort devs) `lookup` pairs
+
+getAppropriateScene :: Connection c
+                       => c
+                       -> [DeviceId]
+                       -> IO Scene
+getAppropriateScene conn devs = do
+  scenes <- listScenes conn
+  case findAppropriateScene scenes of
+   Nothing -> assertFailure ("Could not find a scene containing only "
+                             ++ show devs) >> undefined
+   Just scene -> return scene
+
+testActivateScene :: (Connection c1, Connection c2)
+                     => IO c1
+                     -> IO c2
+                     -> [DeviceId]
+                     -> (String -> IO ())
+                     -> IO ()
+testActivateScene rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
+  tr <- knownState conn1 devs step
+  step "finding a scene to use"
+  scene <- getAppropriateScene conn1
+  step "activating scene"
+  rs <- activateScene conn1 (scId scene) 0
+  dly
+  step "listing lights"
+  li <- listLights conn2 sels [NeedLabel, NeedPower, NeedColor]
+  checkLabels rs li
+  checkScenes scene li
+
+{-
+consistentWith :: Eq a => Maybe a -> Maybe a -> Bool
+consistentWith Nothing _ = True
+consistentWith (Just x) (Just y) = x == y
+consistentWith _ _ = False
+
+assertConsistent :: Eq a => String -> Maybe a -> Maybe a -> IO ()
+assertConsistent _ Nothing _ = return ()
+assertConsistent msg expected actual = assertEqual msg expected actual
+-}
+
+-- if expected is Nothing, we don't care what actual is
+assertConsistent :: Show a
+                    => (String -> a -> a -> IO ())
+                    -> String
+                    -> Maybe a
+                    -> Maybe a
+                    -> IO ()
+assertConsistent _ _ Nothing _ = return ()
+assertConsistent f msg (Just expected) (Just actual) = f expected actual
+assertConsistent _ msg (Just expected) Nothing =
+  assertFailure (msg ++ ": expected " ++ expected ++ " but got Nothing")
+
+assertConsistentEq       = assertConsistent assertEqual
+assertConsistentClose    = assertConsistent assertCloseEnough
+assertConsistentClose360 = assertConsistent assertCloseEnough360
+
+assertConsistentColor :: String -> Color -> Color -> IO ()
+assertConsistentColor msg expected actual = do
+  -- https://community.lifx.com/t/some-weird-observations-when-writing-automated-tests/1080
+  assertConsistentClose360 (360 / 500) (msg ++ ": hue") (hue expected) (hue actual)
+  assertConsistentClose (1 / 500) (msg ++ ": saturation") (saturation expected) (saturation actual)
+  assertConsistentClose (1 / 500) (msg ++ ": brightness") (brightness expected) (brightness actual)
+  assertConsistentClose 3 (msg ++ ": kelvin") (kelvin expected) (kelvin actual)
+
+checkScenes :: Scene -> [LightInfo] -> IO ()
+checkScenes scene li = do
+  let states = sortBy (comparing ssSel) scStates scene
+      li' = sortBy (comparing lId) li
+      pairs = zip states li'
+  forM_ pairs $ \(state, linfo) -> do
+    assertEqual "device IDs" (ssSel state) (SelDevId $ lId linfo)
+    assertConsistentEq "Power" (ssPower state) (lPower linfo)
+    assertConsistentColor "Color" (ssColor state) (lColor linfo)
+
