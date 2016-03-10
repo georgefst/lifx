@@ -113,7 +113,8 @@ someTests :: (Connection c1, Connection c2)
              -> [DeviceId]
              -> [TestTree]
 someTests conn1 conn2 devs =
-  [ {- testCaseSteps "list lights"  (testListLights  conn1 conn2 devs)
+  [ testCaseSteps "list lights"  (testListLights  conn1 conn2 devs)
+    {-
   , testCaseSteps "toggle power" (testTogglePower conn1 conn2 devs)
   , testCaseSteps "toggle power (mixed)" (testTogglePowerPartial conn1 conn2 devs)
   , testCaseSteps "set state (hsbk)" (testSetStateHSBK conn1 conn2 devs)
@@ -128,14 +129,18 @@ someTests conn1 conn2 devs =
   , testGroup "breathe effect" (effectTests conn1 conn2 devs
                                 defaultEffect { eType = Breathe, eCycles = 1.5 }
                                 ++ breatheOnlyTests conn1 conn2 devs)
+    -}
   , testCaseSteps "activate scene" (testActivateScene conn1 conn2 devs)
-  , -} testCase "activate nonexistent scene" (testActivateSceneNonexistent conn1 conn2 devs)
+  , testCaseSteps "select by label" (testSelectLabel conn1 conn2 devs)
+  , testCase "activate nonexistent scene" (testActivateSceneNonexistent conn1 conn2 devs)
+  {-
   , testCase "nonexistent device" (testNonexistentDevice conn1 conn2 devs)
   , testCase "nonexistent label" (testNonexistentLabel conn1 conn2 devs)
   , testCase "nonexistent group id" (testNonexistentGroupId conn1 conn2 devs)
   , testCase "nonexistent group" (testNonexistentGroup conn1 conn2 devs)
   , testCase "nonexistent location id" (testNonexistentLocationId conn1 conn2 devs)
   , testCase "nonexistent location" (testNonexistentLocation conn1 conn2 devs)
+  -}
   ]
 
 effectTests :: (Connection c1, Connection c2)
@@ -655,6 +660,23 @@ testActivateScene rsrc1 rsrc2 devs step = do
   li <- listLights conn2 sels [NeedLabel, NeedPower, NeedColor]
   checkLabels rs li
   checkScenes scene li
+
+testSelectLabel :: (Connection c1, Connection c2)
+                   => IO c1
+                   -> IO c2
+                   -> [DeviceId]
+                   -> (String -> IO ())
+                   -> IO ()
+testSelectLabel rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
+  tr <- knownState conn1 devs step
+  let labs = map (fromJust . rLabel) (tResults tr)
+  let sels = map SelLabel labs
+
+  step "listing lights"
+  li <- listLights conn2 sels needEverything
+  checkColor (zip3 devs (repeat On) (repeat defaultColor)) li
+  checkLabels (tResults tr) li
 
 -- if expected is Nothing, we don't care what actual is
 assertConsistent :: Show a
