@@ -146,6 +146,7 @@ emptyLightInfo devId now = LightInfo
   , lHardwareVersion = Nothing
   }
 
+{-
 selToNeeded :: Selector -> [InfoNeeded]
 selToNeeded SelAll             = []
 selToNeeded (SelLabel _ )      = [NeedLabel]
@@ -154,6 +155,7 @@ selToNeeded (SelGroup _ )      = [NeedGroup]
 selToNeeded (SelGroupId _ )    = [NeedGroup]
 selToNeeded (SelLocation _ )   = [NeedLocation]
 selToNeeded (SelLocationId _ ) = [NeedLocation]
+-}
 
 
 data MessageNeeded = NeedGetLight   | NeedGetGroup    | NeedGetLocation
@@ -174,27 +176,12 @@ needMessage NeedFirmwareVersion = NeedGetHostFirmware
 needMessage NeedHardwareVersion = NeedGetVersion
 
 
-whatsNeeded :: [Selector] -> [InfoNeeded] -> [MessageNeeded]
-whatsNeeded sel needed =
-  sort $ nub $ map needMessage $ concatMap selToNeeded sel ++ needed
+whatsNeeded :: [InfoNeeded] -> [MessageNeeded]
+whatsNeeded needed = sort $ nub $ map needMessage needed
 
 
 type FinCont = Maybe LightInfo -> IO ()
 type NxtCont = LightInfo -> IO ()
-
-selLight :: Selector -> StateLight -> Bool
-selLight (SelLabel lbl) sl = lbl == slLabel sl
-selLight _ _ = True
-
-selGroup :: Selector -> StateGroup -> Bool
-selGroup (SelGroup lbl) sg = lbl == sgLabel sg -- FIXME: use up-to-date label
-selGroup (SelGroupId gid) sg = gid == sgGroup sg
-selGroup _ _ = True
-
-selLocation :: Selector -> StateLocation -> Bool
-selLocation (SelLocation lbl) slo = lbl == sloLabel slo -- FIXME: use up-to-date label
-selLocation (SelLocationId lid) slo = lid == sloLocation slo
-selLocation _ _ = True
 
 color16toFrac :: HSBK16 -> Color
 color16toFrac c = HSBK
@@ -242,14 +229,13 @@ lastSeen cl = maximum [ dtOfCt (clLocation cl)
                       ]
 
 listOneLight :: LanConnection
-                -> [Selector]
                 -> [MessageNeeded]
                 -> TVar (Maybe (MVar (MVarList LightInfo)))
                 -> TSem
                 -> CachedLight
                 -> IO ()
-listOneLight lc sels messagesNeeded tv sem cl =
-  gatherInfo (lcSettings lc, bulb, sels, fin) messagesNeeded eli
+listOneLight lc messagesNeeded tv sem cl =
+  gatherInfo (lcSettings lc, bulb, fin) messagesNeeded eli
 
   where bulb = clBulb cl
         eli = emptyLightInfo (deviceId bulb) (lastSeen cl)
@@ -279,12 +265,12 @@ appendLightInfo tv li = do
      Nothing -> return $ return ()
   f
 
-cbForMessage :: (LanSettings, Bulb, [Selector], FinCont)
+cbForMessage :: (LanSettings, Bulb, FinCont)
                 -> MessageNeeded
                 -> NxtCont
                 -> LightInfo
                 -> IO ()
-cbForMessage (ls, bulb, sels, finCont) mneed nxtCont li = f mneed
+cbForMessage (ls, bulb, finCont) mneed nxtCont li = f mneed
   where rq q cb = reliableQuery (lsRetryParams ls) (q bulb) cb $ do
                     (lsLog ls)
                       (T.pack $ show bulb ++ " not responding to " ++ opName)
@@ -299,17 +285,9 @@ cbForMessage (ls, bulb, sels, finCont) mneed nxtCont li = f mneed
         f NeedGetInfo         = rq getInfo         cbInfo
         f NeedGetHostFirmware = rq getHostFirmware cbHostFirmware
 
-        sel = head (sels ++ [SelAll]) -- FIXME: support multiple selectors
-
-        cbLight sl = if selLight sel sl
-                     then nxtCont (trLight sl)
-                     else finCont Nothing
-        cbGroup sg = if selGroup sel sg
-                     then nxtCont (trGroup sg)
-                     else finCont Nothing
-        cbLocation slo = if selLocation sel slo
-                         then nxtCont (trLocation slo)
-                         else finCont Nothing
+        cbLight sl         = nxtCont (trLight sl)
+        cbGroup sg         = nxtCont (trGroup sg)
+        cbLocation slo     = nxtCont (trLocation slo)
         cbVersion sv       = nxtCont (trVersion sv)
         cbHostInfo shi     = nxtCont (trHostInfo shi)
         cbInfo si          = nxtCont (trInfo si)
@@ -331,16 +309,6 @@ cbForMessage (ls, bulb, sels, finCont) mneed nxtCont li = f mneed
         trHostInfo shi = li { lTemperature = Just (fromIntegral (shiMcuTemperature shi) / 100) }
         trInfo si = li { lUptime = Just (fromIntegral (siUptime si) / nanosPerSecond) }
         trHostFirmware shf = li { lFirmwareVersion = Just (unpackFirmwareVersion $ shfVersion shf) }
-
-onceCb :: TVar (S.Set DeviceId) -> (Bulb -> IO ()) -> Bulb -> IO ()
-onceCb done realCb bulb = do
-  let dev = deviceId bulb
-  dup <- atomically $ do
-    s <- readTVar done
-    let d = dev `S.member` s
-    unless d $ writeTVar done $ dev `S.insert` s
-    return d
-  unless dup $ realCb bulb
 
 applySelectors :: LanConnection -> [Selector] -> STM [CachedLight]
 applySelectors lc sels = do
@@ -407,11 +375,11 @@ doListLights :: LanConnection
                 -> MVar (MVarList LightInfo)
                 -> IO ()
 doListLights lc sels needed result = do
-  let messagesNeeded = whatsNeeded sels needed
+  let messagesNeeded = whatsNeeded needed
   tv <- newTVarIO (Just result)
   sem <- atomically $ newTSem 0
   lites <- atomically $ applySelectors lc sels
-  forM_ lites $ listOneLight lc sels messagesNeeded tv sem
+  forM_ lites $ listOneLight lc messagesNeeded tv sem
   atomically $ forM_ lites $ \_ -> waitTSem sem
   mv <- atomically $ do
     x <- readTVar tv
