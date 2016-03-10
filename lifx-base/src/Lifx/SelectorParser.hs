@@ -23,7 +23,8 @@ parseSelectors = parseAllMaybe selectorList
 
 selectorString :: Parser Selector
 selectorString = selAll <|> selLabel <|> selDevId <|>
-                 selGroup <|> selGroupId <|> selLocation <|> selLocationId
+                 selGroup <|> selGroupId <|> selLocation <|> selLocationId <|>
+                 selSceneId
 
 selectorList :: Parser [Selector]
 selectorList = selectorString `sepBy1` (char ',')

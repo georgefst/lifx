@@ -29,9 +29,11 @@ hardwareTests =
     $ \cr -> withResource (initLan devs) closeConnection
              $ \lr -> testGroup "Hardware Tests"
                       [ testGroup "Cloud" (someTests cr cr devs)
+                        {-
                       , testGroup "Lan"   (someTests lr lr devs)
                       , testGroup "CloudAndLan" (someTests cr lr devs)
                       , testGroup "LanAndCloud" (someTests lr cr devs)
+                        -}
                       ]
   where
     initCloud = do
@@ -131,6 +133,7 @@ someTests conn1 conn2 devs =
                                 ++ breatheOnlyTests conn1 conn2 devs)
     -}
   , testCaseSteps "activate scene" (testActivateScene conn1 conn2 devs)
+  , testCaseSteps "select by scene" (testSelectScene conn1 conn2 devs)
   , testCaseSteps "select by label" (testSelectLabel conn1 conn2 devs)
   , testCase "activate nonexistent scene" (testActivateSceneNonexistent conn1 conn2 devs)
   {-
@@ -660,6 +663,31 @@ testActivateScene rsrc1 rsrc2 devs step = do
   li <- listLights conn2 sels [NeedLabel, NeedPower, NeedColor]
   checkLabels rs li
   checkScenes scene li
+
+testSelectScene :: (Connection c1, Connection c2)
+                   => IO c1
+                   -> IO c2
+                   -> [DeviceId]
+                   -> (String -> IO ())
+                   -> IO ()
+testSelectScene rsrc1 rsrc2 devs step = do
+  (conn1, conn2) <- getConnections rsrc1 rsrc2
+  tr <- knownState conn1 devs step
+  let sels = map SelDevId devs
+
+  step "finding a scene to use"
+  scene <- getAppropriateScene conn1 devs
+
+  step $ "setting state, selecting on " ++ show (scName scene)
+  result <- setState conn1 [SelSceneId $ scId scene]
+            $ StateTransition Nothing yellow 0
+  dly
+
+  step "listing lights"
+  li <- listLights conn2 sels [NeedLabel, NeedPower, NeedColor]
+  checkLabels result li
+  checkColor (zip3 devs (repeat On) (repeat $ makeComplete yellow)) li
+  checkLabels (tResults tr) li
 
 testSelectLabel :: (Connection c1, Connection c2)
                    => IO c1

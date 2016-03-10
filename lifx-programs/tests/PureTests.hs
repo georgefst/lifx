@@ -21,7 +21,9 @@ import Util
 
 pureTests = testGroup "Pure Tests" $
     [ testCase "testRGB" testRGB
+    , testCase "sceneIdTest" sceneIdTest
     , testCase "selectorTest" selectorTest
+    , testCase "sceneIdSelectorTest" sceneIdSelectorTest
     , testCase "selectorsToTextErrorTest" selectorsToTextErrorTest
     , testCase "lifxIdTest" lifxIdTest
     , testCase "lifxIdByteStringErrorTest" lifxIdByteStringErrorTest
@@ -213,6 +215,26 @@ selectorTest = do
              ]
   assertEqual "parseSelectors" (Just sels) (parseSelectors txt)
   assertEqual "selectorsToText" txt (fromRight' $ selectorsToText sels)
+
+ethSidToText :: Either String SceneId -> T.Text
+ethSidToText (Left x)  = T.pack x
+ethSidToText (Right x) = toText x
+
+sceneIdTest :: IO ()
+sceneIdTest = do
+  let txt = "23529942-e6da-11e5-b920-0050c2490048"
+      txt' = ethSidToText $ fromText txt
+  assertEqual "scene ids" txt txt'
+
+maybeSelToText :: Maybe Selector -> T.Text
+maybeSelToText Nothing = "Nothing"
+maybeSelToText (Just x) = selectorToText x
+
+sceneIdSelectorTest :: IO ()
+sceneIdSelectorTest = do
+  let txt = "scene_id:23529942-e6da-11e5-b920-0050c2490048"
+      txt' = maybeSelToText $ parseSelector txt
+  assertEqual "scene ids" txt txt'
 
 selectorErrorTest = do
   tst "allow"

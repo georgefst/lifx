@@ -367,6 +367,7 @@ selectFilter (SelGroupId gid) (CachedLight {clGroup = (Cached _ gid')}) =
 selectFilter (SelLocationId lid) (CachedLight {clLocation = NotCached}) = Unknown
 selectFilter (SelLocationId lid) (CachedLight {clLocation = (Cached _ lid')}) =
   b2fr (lid == lid')
+selectFilter sel _ = error $ "unimplemented selector " ++ show sel
 
 
 doListLights :: LanConnection
@@ -610,6 +611,7 @@ blockingAction rp action =
   blockingQuery rp query
   where query cb = action $ cb ()
 
+{-
 doTogglePower :: LanConnection
                  -> [Selector]
                  -> FracSeconds
@@ -635,6 +637,7 @@ toggleOneLightPower lc dur cl = do
 
 flipPwr On = Off
 flipPwr Off = On
+-}
 
 doEffect :: LanConnection
             -> [Selector]
