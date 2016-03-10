@@ -4,6 +4,7 @@ module HardwareTests (hardwareTests) where
 
 import Control.Arrow
 import Control.Concurrent
+import Control.Exception
 import Control.Monad
 import qualified Data.ByteString as B
 import Data.Char
@@ -690,6 +691,12 @@ checkScenes scene li = do
     assertConsistentEq "Power" (ssPower state) (lPower linfo)
     assertConsistentColor "Color" (ssColor state) (lColor linfo)
 
+checkExc :: LifxException -> LifxException -> IO ()
+checkExc expected actual = assertEqual "exception" expected actual
+
+expectExc :: IO ()
+expectExc = assertFailure "expected an exception, and didn't get one"
+
 testActivateSceneNonexistent :: (Connection c1, Connection c2)
                                 => IO c1
                                 -> IO c2
@@ -700,8 +707,9 @@ testActivateSceneNonexistent rsrc1 rsrc2 _ step = do
   (conn1, _ ) <- getConnections rsrc1 rsrc2
 
   step "activating nonexistent scene"
-  let badScene = "55213c0c-e5c9-11e5-80f7-0050c2490048"
-  rs <- activateScene conn1 (fromRight $ fromText badScene) 0
+  let badScene = fromRight $ fromText $ "55213c0c-e5c9-11e5-80f7-0050c2490048"
+  (activateScene conn1 badScene 0 >> expectExc)
+    `catch` checkExc (SelectorNotFound $ SelSceneId badScene)
   dly
 
 testNonexistentDevice :: (Connection c1, Connection c2)
@@ -715,7 +723,8 @@ testNonexistentDevice rsrc1 rsrc2 _ step = do
   let nonDev = fromRight $ fromText "0015edaabbcc"
 
   step "trying nonexistent device"
-  togglePower conn1 [SelDevId nonDev] 1.0
+  (togglePower conn1 [SelDevId nonDev] 1.0 >> expectExc)
+    `catch` checkExc (SelectorNotFound $ SelDevId nonDev)
   dly
 
 testNonexistentLabel :: (Connection c1, Connection c2)
@@ -729,7 +738,8 @@ testNonexistentLabel rsrc1 rsrc2 _ step = do
   let nonLab = fromRight $ fromText "mfgH2fYENVpO1SIu5w5wbmfVuLiqV6Ct"
 
   step "trying nonexistent label"
-  togglePower conn1 [SelLabel nonLab] 1.0
+  (togglePower conn1 [SelLabel nonLab] 1.0 >> expectExc)
+    `catch` checkExc (SelectorNotFound $ SelLabel nonLab)
   dly
 
 testNonexistentGroupId :: (Connection c1, Connection c2)
@@ -740,10 +750,11 @@ testNonexistentGroupId :: (Connection c1, Connection c2)
                           -> IO ()
 testNonexistentGroupId rsrc1 rsrc2 _ step = do
   (conn1, _ ) <- getConnections rsrc1 rsrc2
-  let nonLab = fromRight $ fromText "feedfacedeadbeefdefacedbadfacade"
+  let nonGrp = fromRight $ fromText "feedfacedeadbeefdefacedbadfacade"
 
   step "trying nonexistent group id"
-  togglePower conn1 [SelGroupId nonLab] 1.0
+  (togglePower conn1 [SelGroupId nonGrp] 1.0 >> expectExc)
+    `catch` checkExc (SelectorNotFound $ SelGroupId nonGrp)
   dly
 
 testNonexistentGroup :: (Connection c1, Connection c2)
@@ -754,10 +765,11 @@ testNonexistentGroup :: (Connection c1, Connection c2)
                         -> IO ()
 testNonexistentGroup rsrc1 rsrc2 _ step = do
   (conn1, _ ) <- getConnections rsrc1 rsrc2
-  let nonLab = fromRight $ fromText "mfgH2fYENVpO1SIu5w5wbmfVuLiqV6Ct"
+  let nonGrp = fromRight $ fromText "mfgH2fYENVpO1SIu5w5wbmfVuLiqV6Ct"
 
   step "trying nonexistent group"
-  togglePower conn1 [SelGroup nonLab] 1.0
+  (togglePower conn1 [SelGroup nonGrp] 1.0 >> expectExc)
+    `catch` checkExc (SelectorNotFound $ SelGroup nonGrp)
   dly
 
 testNonexistentLocationId :: (Connection c1, Connection c2)
@@ -768,10 +780,11 @@ testNonexistentLocationId :: (Connection c1, Connection c2)
                              -> IO ()
 testNonexistentLocationId rsrc1 rsrc2 _ step = do
   (conn1, _ ) <- getConnections rsrc1 rsrc2
-  let nonLab = fromRight $ fromText "feedfacedeadbeefdefacedbadfacade"
+  let nonLoc = fromRight $ fromText "feedfacedeadbeefdefacedbadfacade"
 
   step "trying nonexistent location id"
-  togglePower conn1 [SelLocationId nonLab] 1.0
+  (togglePower conn1 [SelLocationId nonLoc] 1.0 >> expectExc)
+    `catch` checkExc (SelectorNotFound $ SelLocationId nonLoc)
   dly
 
 testNonexistentLocation :: (Connection c1, Connection c2)
@@ -782,8 +795,9 @@ testNonexistentLocation :: (Connection c1, Connection c2)
                            -> IO ()
 testNonexistentLocation rsrc1 rsrc2 _ step = do
   (conn1, _ ) <- getConnections rsrc1 rsrc2
-  let nonLab = fromRight $ fromText "mfgH2fYENVpO1SIu5w5wbmfVuLiqV6Ct"
+  let nonLoc = fromRight $ fromText "mfgH2fYENVpO1SIu5w5wbmfVuLiqV6Ct"
 
   step "trying nonexistent location"
-  togglePower conn1 [SelLocation nonLab] 1.0
+  (togglePower conn1 [SelLocation nonLoc] 1.0 >> expectExc)
+    `catch` checkExc (SelectorNotFound $ SelLocation nonLoc)
   dly
