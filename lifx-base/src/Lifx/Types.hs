@@ -617,8 +617,13 @@ data SceneState =
   } deriving (Eq, Ord, Show, Read)
 
 -- | Scenes are uniquely identified by a 'U.UUID'.
-newtype SceneId = SceneId { unSceneId :: U.UUID }
-                deriving (Eq, Ord, Show, Read {- , Hashable -})
+newtype SceneId = SceneId { unSceneId :: U.UUID } deriving (Eq, Ord)
+
+instance Show SceneId where
+  showsPrec prec sid = showsPrec prec (unSceneId sid)
+
+instance Read SceneId where
+  readsPrec prec str = map (first SceneId) (readsPrec prec str)
 
 sceneFromUuid :: Maybe U.UUID -> Either String SceneId
 sceneFromUuid u = maybe (Left "Can't parse UUID") (Right . SceneId) u
