@@ -51,9 +51,26 @@ data LifxException =
     --
     -- error message / response body
   | CloudJsonError T.Text L.ByteString
+    -- | An error occurred making an HTTP request to the cloud.
+    --
+    -- error message / exception which can be cast to @HttpException@
+  | CloudHttpError T.Text SomeException
     -- | The given character is not allowed in a label.
   | IllegalCharacter Char
-  deriving (Show, Eq, Typeable)
+    -- | The given selector was not found.
+  | SelectorNotFound Selector
+  deriving (Show, Typeable)
+
+-- have to write this out by hand because SomeException
+-- is not an instance of Eq
+instance Eq LifxException where
+  (NoSuchInterface x y) == (NoSuchInterface x' y') = x == x' && y == y'
+  (CloudError x) == (CloudError x') = x == x'
+  (CloudJsonError x y) == (CloudJsonError x' y') = x == x' && y == y'
+  (CloudHttpError x _ ) == (CloudHttpError x' _ ) = x == x'
+  (IllegalCharacter x) == (IllegalCharacter x') = x == x'
+  (SelectorNotFound x) == (SelectorNotFound x') = x == x'
+  _ == _ = False
 
 instance Exception LifxException
 

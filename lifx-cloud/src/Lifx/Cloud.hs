@@ -70,9 +70,12 @@ data CloudConnection =
   , ccWarn :: T.Text -> IO ()
   }
 
+wrapHttpException :: HttpException -> IO a
+wrapHttpException e = throwIO $ CloudHttpError (T.pack $ show e) (toException e)
+
 openCloudConnection :: CloudSettings -> IO CloudConnection
 openCloudConnection cs = do
-  mgr <- csManager cs
+  mgr <- csManager cs `catch` wrapHttpException
   return $ CloudConnection { ccManager = mgr
                            , ccToken = csToken cs
                            , ccRoot = csRoot cs
@@ -137,7 +140,10 @@ logWarnings log (Just (Warnings w)) =
   log $ "LIFX cloud warning: " <> (T.intercalate "; " w)
 
 performRequest :: FromJSON a => CloudConnection -> Request -> IO a
-performRequest cc req = do
+performRequest cc req = performRequest' cc req `catch` wrapHttpException
+
+performRequest' :: FromJSON a => CloudConnection -> Request -> IO a
+performRequest' cc req = do
   resp <- httpLbs req (ccManager cc)
   let stat = responseStatus resp
       code = statusCode stat
