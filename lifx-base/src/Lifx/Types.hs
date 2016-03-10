@@ -340,6 +340,7 @@ data Selector = SelAll
               | SelGroupId GroupId
               | SelLocation Label
               | SelLocationId LocationId
+              | SelSceneId SceneId
                 deriving (Show, Read, Eq, Ord)
 
 
@@ -468,7 +469,7 @@ class Connection t where
     let sceneIds = map scId scenes
         mscene = sid `lookup` zip sceneIds scenes
     scene <- case mscene of
-              Nothing -> fail "can't find scene" -- FIXME: throw real exception
+              Nothing -> throwIO $ SelectorNotFound $ SelSceneId sid
               Just x -> return x
     let states = map (sceneStateToStatePair dur) (scStates scene)
     trs <- setStates conn states
@@ -663,6 +664,7 @@ selectorToText (SelGroup x)      = "group:"       <> toText x
 selectorToText (SelGroupId x)    = "group_id:"    <> toText x
 selectorToText (SelLocation x)   = "location:"    <> toText x
 selectorToText (SelLocationId x) = "location_id:" <> toText x
+selectorToText (SelSceneId x)    = "scene_id:"    <> toText x
 
 -- | Renders a list of 'Selector's as a comma-separated string.
 selectorsToText :: [Selector] -> Either LifxException T.Text

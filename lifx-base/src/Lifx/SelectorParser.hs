@@ -42,3 +42,4 @@ selGroup      = asciiCI "group:"       >> selParse SelGroup
 selGroupId    = asciiCI "group_id:"    >> selParse SelGroupId
 selLocation   = asciiCI "location:"    >> selParse SelLocation
 selLocationId = asciiCI "location_id:" >> selParse SelLocationId
+selSceneId    = asciiCI "scene_id:"    >> selParse SelSceneId

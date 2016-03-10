@@ -22,4 +22,5 @@ errorMessage =
   , asciiCI "group_id: "         >> selParse SelGroupId
   , asciiCI "location: "         >> selParse SelLocation
   , asciiCI "location_id: "      >> selParse SelLocationId
+  , asciiCI "scene_id: "         >> selParse SelSceneId
   ]
