@@ -38,6 +38,7 @@ import System.IO
 import Lifx
 import Lifx.Internal
 
+import Lifx.Cloud.ErrorParser
 import Lifx.Cloud.Json
 
 import Paths_lifx_cloud
@@ -139,6 +140,12 @@ logWarnings _ (Just (Warnings [])) = return ()
 logWarnings log (Just (Warnings w)) =
   log $ "LIFX cloud warning: " <> (T.intercalate "; " w)
 
+mkExcep :: T.Text -> LifxException
+mkExcep msg =
+  case parseError msg of
+   (Just exc) -> exc
+   Nothing -> CloudError msg
+
 performRequest :: FromJSON a => CloudConnection -> Request -> IO a
 performRequest cc req = performRequest' cc req `catch` wrapHttpException
 
@@ -147,7 +154,7 @@ performRequest' cc req = do
   resp <- httpLbs req (ccManager cc)
   let stat = responseStatus resp
       code = statusCode stat
-  when (code < 200 || code > 299) $ throwIO $ CloudError $ extractMessage resp
+  when (code < 200 || code > 299) $ throwIO $ mkExcep $ extractMessage resp
   let body = responseBody resp
   -- decode the body as the return type
   case eitherDecode' body of

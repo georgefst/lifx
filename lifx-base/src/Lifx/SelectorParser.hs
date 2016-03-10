@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lifx.SelectorParser (parseSelector, parseSelectors) where
+module Lifx.SelectorParser (parseSelector, parseSelectors, selParse) where
 
 import Control.Applicative
 import Data.Attoparsec.Text
