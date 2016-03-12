@@ -197,10 +197,10 @@ definitelyColor = fmap fromJust
 color16ToMaybeFrac :: HSBK16 -> MaybeColor
 color16ToMaybeFrac hsbk = justColor $ color16toFrac hsbk
 
-f2ms :: LiFrac -> Word32
+f2ms :: FracSeconds -> Word32
 f2ms x = round $ 1000 * x
 
-f2µs :: LiFrac -> Int
+f2µs :: FracSeconds -> Int
 f2µs x = round $ 1e6 * x
 
 nanosPerSecond :: FracSeconds

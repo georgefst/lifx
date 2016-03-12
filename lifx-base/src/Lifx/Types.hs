@@ -97,13 +97,15 @@ instance Functor HSBK where
                   }
 
 
--- | Type used for fractional numbers in this package.
+-- TODO: rename to ColorChannel
+-- | One channel of a color.
 type LiFrac = Double
 
 -- | A color specified as floating point hue (0.0 - 360.0),
 -- saturation (0.0 - 1.0), brightness (0.0 - 1.0), and kelvin (2500.0 - 9000.0).
 type Color = HSBK LiFrac
 
+-- TODO: rename to PartialColor
 -- | Same as 'Color', but each of the HSBK components is a 'Maybe', so it's
 -- possible to specify a subset of HSBK.
 type MaybeColor = HSBK (Maybe LiFrac)
