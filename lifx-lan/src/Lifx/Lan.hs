@@ -689,7 +689,7 @@ effectTypeToWaveform Breathe = Sine
 instance Connection LanConnection where
   listLights lc sel needed = do
     result <- newEmptyMVar
-    forkIO $ doListLights lc sel needed result
+    doListLights lc sel needed result
     mVarListToList result
 
   setStates lc pairs = do
