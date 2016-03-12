@@ -228,11 +228,10 @@ lastSeen cl = maximum [ dtOfCt (clLocation cl)
 
 listOneLight :: LanConnection
                 -> [MessageNeeded]
-                -> TVar (Maybe (MVar (MVarList LightInfo)))
-                -> TSem
                 -> CachedLight
-                -> IO ()
-listOneLight lc messagesNeeded tv sem cl =
+                -> IO (MVar (Either SomeException Result))
+listOneLight lc messagesNeeded cl = do
+  mv <- newEmptyMVar
   gatherInfo (lcSettings lc, bulb, fin) messagesNeeded eli
 
   where bulb = clBulb cl
@@ -370,20 +369,11 @@ selectFilter sel _ = error $ "unimplemented selector " ++ show sel
 doListLights :: LanConnection
                 -> [Selector]
                 -> [InfoNeeded]
-                -> MVar (MVarList LightInfo)
-                -> IO ()
+                -> IO [MVar (Either SomeException Result)]
 doListLights lc sels needed result = do
   let messagesNeeded = whatsNeeded needed
-  tv <- newTVarIO (Just result)
-  sem <- atomically $ newTSem 0
   lites <- atomically $ applySelectors lc sels
-  forM_ lites $ listOneLight lc messagesNeeded tv sem
-  atomically $ forM_ lites $ \_ -> waitTSem sem
-  mv <- atomically $ do
-    x <- readTVar tv
-    writeTVar tv Nothing
-    return x
-  putMVar (fromJust mv) Empty
+  forM lites $ listOneLight lc messagesNeeded
 
 updateLabelCache :: Ord a
                     => TVar (M.Map a CachedLabel)
