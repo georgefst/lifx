@@ -111,6 +111,7 @@ openLanConnection ls = do
 getLan :: LanConnection -> Lan
 getLan = lcLan
 
+{-
 data MVarList a = Empty | Cons { car :: a , cdr :: MVar (MVarList a) }
                 deriving Eq
 
@@ -122,6 +123,7 @@ mVarListToList mvl = do
    Cons lHead lTail -> do
      lTail' <- mVarListToList lTail
      return (lHead : lTail')
+-}
 
 listOfMVarToList :: [MVar (Either SomeException a)] -> IO [a]
 listOfMVarToList = mapM takeMVarThrow
@@ -229,24 +231,21 @@ lastSeen cl = maximum [ dtOfCt (clLocation cl)
 listOneLight :: LanConnection
                 -> [MessageNeeded]
                 -> CachedLight
-                -> IO (MVar (Either SomeException Result))
+                -> IO (MVar (Either SomeException LightInfo))
 listOneLight lc messagesNeeded cl = do
   mv <- newEmptyMVar
+  let fin li = putMVar mv (Right li)
   gatherInfo (lcSettings lc, bulb, fin) messagesNeeded eli
+  return mv
 
   where bulb = clBulb cl
         eli = emptyLightInfo (deviceId bulb) (lastSeen cl)
 
-        gatherInfo _ [] li = fin li
+        gatherInfo (_ , _ , fin) [] li = fin li
         gatherInfo stuff (mneed:mneeds) li =
           cbForMessage stuff mneed (gatherInfo stuff mneeds) li
 
-        fin li = do
-          appendLightInfo tv li
-          sigSem
-
-        sigSem = atomically $ signalTSem sem
-
+{-
 appendLightInfo :: TVar (Maybe (MVar (MVarList LightInfo)))
                    -> LightInfo
                    -> IO ()
@@ -260,6 +259,7 @@ appendLightInfo tv li = do
        return $ putMVar mvPrev $ Cons { car = li , cdr = mv }
      Nothing -> return $ return ()
   f
+-}
 
 cbForMessage :: (LanSettings, Bulb, FinCont)
                 -> MessageNeeded
@@ -369,8 +369,8 @@ selectFilter sel _ = error $ "unimplemented selector " ++ show sel
 doListLights :: LanConnection
                 -> [Selector]
                 -> [InfoNeeded]
-                -> IO [MVar (Either SomeException Result)]
-doListLights lc sels needed result = do
+                -> IO [MVar (Either SomeException LightInfo)]
+doListLights lc sels needed = do
   let messagesNeeded = whatsNeeded needed
   lites <- atomically $ applySelectors lc sels
   forM lites $ listOneLight lc messagesNeeded
@@ -677,9 +677,8 @@ effectTypeToWaveform Breathe = Sine
 
 instance Connection LanConnection where
   listLights lc sel needed = do
-    result <- newEmptyMVar
-    doListLights lc sel needed result
-    mVarListToList result
+    result <- doListLights lc sel needed
+    listOfMVarToList result
 
   setStates lc pairs = do
     result <- doSetStates lc pairs
