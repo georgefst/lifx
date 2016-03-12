@@ -178,7 +178,7 @@ whatsNeeded :: [InfoNeeded] -> [MessageNeeded]
 whatsNeeded needed = sort $ nub $ map needMessage needed
 
 
-type FinCont = Maybe LightInfo -> IO ()
+type FinCont = LightInfo -> IO ()
 type NxtCont = LightInfo -> IO ()
 
 color16toFrac :: HSBK16 -> Color
@@ -238,12 +238,11 @@ listOneLight lc messagesNeeded tv sem cl =
   where bulb = clBulb cl
         eli = emptyLightInfo (deviceId bulb) (lastSeen cl)
 
-        gatherInfo _ [] li = fin (Just li)
+        gatherInfo _ [] li = fin li
         gatherInfo stuff (mneed:mneeds) li =
           cbForMessage stuff mneed (gatherInfo stuff mneeds) li
 
-        fin Nothing = sigSem
-        fin (Just li) = do
+        fin li = do
           appendLightInfo tv li
           sigSem
 
@@ -272,7 +271,7 @@ cbForMessage (ls, bulb, finCont) mneed nxtCont li = f mneed
   where rq q cb = reliableQuery (lsRetryParams ls) (q bulb) cb $ do
                     (lsLog ls)
                       (T.pack $ show bulb ++ " not responding to " ++ opName)
-                    finCont (Just li)
+                    finCont li
         opName = drop 4 $ show mneed
 
         f NeedGetLight        = rq getLight        cbLight
