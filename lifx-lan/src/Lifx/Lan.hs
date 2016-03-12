@@ -146,17 +146,6 @@ emptyLightInfo devId now = LightInfo
   , lHardwareVersion = Nothing
   }
 
-{-
-selToNeeded :: Selector -> [InfoNeeded]
-selToNeeded SelAll             = []
-selToNeeded (SelLabel _ )      = [NeedLabel]
-selToNeeded (SelDevId _ )      = []
-selToNeeded (SelGroup _ )      = [NeedGroup]
-selToNeeded (SelGroupId _ )    = [NeedGroup]
-selToNeeded (SelLocation _ )   = [NeedLocation]
-selToNeeded (SelLocationId _ ) = [NeedLocation]
--}
-
 
 data MessageNeeded = NeedGetLight   | NeedGetGroup    | NeedGetLocation
                    | NeedGetVersion | NeedGetHostInfo | NeedGetInfo
@@ -611,33 +600,6 @@ blockingAction rp action =
   blockingQuery rp query
   where query cb = action $ cb ()
 
-{-
-doTogglePower :: LanConnection
-                 -> [Selector]
-                 -> FracSeconds
-                 -> IO [MVar Result]
-doTogglePower lc sels dur = do
-  lites <- atomically $ applySelectors lc sels
-  forM lites $ toggleOneLightPower lc dur
-
-toggleOneLightPower :: LanConnection
-                       -> FracSeconds
-                       -> CachedLight
-                       -> IO (MVar Result)
-toggleOneLightPower lc dur cl = do
-  mv <- newEmptyMVar
-  let did = deviceId (clBulb cl)
-      lbl = maybeFromCached (clLabel cl)
-      putResult stat = putMVar mv (Result did lbl stat)
-      timeout = putResult TimedOut
-  getOneLight lc False cl timeout $
-    \( pwr , _ ) -> setOneLightPower lc (Just $ flipPwr pwr) dur cl timeout $
-                     putResult Ok
-  return mv
-
-flipPwr On = Off
-flipPwr Off = On
--}
 
 doEffect :: LanConnection
             -> [Selector]
@@ -722,12 +684,6 @@ instance Connection LanConnection where
   setStates lc pairs = do
     result <- doSetStates lc pairs
     listOfMVarToList result
-
-{- use default implementation
-  togglePower lc sel dur = do
-    result <- doTogglePower lc sel dur
-    listOfMVarToList result
--}
 
   effect lc sel eff = do
     result <- doEffect lc sel eff
