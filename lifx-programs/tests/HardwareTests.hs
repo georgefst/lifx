@@ -127,9 +127,9 @@ someTests conn1 conn2 devs =
                                 defaultEffect { eType = Pulse, eCycles = 1.0 })
   , testGroup "breathe effect" (effectTests conn1 conn2 devs
                                 defaultEffect { eType = Breathe, eCycles = 1.5 }
-                                ++ breatheOnlyTests conn1 conn2 devs)
+                                {- ++ breatheOnlyTests conn1 conn2 devs -})
   , testCaseSteps "activate scene" (testActivateScene conn1 conn2 devs)
-  -- , testCaseSteps "select by scene" (testSelectScene conn1 conn2 devs)
+  , testCaseSteps "select by scene" (testSelectScene conn1 conn2 devs)
   , testCaseSteps "select by label" (testSelectLabel conn1 conn2 devs)
   , testCase "activate nonexistent scene" (testActivateSceneNonexistent conn1 conn2 devs)
   {-

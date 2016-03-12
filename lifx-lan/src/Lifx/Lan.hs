@@ -18,6 +18,7 @@ import Control.Concurrent
 import Control.Concurrent.MVar
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TSem
+import Control.Exception
 import Control.Monad
 import Data.Bits
 import Data.Hourglass
@@ -122,8 +123,16 @@ mVarListToList mvl = do
      lTail' <- mVarListToList lTail
      return (lHead : lTail')
 
-listOfMVarToList :: [MVar a] -> IO [a]
-listOfMVarToList = mapM takeMVar
+listOfMVarToList :: [MVar (Either SomeException a)] -> IO [a]
+listOfMVarToList = mapM takeMVarThrow
+  where takeMVarThrow mv = do
+          v <- takeMVar mv
+          case v of
+           Left exc -> throwIO exc
+           Right r -> return r
+
+forkFinallyMVar :: (MVar (Either SomeException a)) -> IO a -> IO ThreadId
+forkFinallyMVar mv f = forkFinally f (putMVar mv)
 
 emptyLightInfo :: DeviceId -> DateTime -> LightInfo
 emptyLightInfo devId now = LightInfo
@@ -497,30 +506,30 @@ updateLabel lc dev now sl =
 
 doSetStates :: LanConnection
                -> [([Selector], StateTransition)]
-               -> IO [MVar StateTransitionResult]
+               -> IO [MVar (Either SomeException StateTransitionResult)]
 doSetStates lc pairs = forM pairs $ setOneState lc
 
 setOneState :: LanConnection
                -> ([Selector], StateTransition)
-               -> IO (MVar StateTransitionResult)
+               -> IO (MVar (Either SomeException StateTransitionResult))
 setOneState lc pair@(sels, st) = do
   mv <- newEmptyMVar
-  forkIO $ do
+  forkFinallyMVar mv $ do
     lites <- atomically $ applySelectors lc sels
     results <- forM lites $ setOneLightState lc st
     results' <- listOfMVarToList results
-    putMVar mv (StateTransitionResult pair results')
+    return (StateTransitionResult pair results')
   return mv
 
 setOneLightState :: LanConnection
                     -> StateTransition
                     -> CachedLight
-                    -> IO (MVar Result)
+                    -> IO (MVar (Either SomeException Result))
 setOneLightState lc st cl = do
   mv <- newEmptyMVar
   let did = deviceId (clBulb cl)
       lbl = maybeFromCached (clLabel cl)
-      putResult stat = putMVar mv (Result did lbl stat)
+      putResult stat = putMVar mv (Right $ Result did lbl stat)
       timeout = putResult TimedOut
       newColor = desaturateKelvin (sColor st)
       skipGet = isEmptyColor newColor || isCompleteColor newColor
@@ -583,6 +592,7 @@ setOneLightPower lc (Just pwr) dur cl cbFail cbSucc =
   where rp = lsRetryParams $ lcSettings lc
         bulb = clBulb cl
 
+{-
 blockingQuery :: RetryParams
                  -> ((a -> IO ()) -> IO ())
                  -> IO (Maybe a)
@@ -599,12 +609,13 @@ blockingAction :: RetryParams
 blockingAction rp action =
   blockingQuery rp query
   where query cb = action $ cb ()
+-}
 
 
 doEffect :: LanConnection
             -> [Selector]
             -> Effect
-            -> IO [MVar Result]
+            -> IO [MVar (Either SomeException Result)]
 doEffect lc sels eff = do
   lites <- atomically $ applySelectors lc sels
   forM lites $ effectOneLight lc eff
@@ -612,12 +623,12 @@ doEffect lc sels eff = do
 effectOneLight :: LanConnection
                   -> Effect
                   -> CachedLight
-                  -> IO (MVar Result)
+                  -> IO (MVar (Either SomeException Result))
 effectOneLight lc eff cl = do
   mv <- newEmptyMVar
   let did = deviceId (clBulb cl)
       lbl = maybeFromCached (clLabel cl)
-      putResult stat = putMVar mv (Result did lbl stat)
+      putResult stat = putMVar mv (Right $ Result did lbl stat)
       timeout = putResult TimedOut
       fromColor = eFromColor eff
       color = eColor eff
