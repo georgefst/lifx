@@ -29,11 +29,9 @@ hardwareTests =
     $ \cr -> withResource (initLan devs) closeConnection
              $ \lr -> testGroup "Hardware Tests"
                       [ testGroup "Cloud" (someTests cr cr devs)
-                        {-
                       , testGroup "Lan"   (someTests lr lr devs)
                       , testGroup "CloudAndLan" (someTests cr lr devs)
                       , testGroup "LanAndCloud" (someTests lr cr devs)
-                        -}
                       ]
   where
     initCloud = do
@@ -116,7 +114,6 @@ someTests :: (Connection c1, Connection c2)
              -> [TestTree]
 someTests conn1 conn2 devs =
   [ testCaseSteps "list lights"  (testListLights  conn1 conn2 devs)
-    {-
   , testCaseSteps "toggle power" (testTogglePower conn1 conn2 devs)
   , testCaseSteps "toggle power (mixed)" (testTogglePowerPartial conn1 conn2 devs)
   , testCaseSteps "set state (hsbk)" (testSetStateHSBK conn1 conn2 devs)
@@ -131,9 +128,8 @@ someTests conn1 conn2 devs =
   , testGroup "breathe effect" (effectTests conn1 conn2 devs
                                 defaultEffect { eType = Breathe, eCycles = 1.5 }
                                 ++ breatheOnlyTests conn1 conn2 devs)
-    -}
   , testCaseSteps "activate scene" (testActivateScene conn1 conn2 devs)
-  , testCaseSteps "select by scene" (testSelectScene conn1 conn2 devs)
+  -- , testCaseSteps "select by scene" (testSelectScene conn1 conn2 devs)
   , testCaseSteps "select by label" (testSelectLabel conn1 conn2 devs)
   , testCase "activate nonexistent scene" (testActivateSceneNonexistent conn1 conn2 devs)
   {-

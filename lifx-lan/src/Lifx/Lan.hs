@@ -32,7 +32,7 @@ import Data.Word
 import GHC.Float
 import System.Hourglass
 import System.IO
-import System.IO.Unsafe
+-- import System.IO.Unsafe
 import System.Mem.Weak
 
 data LanSettings =
@@ -114,7 +114,7 @@ data MVarList a = Empty | Cons { car :: a , cdr :: MVar (MVarList a) }
                 deriving Eq
 
 mVarListToList :: MVar (MVarList a) -> IO [a]
-mVarListToList mvl = unsafeInterleaveIO $ do
+mVarListToList mvl = do
   l <- takeMVar mvl
   case l of
    Empty -> return []
@@ -123,7 +123,7 @@ mVarListToList mvl = unsafeInterleaveIO $ do
      return (lHead : lTail')
 
 listOfMVarToList :: [MVar a] -> IO [a]
-listOfMVarToList = mapM (unsafeInterleaveIO . takeMVar)
+listOfMVarToList = mapM takeMVar
 
 emptyLightInfo :: DeviceId -> DateTime -> LightInfo
 emptyLightInfo devId now = LightInfo
