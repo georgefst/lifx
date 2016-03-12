@@ -306,6 +306,9 @@ cbForMessage (ls, bulb, finCont) mneed nxtCont li = f mneed
         trInfo si = li { lUptime = Just (fromIntegral (siUptime si) / nanosPerSecond) }
         trHostFirmware shf = li { lFirmwareVersion = Just (unpackFirmwareVersion $ shfVersion shf) }
 
+applySelectorsIO :: LanConnection -> [Selector] -> IO [CachedLight]
+applySelectorsIO lc sels = atomically $ applySelectors lc sels
+
 applySelectors :: LanConnection -> [Selector] -> STM [CachedLight]
 applySelectors lc sels = do
   lists <- mapM (selectLights lc) sels
@@ -372,7 +375,7 @@ doListLights :: LanConnection
                 -> IO [MVar (Either SomeException LightInfo)]
 doListLights lc sels needed = do
   let messagesNeeded = whatsNeeded needed
-  lites <- atomically $ applySelectors lc sels
+  lites <- applySelectorsIO lc sels
   forM lites $ listOneLight lc messagesNeeded
 
 updateLabelCache :: Ord a
@@ -504,7 +507,7 @@ setOneState :: LanConnection
 setOneState lc pair@(sels, st) = do
   mv <- newEmptyMVar
   forkFinallyMVar mv $ do
-    lites <- atomically $ applySelectors lc sels
+    lites <- applySelectorsIO lc sels
     results <- forM lites $ setOneLightState lc st
     results' <- listOfMVarToList results
     return (StateTransitionResult pair results')
@@ -606,7 +609,7 @@ doEffect :: LanConnection
             -> Effect
             -> IO [MVar (Either SomeException Result)]
 doEffect lc sels eff = do
-  lites <- atomically $ applySelectors lc sels
+  lites <- applySelectorsIO lc sels
   forM lites $ effectOneLight lc eff
 
 effectOneLight :: LanConnection
