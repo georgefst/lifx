@@ -3,6 +3,7 @@
 module Lifx.Lan
     ( LanSettings(..)
     , LanConnection
+    , UnknownSelectorBehavior(..)
     , defaultLanSettings
     , openLanConnection
     , getLan
@@ -43,6 +44,7 @@ data LanSettings =
   , lsPort        :: !Word16
   , lsListScenes  :: IO [Scene]
   , lsRetryParams :: RetryParams
+  , lsUnknownSelectorBehavior :: UnknownSelectorBehavior
   }
 
 defaultLanSettings :: LanSettings
@@ -53,7 +55,10 @@ defaultLanSettings =
   , lsPort        = 56700
   , lsListScenes  = return []
   , lsRetryParams = defaultRetryParams
+  , lsUnknownSelectorBehavior = ThrowOnUnknownSelector
   }
+
+data UnknownSelectorBehavior = IgnoreUnknownSelector | ThrowOnUnknownSelector
 
 data CachedThing a = NotCached | Cached DateTime a deriving (Show, Eq, Ord)
 
@@ -306,6 +311,13 @@ cbForMessage (ls, bulb, finCont) mneed nxtCont li = f mneed
         trInfo si = li { lUptime = Just (fromIntegral (siUptime si) / nanosPerSecond) }
         trHostFirmware shf = li { lFirmwareVersion = Just (unpackFirmwareVersion $ shfVersion shf) }
 
+behave4US :: UnknownSelectorBehavior -> Selector -> IO [a]
+behave4US IgnoreUnknownSelector  _   = return []
+behave4US ThrowOnUnknownSelector sel = throwIO $ SelectorNotFound sel
+
+behave4USLC :: LanConnection -> Selector -> IO [a]
+behave4USLC lc = behave4US (lsUnknownSelectorBehavior $ lcSettings lc)
+
 applySelectorsIO :: LanConnection -> [Selector] -> IO [CachedLight]
 applySelectorsIO lc sels = do
   sels' <- case find isScene sels of
@@ -321,7 +333,7 @@ applySelectorsIO lc sels = do
 
         expandScene scenes sel@(SelSceneId sid) = do
           case find (\s -> sid == scId s) scenes of
-           Nothing -> throwIO $ SelectorNotFound sel
+           Nothing -> behave4USLC lc sel
            (Just scene) -> return $ map ssSel $ scStates scene
         expandScene _ sel = return [sel]
 
