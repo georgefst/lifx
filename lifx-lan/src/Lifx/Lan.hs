@@ -32,10 +32,10 @@ import qualified Data.Text.IO as TIO
 import Data.Version
 import Data.Word
 import GHC.Float
-import System.Hourglass
 import System.IO
 -- import System.IO.Unsafe
 import System.Mem.Weak
+import Time.System
 
 data LanSettings =
   LanSettings
