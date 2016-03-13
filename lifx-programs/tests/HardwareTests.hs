@@ -140,6 +140,7 @@ someTests conn1 conn2 devs =
   , testCase "nonexistent location id" (testNonexistentLocationId conn1 conn2 devs)
   , testCase "nonexistent location" (testNonexistentLocation conn1 conn2 devs)
   -}
+  , testCase "nonexistent scene (as selector)" (testNonexistentScene conn1 conn2 devs)
   ]
 
 effectTests :: (Connection c1, Connection c2)
@@ -832,4 +833,17 @@ testNonexistentLocation rsrc1 rsrc2 _ = do
 
   (togglePower conn1 [SelLocation nonLoc] 1.0 >> expectExc)
     `catch` checkExc (SelectorNotFound $ SelLocation nonLoc)
+  dly
+
+testNonexistentScene :: (Connection c1, Connection c2)
+                        => IO c1
+                        -> IO c2
+                        -> [DeviceId]
+                        -> IO ()
+testNonexistentScene rsrc1 rsrc2 _ = do
+  (conn1, _ ) <- getConnections rsrc1 rsrc2
+  let nonScn = fromRight $ fromText "55213c0c-e5c9-11e5-80f7-0050c2490048"
+
+  (togglePower conn1 [SelSceneId nonScn] 1.0 >> expectExc)
+    `catch` checkExc (SelectorNotFound $ SelSceneId nonScn)
   dly

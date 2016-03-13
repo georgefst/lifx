@@ -307,7 +307,23 @@ cbForMessage (ls, bulb, finCont) mneed nxtCont li = f mneed
         trHostFirmware shf = li { lFirmwareVersion = Just (unpackFirmwareVersion $ shfVersion shf) }
 
 applySelectorsIO :: LanConnection -> [Selector] -> IO [CachedLight]
-applySelectorsIO lc sels = atomically $ applySelectors lc sels
+applySelectorsIO lc sels = do
+  sels' <- case find isScene sels of
+            Nothing -> return sels
+            Just _ -> do
+              scenes <- lsListScenes $ lcSettings lc
+              expanded <- mapM (expandScene scenes) sels
+              return $ concat expanded
+  atomically $ applySelectors lc sels'
+
+  where isScene (SelSceneId _ ) = True
+        isScene _ = False
+
+        expandScene scenes sel@(SelSceneId sid) = do
+          case find (\s -> sid == scId s) scenes of
+           Nothing -> throwIO $ SelectorNotFound sel
+           (Just scene) -> return $ map ssSel $ scStates scene
+        expandScene _ sel = return [sel]
 
 applySelectors :: LanConnection -> [Selector] -> STM [CachedLight]
 applySelectors lc sels = do
