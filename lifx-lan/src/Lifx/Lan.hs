@@ -239,7 +239,9 @@ listOneLight :: LanConnection
                 -> IO (MVar (Either SomeException LightInfo))
 listOneLight lc messagesNeeded cl = do
   mv <- newEmptyMVar
-  let fin li = putMVar mv (Right li)
+  let fin li = do
+        now <- dateCurrent
+        putMVar mv $ Right $ adjustSeen now li
   gatherInfo (lcSettings lc, bulb, fin) messagesNeeded eli
   return mv
 
@@ -249,6 +251,12 @@ listOneLight lc messagesNeeded cl = do
         gatherInfo (_ , _ , fin) [] li = fin $ li { lConnected = True }
         gatherInfo stuff (mneed:mneeds) li =
           cbForMessage stuff mneed (gatherInfo stuff mneeds) li
+
+        adjustSeen now li =
+          let (Seconds s, NanoSeconds ns) = timeDiffP (lLastSeen li) now
+              [s', ns'] = map fromIntegral [s, ns]
+              secs = s' + ns' / 1e9
+          in li { lSecondsSinceSeen = secs }
 
 {-
 appendLightInfo :: TVar (Maybe (MVar (MVarList LightInfo)))
