@@ -146,7 +146,7 @@ emptyLightInfo devId now = LightInfo
   { lId = devId
   , lUuid = Nothing
   , lLabel = Nothing
-  , lConnected = True
+  , lConnected = False
   , lPower = Nothing
   , lColor = emptyColor
   , lGroupId = Nothing
@@ -246,7 +246,7 @@ listOneLight lc messagesNeeded cl = do
   where bulb = clBulb cl
         eli = emptyLightInfo (deviceId bulb) (lastSeen cl)
 
-        gatherInfo (_ , _ , fin) [] li = fin li
+        gatherInfo (_ , _ , fin) [] li = fin $ li { lConnected = True }
         gatherInfo stuff (mneed:mneeds) li =
           cbForMessage stuff mneed (gatherInfo stuff mneeds) li
 
