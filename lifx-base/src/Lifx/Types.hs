@@ -59,6 +59,11 @@ data LifxException =
   | IllegalCharacter Char
     -- | The given selector was not found.
   | SelectorNotFound Selector
+    -- | A scene ID was used as a selector, and that scene contained a
+    -- selector which was also a scene ID.
+    --
+    -- original scene ID / nested scene ID
+  | NestedSceneIdSelector SceneId SceneId
   deriving (Show, Typeable)
 
 -- have to write this out by hand because SomeException

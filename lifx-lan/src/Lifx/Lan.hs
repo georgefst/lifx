@@ -318,15 +318,15 @@ behave4US ThrowOnUnknownSelector sel = throwIO $ SelectorNotFound sel
 behave4USLC :: LanConnection -> Selector -> IO [a]
 behave4USLC lc = behave4US (lsUnknownSelectorBehavior $ lcSettings lc)
 
-applySelectorsIO :: LanConnection -> [Selector] -> IO [CachedLight]
-applySelectorsIO lc sels = do
+applySelectors :: LanConnection -> [Selector] -> IO [CachedLight]
+applySelectors lc sels = do
   sels' <- case find isScene sels of
             Nothing -> return sels
             Just _ -> do
               scenes <- lsListScenes $ lcSettings lc
               expanded <- mapM (expandScene scenes) sels
               return $ concat expanded
-  applySelectorsIO' lc sels'
+  applySelectors' lc sels'
 
   where isScene (SelSceneId _ ) = True
         isScene _ = False
@@ -334,11 +334,15 @@ applySelectorsIO lc sels = do
         expandScene scenes sel@(SelSceneId sid) = do
           case find (\s -> sid == scId s) scenes of
            Nothing -> behave4USLC lc sel
-           (Just scene) -> return $ map ssSel $ scStates scene
+           (Just scene) -> mapM (avoidNested sid) $ map ssSel $ scStates scene
         expandScene _ sel = return [sel]
 
-applySelectorsIO' :: LanConnection -> [Selector] -> IO [CachedLight]
-applySelectorsIO' lc sels = do
+        avoidNested parentSid (SelSceneId sid) =
+          throwIO $ NestedSceneIdSelector parentSid sid
+        avoidNested _ sel = return sel
+
+applySelectors' :: LanConnection -> [Selector] -> IO [CachedLight]
+applySelectors' lc sels = do
   lists <- atomically $ mapM (selectLights lc) sels
   let pairs = zip sels lists
       behave (sel, [])   = behave4USLC lc sel
@@ -407,7 +411,7 @@ doListLights :: LanConnection
                 -> IO [MVar (Either SomeException LightInfo)]
 doListLights lc sels needed = do
   let messagesNeeded = whatsNeeded needed
-  lites <- applySelectorsIO lc sels
+  lites <- applySelectors lc sels
   forM lites $ listOneLight lc messagesNeeded
 
 updateLabelCache :: Ord a
@@ -539,7 +543,7 @@ setOneState :: LanConnection
 setOneState lc pair@(sels, st) = do
   mv <- newEmptyMVar
   forkFinallyMVar mv $ do
-    lites <- applySelectorsIO lc sels
+    lites <- applySelectors lc sels
     results <- forM lites $ setOneLightState lc st
     results' <- listOfMVarToList results
     return (StateTransitionResult pair results')
@@ -641,7 +645,7 @@ doEffect :: LanConnection
             -> Effect
             -> IO [MVar (Either SomeException Result)]
 doEffect lc sels eff = do
-  lites <- applySelectorsIO lc sels
+  lites <- applySelectors lc sels
   forM lites $ effectOneLight lc eff
 
 effectOneLight :: LanConnection
