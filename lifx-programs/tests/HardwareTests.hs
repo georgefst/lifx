@@ -132,14 +132,12 @@ someTests conn1 conn2 devs =
   , testCaseSteps "select by scene" (testSelectScene conn1 conn2 devs)
   , testCaseSteps "select by label" (testSelectLabel conn1 conn2 devs)
   , testCase "activate nonexistent scene" (testActivateSceneNonexistent conn1 conn2 devs)
-  {-
   , testCase "nonexistent device" (testNonexistentDevice conn1 conn2 devs)
   , testCase "nonexistent label" (testNonexistentLabel conn1 conn2 devs)
   , testCase "nonexistent group id" (testNonexistentGroupId conn1 conn2 devs)
   , testCase "nonexistent group" (testNonexistentGroup conn1 conn2 devs)
   , testCase "nonexistent location id" (testNonexistentLocationId conn1 conn2 devs)
   , testCase "nonexistent location" (testNonexistentLocation conn1 conn2 devs)
-  -}
   , testCase "nonexistent scene (as selector)" (testNonexistentScene conn1 conn2 devs)
   ]
 

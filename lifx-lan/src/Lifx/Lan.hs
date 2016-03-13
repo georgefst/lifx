@@ -326,7 +326,7 @@ applySelectorsIO lc sels = do
               scenes <- lsListScenes $ lcSettings lc
               expanded <- mapM (expandScene scenes) sels
               return $ concat expanded
-  atomically $ applySelectors lc sels'
+  applySelectorsIO' lc sels'
 
   where isScene (SelSceneId _ ) = True
         isScene _ = False
@@ -337,10 +337,14 @@ applySelectorsIO lc sels = do
            (Just scene) -> return $ map ssSel $ scStates scene
         expandScene _ sel = return [sel]
 
-applySelectors :: LanConnection -> [Selector] -> STM [CachedLight]
-applySelectors lc sels = do
-  lists <- mapM (selectLights lc) sels
-  let sets = map S.fromList lists
+applySelectorsIO' :: LanConnection -> [Selector] -> IO [CachedLight]
+applySelectorsIO' lc sels = do
+  lists <- atomically $ mapM (selectLights lc) sels
+  let pairs = zip sels lists
+      behave (sel, [])   = behave4USLC lc sel
+      behave (_ , lites) = return lites
+  lists' <- mapM behave pairs
+  let sets = map S.fromList lists'
       uniq = S.unions sets
   return $ S.toList uniq
 
