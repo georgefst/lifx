@@ -37,16 +37,34 @@ import System.IO
 import System.Mem.Weak
 import Time.System
 
+-- | Parameters which can be passed to 'openLanConnection'.
 data LanSettings =
   LanSettings
-  { lsIfName      :: T.Text
+  { -- | Name of network interface to use, such as @en1@ or @eth0@.
+    lsIfName      :: T.Text
+    -- | Function to log a line of text.  This contains
+    -- information which might be helpful for troubleshooting.
+    -- Default is 'TIO.hPutStrLn' 'stderr'.
   , lsLog         :: T.Text -> IO ()
+    -- | Port that LIFX bulbs are listening on.  Default is @56700@, which
+    -- is the correct value for LIFX bulbs.  The only reason to change this
+    -- is if you want to mock the bulbs for testing.
   , lsPort        :: !Word16
+    -- | Unlike the Cloud API, the LAN Protocol does not have a notion of
+    -- scenes built-in.  Therefore, you can provide this function to
+    -- implement scenes for the LAN Protocol.  It should simply return a
+    -- list of all the scenes.  Default is to return an empty list.
   , lsListScenes  :: IO [Scene]
+    -- | Specifies timeouts and how aggressively to retry when messages
+    -- time out.  Default is 'defaultRetryParams'.
   , lsRetryParams :: RetryParams
+    -- | Specifies whether an unknown selector should result in an
+    -- exception (which matches the cloud behavior), or should just be
+    -- ignored.  Default is 'ThrowOnUnkownSelector'.
   , lsUnknownSelectorBehavior :: UnknownSelectorBehavior
   }
 
+-- | Returns of 'LanSettings' with default settings.
 defaultLanSettings :: LanSettings
 defaultLanSettings =
   LanSettings
@@ -58,7 +76,20 @@ defaultLanSettings =
   , lsUnknownSelectorBehavior = ThrowOnUnknownSelector
   }
 
-data UnknownSelectorBehavior = IgnoreUnknownSelector | ThrowOnUnknownSelector
+-- | The two possible ways to handle a 'Selector' which does not match a
+-- device ID, group, etc. which is currently on the LAN.
+data UnknownSelectorBehavior =
+    -- Removes any unknown selectors from the list of selectors, and then
+    -- proceeds as if only the known selectors (if any) had been specified.
+    IgnoreUnknownSelector
+    -- Throws 'SelectorNotFound'.  This matches the Cloud API behavior.
+    -- However, the Cloud API knowns about all devices associated with an
+    -- account, whether they are on or not.  A 'LanConnection' only knows
+    -- about devices which it has seen since the connection was established.
+    -- For this reason, throwing an exception for unknown selectors may
+    -- not be as desirable on a 'LanConnection' as it is on a
+    -- @CloudConnection@.
+  | ThrowOnUnknownSelector
 
 data CachedThing a = NotCached | Cached DateTime a deriving (Show, Eq, Ord)
 
@@ -76,6 +107,9 @@ data CachedLabel =
   , claUpdatedAt :: !Word64
   } deriving (Show, Eq, Ord)
 
+-- | Opaque type which implements 'Connection' and represents a connection
+-- to all LIFX devices on a LAN.  It's OK to use a @LanConnection@ from
+-- multiple threads at once.
 data LanConnection =
   LanConnection
   { lcLan       :: Lan
@@ -99,6 +133,7 @@ instance Ord LanConnection where
 tvEmptyMap :: IO (TVar (M.Map a b))
 tvEmptyMap = newTVarIO M.empty
 
+-- | Create a new 'LanConnection', based on 'LanSettings'.
 openLanConnection :: LanSettings -> IO LanConnection
 openLanConnection ls = do
   lan <- openLan' (lsIfName ls) (Just $ lsPort ls) (Just $ lsLog ls)
@@ -113,6 +148,9 @@ openLanConnection ls = do
     putTMVar tmv lc
     return lc
 
+-- | Returns the underlying low-level 'Lan' that this 'LanConnection' uses.
+-- This is useful if you want to break out of the high-level abstraction
+-- provided by 'LanConnection' and do something low-level.
 getLan :: LanConnection -> Lan
 getLan = lcLan
 

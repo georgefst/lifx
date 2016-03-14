@@ -78,7 +78,8 @@ defaultCloudSettings =
   }
 
 -- | Opaque type which implements 'Connection' and represents a connection
--- to a LIFX cloud account.
+-- to a LIFX cloud account.  It's OK to use a @CloudConnection@ from
+-- multiple threads at once.
 data CloudConnection =
   CloudConnection
   { ccManager :: !Manager
