@@ -46,14 +46,28 @@ import Paths_lifx_cloud
 pkg_name :: B.ByteString
 pkg_name = "lifx-cloud"
 
+-- | Parameters which can be passed to 'openCloudConnection'.
 data CloudSettings =
   CloudSettings
-  { csManager :: IO Manager
+  { -- | 'IO' action which returns a 'Manager' which is to be used for
+    -- HTTP connections to the cloud.  Since the LIFX Cloud API uses @https@,
+    -- the 'Manager' must support TLS.  Default action is to create a new
+    -- 'Manager' which supports TLS.
+    csManager :: IO Manager
+    -- | The 'AccessToken' for the cloud account to use.  There is no
+    -- default; you must supply one.
   , csToken :: AccessToken
+    -- | Base URL for API endpoints.  Default is the correct value for the
+    -- LIFX Cloud.  You should not change this.  The only reason to do so is
+    -- if you want to mock the cloud for testing purposes.
   , csRoot :: T.Text
+    -- | Function to log a line of text.  This includes warnings from the
+    -- cloud, and other information which might be helpful for troubleshooting.
+    -- Default is 'TIO.hPutStrLn' 'stderr'.
   , csLog :: T.Text -> IO ()
   }
 
+-- | Returns a 'CloudSettings' with default settings.
 defaultCloudSettings :: CloudSettings
 defaultCloudSettings =
   CloudSettings
@@ -63,6 +77,8 @@ defaultCloudSettings =
   , csLog = TIO.hPutStrLn stderr
   }
 
+-- | Opaque type which implements 'Connection' and represents a connection
+-- to a LIFX cloud account.
 data CloudConnection =
   CloudConnection
   { ccManager :: !Manager
@@ -74,6 +90,7 @@ data CloudConnection =
 wrapHttpException :: HttpException -> IO a
 wrapHttpException e = throwIO $ CloudHttpError (T.pack $ show e) (toException e)
 
+-- | Create a new 'CloudConnection', based on 'CloudSettings'.
 openCloudConnection :: CloudSettings -> IO CloudConnection
 openCloudConnection cs = do
   mgr <- csManager cs `catch` wrapHttpException
