@@ -46,10 +46,10 @@ data LanSettings =
     -- information which might be helpful for troubleshooting.
     -- Default is 'TIO.hPutStrLn' 'stderr'.
   , lsLog         :: T.Text -> IO ()
-    -- | Port that LIFX bulbs are listening on.  Default is @56700@, which
-    -- is the correct value for LIFX bulbs.  The only reason to change this
-    -- is if you want to mock the bulbs for testing.
-  , lsPort        :: !Word16
+    -- | Specifies whether an unknown selector should result in an
+    -- exception (which matches the cloud behavior), or should just be
+    -- ignored.  Default is 'ThrowOnUnkownSelector'.
+  , lsUnknownSelectorBehavior :: UnknownSelectorBehavior
     -- | Unlike the Cloud API, the LAN Protocol does not have a notion of
     -- scenes built-in.  Therefore, you can provide this function to
     -- implement scenes for the LAN Protocol.  It should simply return a
@@ -58,10 +58,10 @@ data LanSettings =
     -- | Specifies timeouts and how aggressively to retry when messages
     -- time out.  Default is 'defaultRetryParams'.
   , lsRetryParams :: RetryParams
-    -- | Specifies whether an unknown selector should result in an
-    -- exception (which matches the cloud behavior), or should just be
-    -- ignored.  Default is 'ThrowOnUnkownSelector'.
-  , lsUnknownSelectorBehavior :: UnknownSelectorBehavior
+    -- | Port that LIFX bulbs are listening on.  Default is @56700@, which
+    -- is the correct value for LIFX bulbs.  The only reason to change this
+    -- is if you want to mock the bulbs for testing.
+  , lsPort        :: !Word16
   }
 
 -- | Returns of 'LanSettings' with default settings.

@@ -57,14 +57,14 @@ data CloudSettings =
     -- | The 'AccessToken' for the cloud account to use.  There is no
     -- default; you must supply one.
   , csToken :: AccessToken
-    -- | Base URL for API endpoints.  Default is the correct value for the
-    -- LIFX Cloud.  You should not change this.  The only reason to do so is
-    -- if you want to mock the cloud for testing purposes.
-  , csRoot :: T.Text
     -- | Function to log a line of text.  This includes warnings from the
     -- cloud, and other information which might be helpful for troubleshooting.
     -- Default is 'TIO.hPutStrLn' 'stderr'.
   , csLog :: T.Text -> IO ()
+    -- | Base URL for API endpoints.  Default is the correct value for the
+    -- LIFX Cloud.  You should not change this.  The only reason to do so is
+    -- if you want to mock the cloud for testing purposes.
+  , csRoot :: T.Text
   }
 
 -- | Returns a 'CloudSettings' with default settings.
