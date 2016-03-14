@@ -524,9 +524,11 @@ needEverything = [minBound .. maxBound]
 -- | Information about a light, returned by 'listLights'.
 data LightInfo =
   LightInfo
-  { lId :: DeviceId
-  , lUuid :: Maybe U.UUID
-  , lLabel :: Maybe Label
+  { lId :: DeviceId       -- ^ MAC address of bulb.  Primary way of
+                          -- identifying and addressing bulbs.
+  , lUuid :: Maybe U.UUID -- ^ An alternate way of identifying a bulb. Doesn't
+                          -- seem all that useful, but the Cloud API provides it.
+  , lLabel :: Maybe Label -- ^ Human-readable label given to the bulb.
   , lConnected :: Bool
   , lPower :: Maybe Power
   , lColor :: MaybeColor
@@ -536,9 +538,9 @@ data LightInfo =
   , lLocation :: Maybe Label
   , lLastSeen :: DateTime
   , lSecondsSinceSeen :: FracSeconds
-  , lProduct :: Maybe Product
-  , lTemperature :: Maybe Double
-  , lUptime :: Maybe FracSeconds
+  , lProduct :: Maybe Product     -- ^ information about the model of bulb
+  , lTemperature :: Maybe Double  -- ^ in degrees Celsius
+  , lUptime :: Maybe FracSeconds  -- ^ time since power was applied to bulb
   , lFirmwareVersion :: Maybe Version
   , lHardwareVersion :: Maybe Int
   } deriving (Eq, Ord, Show, Read)
