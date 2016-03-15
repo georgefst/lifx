@@ -49,6 +49,7 @@ library
   other-modules: Paths_lifx_cloud
                  Lifx.Cloud.ErrorParser
                  Lifx.Cloud.Json
+                 Lifx.Cloud.Preprocessor
                  Lifx.Cloud.Util
 
   -- LANGUAGE extensions used by modules in this package.
@@ -64,7 +65,7 @@ library
                      -- , aeson-pretty >= 0.7.2 && < 0.8
                      , attoparsec >= 0.13.0.1 && < 0.14
                      , hourglass >= 0.2.10 && < 0.3
-                     , vector >= 0.10.9.1 && < 0.11
+                     -- , vector >= 0.10.9.1 && < 0.11
                      , text >= 1.2.1.3 && < 1.3
                      , text-format >= 0.3.1.1 && < 0.4
                      , unordered-containers >= 0.2.5.1 && < 0.3

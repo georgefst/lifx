@@ -31,8 +31,9 @@ import qualified Data.Text.Encoding.Error as TEE
 import qualified Data.Text.IO as TIO
 import Data.Text.Format hiding (print)
 import Data.Text.Format.Params
-import Data.Vector hiding (takeWhile, mapM_, (++), map, forM)
+-- import Data.Vector hiding (takeWhile, mapM_, (++), map, forM, concatMap, concat)
 import Data.Version
+-- import Debug.Trace
 import System.IO
 
 import Lifx
@@ -40,11 +41,15 @@ import Lifx.Internal
 
 import Lifx.Cloud.ErrorParser
 import Lifx.Cloud.Json
+import Lifx.Cloud.Preprocessor
 
 import Paths_lifx_cloud
 
-pkg_name :: B.ByteString
+pkg_name :: T.Text
 pkg_name = "lifx-cloud"
+
+pkg_url :: T.Text
+pkg_url = "+https://community.lifx.com/t/what-are-you-building/26/39"
 
 -- | Parameters which can be passed to 'openCloudConnection'.
 data CloudSettings =
@@ -57,6 +62,14 @@ data CloudSettings =
     -- | The 'AccessToken' for the cloud account to use.  There is no
     -- default; you must supply one.
   , csToken :: AccessToken
+    -- | The
+    -- <https://en.wikipedia.org/wiki/User_agent#Use_in_HTTP User-Agent string>
+    -- to use when talking to the LIFX Cloud.  The default contains versions
+    -- for @lifx-cloud@ and several of the packages used by it.  It's
+    -- recommended that you cons another 'UserAgentComponent' onto the
+    -- beginning of the default, containing your package's name, version,
+    -- and the URL of your project as the comment.
+  , csUserAgent :: [UserAgentComponent]
     -- | Function to log a line of text.  This includes warnings from the
     -- cloud, and other information which might be helpful for troubleshooting.
     -- Default is 'TIO.hPutStrLn' 'stderr'.
@@ -73,9 +86,38 @@ defaultCloudSettings =
   CloudSettings
   { csManager = newManager tlsManagerSettings
   , csToken = error "You need to specify a valid API token for csToken."
-  , csRoot = "https://api.lifx.com/v1/"
+  , csUserAgent = defaultUserAgent
   , csLog = TIO.hPutStrLn stderr
+  , csRoot = "https://api.lifx.com/v1/"
   }
+
+-- | A structured representation of one element of a User-Agent string.
+data UserAgentComponent =
+  UserAgentComponent
+  { -- | The name of the "product", such as a package name like "lifx-programs".
+    uaProduct :: T.Text
+    -- | The version of the product.  Cabal can
+    -- <https://www.haskell.org/cabal/users-guide/developing-packages.html#accessing-the-package-version automatically tell you>
+    -- the current version of your package.
+  , uaVersion :: Version
+    -- | Optionally, what the HTTP spec calls a "comment".  This is typically
+    -- used to provide the URL of your project.
+  , uaComment :: (Maybe T.Text)
+  }
+
+renderUserAgent :: [UserAgentComponent] -> B.ByteString
+renderUserAgent xs = B.concat $ intercalate [" "] $ map rua xs
+  where rua uac = [ (TE.encodeUtf8 $ uaProduct uac)
+                  , "/"
+                  , (B8.pack $ showVersion $ uaVersion uac)
+                  ] ++ renderComment (uaComment uac)
+        renderComment Nothing = []
+        renderComment (Just com) = [" (", TE.encodeUtf8 $ escCom com, ")"]
+        escCom x = T.pack $ concatMap escChar $ T.unpack x
+        escChar '(' = "\\("
+        escChar ')' = "\\)"
+        escChar '\\' = "\\\\"
+        escChar c = [c]
 
 -- | Opaque type which implements 'Connection' and represents a connection
 -- to a LIFX cloud account.  It's OK to use a @CloudConnection@ from
@@ -84,6 +126,7 @@ data CloudConnection =
   CloudConnection
   { ccManager :: !Manager
   , ccToken :: !AccessToken
+  , ccUserAgent :: !B.ByteString
   , ccRoot :: !T.Text
   , ccWarn :: T.Text -> IO ()
   }
@@ -97,6 +140,7 @@ openCloudConnection cs = do
   mgr <- csManager cs `catch` wrapHttpException
   return $ CloudConnection { ccManager = mgr
                            , ccToken = csToken cs
+                           , ccUserAgent = renderUserAgent $ csUserAgent cs
                            , ccRoot = csRoot cs
                            , ccWarn = csLog cs
                            }
@@ -270,7 +314,7 @@ endpoint :: CloudConnection -> T.Text -> IO Request
 endpoint cc ep = do
   let url = T.unpack $ ccRoot cc <> ep
   req <- parseUrl url
-  return $ addHeaders (TE.encodeUtf8 $ toText $ ccToken cc) req
+  return $ addHeaders (ccUserAgent cc) (TE.encodeUtf8 $ toText $ ccToken cc) req
 
 cstat _ _ _ = Nothing
 
@@ -291,18 +335,19 @@ encPretty = encodePretty' (defConfig { confCompare = cmp })
              ]
 -}
 
-userAgent = (hUserAgent, B.concat ua)
-  where ua = [ pkg_name, "/", B8.pack (showVersion version)
-             , " (+https://community.lifx.com/t/what-are-you-building/26/39)"
-             ]
+defaultUserAgent =
+  UserAgentComponent pkg_name version (Just pkg_url)
+  : map mkUac libraryVersions
+  where mkUac (pkg, vers) = UserAgentComponent pkg (pv vers) Nothing
+        pv txt = Version (map (read . T.unpack) $ T.splitOn "." txt) []
 
 appJson = "application/json"
 
-addHeaders :: B.ByteString -> Request -> Request
-addHeaders lifxToken req =
+addHeaders :: B.ByteString -> B.ByteString -> Request -> Request
+addHeaders userAgent lifxToken req =
   applyBasicAuth lifxToken "" $ req
     { checkStatus = cstat
-    , requestHeaders = userAgent : accept : requestHeaders req
+    , requestHeaders = (hUserAgent, userAgent) : accept : requestHeaders req
     }
   where accept = (hAccept, appJson)
 
