@@ -50,10 +50,12 @@ data LifxException =
     -- | Was unable to parse the JSON returned by LIFX cloud servers.
     --
     -- error message / response body
+    -- TODO: rename to JsonError
   | CloudJsonError T.Text L.ByteString
     -- | An error occurred making an HTTP request to the cloud.
     --
     -- error message / exception which can be cast to @HttpException@
+    -- TODO: rename to HttpError
   | CloudHttpError T.Text SomeException
     -- | The given character is not allowed in a label.
   | IllegalCharacter Char
