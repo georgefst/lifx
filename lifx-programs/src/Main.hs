@@ -467,7 +467,7 @@ handleControlC _ somethingElse = E.throw somethingElse
 
 main = do
   args <- C.parseCmdLine
-  let ifname = fromMaybe (T.pack "en1") $ C.aInterface args
+  let ifname = C.aInterface args
       cmd = C.aCmd args
   lan <- openLan ifname `E.catch` prLifxException
   moreMain cmd lan args

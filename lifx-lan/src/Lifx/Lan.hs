@@ -41,7 +41,9 @@ import Time.System
 data LanSettings =
   LanSettings
   { -- | Name of network interface to use, such as @en1@ or @eth0@.
-    lsIfName      :: T.Text
+    -- Default is 'Nothing', which lets the operating system choose the
+    -- interface.
+    lsIfName      :: Maybe T.Text
     -- | Function to log a line of text.  This contains
     -- information which might be helpful for troubleshooting.
     -- Default is 'TIO.hPutStrLn' 'stderr'.
@@ -68,7 +70,7 @@ data LanSettings =
 defaultLanSettings :: LanSettings
 defaultLanSettings =
   LanSettings
-  { lsIfName      = "en1"
+  { lsIfName      = Nothing
   , lsLog         = TIO.hPutStrLn stderr
   , lsPort        = 56700
   , lsListScenes  = return []

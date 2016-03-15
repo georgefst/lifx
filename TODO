@@ -36,7 +36,7 @@ test for powering on for effect
 do planned renamings
 port program to use typeclass
 config file
-support unspecified interface
+X support unspecified interface
 mock cloud API to test error handling
 test NestedSceneIdSelector
 Quickcheck tests for things which are round-trippable: IDs, JSON, messages, colors

@@ -119,11 +119,12 @@ data Lan
     , stSocket :: Socket
     , stBcast :: SockAddr
     , stThread :: Weak ThreadId
-    , stIfName :: Text
+    , stIfName :: Maybe T.Text
     }
 
 instance Show Lan where
-  show (Lan { stIfName = ifname }) = T.unpack ifname
+  show (Lan { stIfName = ifname }) =
+    maybe "(unspecified interface)" T.unpack ifname
 
 instance Eq Lan where
   x1 == x2 = x1 `compare` x2 == EQ
@@ -147,7 +148,7 @@ serializeMsg hdr payload = hdrBs `L.append` payloadBS
         hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
         hdrBs = encode hdr'
 
-newState :: Text -> Word32 -> Socket -> SockAddr -> Weak ThreadId
+newState :: Maybe T.Text -> Word32 -> Socket -> SockAddr -> Weak ThreadId
             -> Maybe (T.Text -> IO ()) -> STM Lan
 newState ifname src sock bcast wthr logFunc = do
   seq <- newTVar 0
@@ -290,12 +291,12 @@ discoverBulbs st cb = do
   pkt <- atomically $ discovery st cb
   sendManyTo (stSocket st) (L.toChunks pkt) (stBcast st)
 
-openLan :: Text -> IO Lan
+openLan :: Maybe T.Text -> IO Lan
 openLan ifname = openLan' ifname Nothing Nothing
 
-openLan' :: Text -> Maybe Word16 -> Maybe (T.Text -> IO()) -> IO Lan
+openLan' :: Maybe T.Text -> Maybe Word16 -> Maybe (T.Text -> IO()) -> IO Lan
 openLan' ifname mport mlog = do
-  hostAddr <- ifaceAddr $ T.unpack ifname
+  hostAddr <- ifaceAddr $ fmap T.unpack ifname
   sock <- socket AF_INET Datagram defaultProtocol
   bind sock $ SockAddrInet aNY_PORT hostAddr
   when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
@@ -354,8 +355,9 @@ mkSource ip port = nonzero $ murmur64 $ (ip' `shiftL` 16) .|. port'
              else if hi /= 0 then hi
                   else 0xdeadbeef
 
-ifaceAddr :: String -> IO Word32
-ifaceAddr ifname = do
+ifaceAddr :: Maybe String -> IO Word32
+ifaceAddr Nothing = return 0
+ifaceAddr (Just ifname) = do
   ifaces <- NI.getNetworkInterfaces
   let miface = find (\x -> ifname == NI.name x) ifaces
       ifnames = map NI.name ifaces
