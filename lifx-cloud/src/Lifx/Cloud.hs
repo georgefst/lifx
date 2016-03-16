@@ -59,9 +59,11 @@ data CloudSettings =
     -- the 'Manager' must support TLS.  Default action is to create a new
     -- 'Manager' which supports TLS.
     csManager :: IO Manager
-    -- | The 'AccessToken' for the cloud account to use.  There is no
-    -- default; you must supply one.
-  , csToken :: AccessToken
+    -- | 'IO' action which returns an 'AccessToken' for the cloud account
+    -- to use.  The default action is to look for the access token in
+    -- @~/.config/hs-lifx/config.json@, and to throw 'NoAccessToken' if
+    -- @token@ is not specified in the config file.
+  , csToken :: IO AccessToken
     -- | The
     -- <https://en.wikipedia.org/wiki/User_agent#Use_in_HTTP User-Agent string>
     -- to use when talking to the LIFX Cloud.  The default contains versions
@@ -80,12 +82,21 @@ data CloudSettings =
   , csRoot :: T.Text
   }
 
+defaultToken :: IO AccessToken
+defaultToken = do
+  cfg <- getConfig
+  case cfgToken cfg of
+   Nothing  -> do
+     file <- configFile
+     throwIO $ NoAccessToken file
+   Just tok -> return tok
+
 -- | Returns a 'CloudSettings' with default settings.
 defaultCloudSettings :: CloudSettings
 defaultCloudSettings =
   CloudSettings
   { csManager = newManager tlsManagerSettings
-  , csToken = error "You need to specify a valid API token for csToken."
+  , csToken = defaultToken
   , csUserAgent = defaultUserAgent
   , csLog = TIO.hPutStrLn stderr
   , csRoot = "https://api.lifx.com/v1/"
@@ -138,8 +149,9 @@ wrapHttpException e = throwIO $ CloudHttpError (T.pack $ show e) (toException e)
 openCloudConnection :: CloudSettings -> IO CloudConnection
 openCloudConnection cs = do
   mgr <- csManager cs `catch` wrapHttpException
+  tok <- csToken cs
   return $ CloudConnection { ccManager = mgr
-                           , ccToken = csToken cs
+                           , ccToken = tok
                            , ccUserAgent = renderUserAgent $ csUserAgent cs
                            , ccRoot = csRoot cs
                            , ccWarn = csLog cs

@@ -45,6 +45,10 @@ data LifxException =
     --
     -- requested interface name / list of valid interface names
     NoSuchInterface T.Text [T.Text]
+    -- | No access token was specified in the config file.
+    --
+    -- name of config file
+  | NoAccessToken FilePath
     -- | LIFX cloud servers returned the given error message.
   | CloudError T.Text
     -- | Was unable to parse the JSON returned by LIFX cloud servers.

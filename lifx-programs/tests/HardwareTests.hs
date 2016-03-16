@@ -37,7 +37,7 @@ hardwareTests =
     initCloud = do
       lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
       let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
-          cs = defaultCloudSettings { csToken = lifxToken }
+          cs = defaultCloudSettings { csToken = return lifxToken }
       openCloudConnection cs
     initLan devs = do
       lc <- openLanConnection (myLanSettings devs)

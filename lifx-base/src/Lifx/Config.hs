@@ -15,23 +15,17 @@ import Lifx.Types
 
 data Config =
   Config
-  { cfgToken       :: AccessToken
+  { cfgToken       :: Maybe AccessToken
   , cfgInterface   :: Maybe T.Text
   , cfgTestDevices :: [DeviceId]
   } deriving (Eq, Ord, Show, Read)
 
 instance FromJSON Config where
   parseJSON (Object v) = do
-    myToken <- fromMaybe defToken <$> v .:? "token"
-    myInterface <- v .:? "interface"
+    myToken       <- v .:? "token"
+    myInterface   <- v .:? "interface"
     myTestDevices <- fromMaybe [] <$> v .:? "test-devices"
     return $ Config myToken myInterface myTestDevices
-
-fromRight :: Either String a -> a
-fromRight = either error id
-
-defToken :: AccessToken
-defToken = fromRight $ fromByteString $ B.replicate 32 0
 
 configDir :: IO FilePath
 configDir = getXdgDirectory XdgConfig "hs-lifx"
