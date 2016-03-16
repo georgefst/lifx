@@ -103,7 +103,7 @@ data UserAgentComponent =
     -- | Optionally, what the HTTP spec calls a "comment".  This is typically
     -- used to provide the URL of your project.
   , uaComment :: (Maybe T.Text)
-  }
+  } deriving (Eq, Ord, Read, Show)
 
 renderUserAgent :: [UserAgentComponent] -> B.ByteString
 renderUserAgent xs = B.concat $ intercalate [" "] $ map rua xs
