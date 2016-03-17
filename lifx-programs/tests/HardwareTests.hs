@@ -24,7 +24,7 @@ import Lifx.Lan
 import Util
 
 hardwareTests =
-  let devs = map (fromRight . fromText) ["d073d5029e03", "d073d502b95f"]
+  let devs = return $ map (fromRight . fromText) ["d073d5029e03", "d073d502b95f"]
   in withResource initCloud closeConnection
     $ \cr -> withResource (initLan devs) closeConnection
              $ \lr -> testGroup "Hardware Tests"
@@ -35,7 +35,8 @@ hardwareTests =
                       ]
   where
     initCloud = openCloudConnection defaultCloudSettings
-    initLan devs = do
+    initLan rdevs = do
+      devs <- rdevs
       lc <- openLanConnection (myLanSettings devs)
       threadDelay 1000000
       return lc
@@ -106,7 +107,7 @@ setStatesDevId conn msg pairs = do
 someTests :: (Connection c1, Connection c2)
              => IO c1
              -> IO c2
-             -> [DeviceId]
+             -> IO [DeviceId]
              -> [TestTree]
 someTests conn1 conn2 devs =
   [ testCaseSteps "list lights"  (testListLights  conn1 conn2 devs)
@@ -140,7 +141,7 @@ someTests conn1 conn2 devs =
 effectTests :: (Connection c1, Connection c2)
                => IO c1
                -> IO c2
-               -> [DeviceId]
+               -> IO [DeviceId]
                -> Effect
                -> [TestTree]
 effectTests conn1 conn2 devs eff =
@@ -152,7 +153,7 @@ effectTests conn1 conn2 devs eff =
 breatheOnlyTests :: (Connection c1, Connection c2)
                     => IO c1
                     -> IO c2
-                    -> [DeviceId]
+                    -> IO [DeviceId]
                     -> [TestTree]
 breatheOnlyTests conn1 conn2 devs =
   [ testCaseSteps "breathe (from, persist)"
@@ -209,20 +210,21 @@ checkLabels results linfo = do
       pairs = zip results' linfo'
   mapM_ checkOneLabel pairs
 
-getConnections :: IO a -> IO b -> IO (a, b)
-getConnections r1 r2 = do
+getConnections :: IO a -> IO b -> IO c -> IO (a, b, c)
+getConnections r1 r2 r3 = do
   c1 <- r1
   c2 <- r2
-  return (c1, c2)
+  d  <- r3
+  return (c1, c2, d)
 
 testListLights :: (Connection c1, Connection c2)
                   => IO c1
                   -> IO c2
-                  -> [DeviceId]
+                  -> IO [DeviceId]
                   -> (String -> IO ())
                   -> IO ()
-testListLights rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testListLights rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   step "listing lights"
   let sels = map SelDevId devs
@@ -233,11 +235,11 @@ testListLights rsrc1 rsrc2 devs step = do
 testTogglePower :: (Connection c1, Connection c2)
                    => IO c1
                    -> IO c2
-                   -> [DeviceId]
+                   -> IO [DeviceId]
                    -> (String -> IO ())
                    -> IO ()
-testTogglePower rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testTogglePower rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
 
@@ -264,11 +266,11 @@ testTogglePower rsrc1 rsrc2 devs step = do
 testTogglePowerPartial :: (Connection c1, Connection c2)
                           => IO c1
                           -> IO c2
-                          -> [DeviceId]
+                          -> IO [DeviceId]
                           -> (String -> IO ())
                           -> IO ()
-testTogglePowerPartial rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testTogglePowerPartial rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
 
@@ -297,11 +299,11 @@ testTogglePowerPartial rsrc1 rsrc2 devs step = do
 testSetStateHSBK :: (Connection c1, Connection c2)
                     => IO c1
                     -> IO c2
-                    -> [DeviceId]
+                    -> IO [DeviceId]
                     -> (String -> IO ())
                     -> IO ()
-testSetStateHSBK rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testSetStateHSBK rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
       myColor = makeComplete cyan
@@ -320,11 +322,11 @@ testSetStateHSBK rsrc1 rsrc2 devs step = do
 testSetPower :: (Connection c1, Connection c2)
                 => IO c1
                 -> IO c2
-                -> [DeviceId]
+                -> IO [DeviceId]
                 -> (String -> IO ())
                 -> IO ()
-testSetPower rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testSetPower rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   knownState conn1 devs step
   let sels = map SelDevId devs
 
@@ -363,11 +365,11 @@ stateFromColor c = StateTransition { sPower = Just On
 testSetStatesHS :: (Connection c1, Connection c2)
                    => IO c1
                    -> IO c2
-                   -> [DeviceId]
+                   -> IO [DeviceId]
                    -> (String -> IO ())
                    -> IO ()
-testSetStatesHS rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testSetStatesHS rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
   step "setting states"
@@ -382,11 +384,11 @@ testSetStatesHS rsrc1 rsrc2 devs step = do
 testSetStatesB :: (Connection c1, Connection c2)
                   => IO c1
                   -> IO c2
-                  -> [DeviceId]
+                  -> IO [DeviceId]
                   -> (String -> IO ())
                   -> IO ()
-testSetStatesB rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testSetStatesB rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
   step "setting states"
@@ -403,11 +405,11 @@ testSetStatesB rsrc1 rsrc2 devs step = do
 testSetStatesK :: (Connection c1, Connection c2)
                   => IO c1
                   -> IO c2
-                  -> [DeviceId]
+                  -> IO [DeviceId]
                   -> (String -> IO ())
                   -> IO ()
-testSetStatesK rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testSetStatesK rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
   step "setting states"
@@ -427,11 +429,11 @@ testSetStatesK rsrc1 rsrc2 devs step = do
 testSetStatesSK :: (Connection c1, Connection c2)
                    => IO c1
                    -> IO c2
-                   -> [DeviceId]
+                   -> IO [DeviceId]
                    -> (String -> IO ())
                    -> IO ()
-testSetStatesSK rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testSetStatesSK rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
   step "setting states"
@@ -449,11 +451,11 @@ testSetStatesSK rsrc1 rsrc2 devs step = do
 testSetStatesHP :: (Connection c1, Connection c2)
                    => IO c1
                    -> IO c2
-                   -> [DeviceId]
+                   -> IO [DeviceId]
                    -> (String -> IO ())
                    -> IO ()
-testSetStatesHP rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testSetStatesHP rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
   step "setting states"
@@ -472,12 +474,12 @@ testSetStatesHP rsrc1 rsrc2 devs step = do
 testEffect :: (Connection c1, Connection c2)
               => IO c1
               -> IO c2
-              -> [DeviceId]
+              -> IO [DeviceId]
               -> Effect
               -> (String -> IO ())
               -> IO ()
-testEffect rsrc1 rsrc2 devs defaultEff step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testEffect rsrc1 rsrc2 rdevs defaultEff step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
       eff = defaultEff { eColor = blue
@@ -499,12 +501,12 @@ testEffect rsrc1 rsrc2 devs defaultEff step = do
 testEffectPersist :: (Connection c1, Connection c2)
                      => IO c1
                      -> IO c2
-                     -> [DeviceId]
+                     -> IO [DeviceId]
                      -> Effect
                      -> (String -> IO ())
                      -> IO ()
-testEffectPersist rsrc1 rsrc2 devs defaultEff step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testEffectPersist rsrc1 rsrc2 rdevs defaultEff step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
       eff = defaultEff { eColor = blue
@@ -527,12 +529,12 @@ testEffectPersist rsrc1 rsrc2 devs defaultEff step = do
 testEffectFrom :: (Connection c1, Connection c2)
                   => IO c1
                   -> IO c2
-                  -> [DeviceId]
+                  -> IO [DeviceId]
                   -> Effect
                   -> (String -> IO ())
                   -> IO ()
-testEffectFrom rsrc1 rsrc2 devs defaultEff step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testEffectFrom rsrc1 rsrc2 rdevs defaultEff step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
       eff = defaultEff { eColor = blue
@@ -555,11 +557,11 @@ testEffectFrom rsrc1 rsrc2 devs defaultEff step = do
 testBreatheFromPersist :: (Connection c1, Connection c2)
                           => IO c1
                           -> IO c2
-                          -> [DeviceId]
+                          -> IO [DeviceId]
                           -> (String -> IO ())
                           -> IO ()
-testBreatheFromPersist rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testBreatheFromPersist rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
       eff = defaultEffect { eType = Breathe
@@ -586,11 +588,11 @@ testBreatheFromPersist rsrc1 rsrc2 devs step = do
 testBreatheFromPersistHSBK :: (Connection c1, Connection c2)
                               => IO c1
                               -> IO c2
-                              -> [DeviceId]
+                              -> IO [DeviceId]
                               -> (String -> IO ())
                               -> IO ()
-testBreatheFromPersistHSBK rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testBreatheFromPersistHSBK rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
       eff = defaultEffect { eType = Breathe
@@ -635,11 +637,11 @@ getAppropriateScene conn devs = do
 testActivateScene :: (Connection c1, Connection c2)
                      => IO c1
                      -> IO c2
-                     -> [DeviceId]
+                     -> IO [DeviceId]
                      -> (String -> IO ())
                      -> IO ()
-testActivateScene rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testActivateScene rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
 
@@ -658,11 +660,11 @@ testActivateScene rsrc1 rsrc2 devs step = do
 testSelectScene :: (Connection c1, Connection c2)
                    => IO c1
                    -> IO c2
-                   -> [DeviceId]
+                   -> IO [DeviceId]
                    -> (String -> IO ())
                    -> IO ()
-testSelectScene rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testSelectScene rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let sels = map SelDevId devs
 
@@ -683,11 +685,11 @@ testSelectScene rsrc1 rsrc2 devs step = do
 testSelectLabel :: (Connection c1, Connection c2)
                    => IO c1
                    -> IO c2
-                   -> [DeviceId]
+                   -> IO [DeviceId]
                    -> (String -> IO ())
                    -> IO ()
-testSelectLabel rsrc1 rsrc2 devs step = do
-  (conn1, conn2) <- getConnections rsrc1 rsrc2
+testSelectLabel rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
   tr <- knownState conn1 devs step
   let labs = map (fromJust . rLabel) (tResults tr)
   let sels = map SelLabel labs
@@ -741,10 +743,10 @@ expectExc = assertFailure "expected an exception, and didn't get one"
 testActivateSceneNonexistent :: (Connection c1, Connection c2)
                                 => IO c1
                                 -> IO c2
-                                -> [DeviceId]
+                                -> IO [DeviceId]
                                 -> IO ()
-testActivateSceneNonexistent rsrc1 rsrc2 _ = do
-  (conn1, _ ) <- getConnections rsrc1 rsrc2
+testActivateSceneNonexistent rsrc1 rsrc2 rdevs = do
+  (conn1, _ , _ ) <- getConnections rsrc1 rsrc2 rdevs
 
   let badScene = fromRight $ fromText $ "55213c0c-e5c9-11e5-80f7-0050c2490048"
   (activateScene conn1 badScene 0 >> expectExc)
@@ -754,10 +756,10 @@ testActivateSceneNonexistent rsrc1 rsrc2 _ = do
 testNonexistentDevice :: (Connection c1, Connection c2)
                          => IO c1
                          -> IO c2
-                         -> [DeviceId]
+                         -> IO [DeviceId]
                          -> IO ()
-testNonexistentDevice rsrc1 rsrc2 _ = do
-  (conn1, _ ) <- getConnections rsrc1 rsrc2
+testNonexistentDevice rsrc1 rsrc2 rdevs = do
+  (conn1, _ , _ ) <- getConnections rsrc1 rsrc2 rdevs
   let nonDev = fromRight $ fromText "0015edaabbcc"
 
   (togglePower conn1 [SelDevId nonDev] 1.0 >> expectExc)
@@ -767,10 +769,10 @@ testNonexistentDevice rsrc1 rsrc2 _ = do
 testNonexistentLabel :: (Connection c1, Connection c2)
                         => IO c1
                         -> IO c2
-                        -> [DeviceId]
+                        -> IO [DeviceId]
                         -> IO ()
-testNonexistentLabel rsrc1 rsrc2 _ = do
-  (conn1, _ ) <- getConnections rsrc1 rsrc2
+testNonexistentLabel rsrc1 rsrc2 rdevs = do
+  (conn1, _ , _ ) <- getConnections rsrc1 rsrc2 rdevs
   let nonLab = fromRight $ fromText "mfgH2fYENVpO1SIu5w5wbmfVuLiqV6Ct"
 
   (togglePower conn1 [SelLabel nonLab] 1.0 >> expectExc)
@@ -780,10 +782,10 @@ testNonexistentLabel rsrc1 rsrc2 _ = do
 testNonexistentGroupId :: (Connection c1, Connection c2)
                           => IO c1
                           -> IO c2
-                          -> [DeviceId]
+                          -> IO [DeviceId]
                           -> IO ()
-testNonexistentGroupId rsrc1 rsrc2 _ = do
-  (conn1, _ ) <- getConnections rsrc1 rsrc2
+testNonexistentGroupId rsrc1 rsrc2 rdevs = do
+  (conn1, _ , _ ) <- getConnections rsrc1 rsrc2 rdevs
   let nonGrp = fromRight $ fromText "feedfacedeadbeefdefacedbadfacade"
 
   (togglePower conn1 [SelGroupId nonGrp] 1.0 >> expectExc)
@@ -793,10 +795,10 @@ testNonexistentGroupId rsrc1 rsrc2 _ = do
 testNonexistentGroup :: (Connection c1, Connection c2)
                         => IO c1
                         -> IO c2
-                        -> [DeviceId]
+                        -> IO [DeviceId]
                         -> IO ()
-testNonexistentGroup rsrc1 rsrc2 _ = do
-  (conn1, _ ) <- getConnections rsrc1 rsrc2
+testNonexistentGroup rsrc1 rsrc2 rdevs = do
+  (conn1, _ , _ ) <- getConnections rsrc1 rsrc2 rdevs
   let nonGrp = fromRight $ fromText "mfgH2fYENVpO1SIu5w5wbmfVuLiqV6Ct"
 
   (togglePower conn1 [SelGroup nonGrp] 1.0 >> expectExc)
@@ -806,10 +808,10 @@ testNonexistentGroup rsrc1 rsrc2 _ = do
 testNonexistentLocationId :: (Connection c1, Connection c2)
                              => IO c1
                              -> IO c2
-                             -> [DeviceId]
+                             -> IO [DeviceId]
                              -> IO ()
-testNonexistentLocationId rsrc1 rsrc2 _ = do
-  (conn1, _ ) <- getConnections rsrc1 rsrc2
+testNonexistentLocationId rsrc1 rsrc2 rdevs = do
+  (conn1, _ , _ ) <- getConnections rsrc1 rsrc2 rdevs
   let nonLoc = fromRight $ fromText "feedfacedeadbeefdefacedbadfacade"
 
   (togglePower conn1 [SelLocationId nonLoc] 1.0 >> expectExc)
@@ -819,10 +821,10 @@ testNonexistentLocationId rsrc1 rsrc2 _ = do
 testNonexistentLocation :: (Connection c1, Connection c2)
                            => IO c1
                            -> IO c2
-                           -> [DeviceId]
+                           -> IO [DeviceId]
                            -> IO ()
-testNonexistentLocation rsrc1 rsrc2 _ = do
-  (conn1, _ ) <- getConnections rsrc1 rsrc2
+testNonexistentLocation rsrc1 rsrc2 rdevs = do
+  (conn1, _ , _ ) <- getConnections rsrc1 rsrc2 rdevs
   let nonLoc = fromRight $ fromText "mfgH2fYENVpO1SIu5w5wbmfVuLiqV6Ct"
 
   (togglePower conn1 [SelLocation nonLoc] 1.0 >> expectExc)
@@ -832,10 +834,10 @@ testNonexistentLocation rsrc1 rsrc2 _ = do
 testNonexistentScene :: (Connection c1, Connection c2)
                         => IO c1
                         -> IO c2
-                        -> [DeviceId]
+                        -> IO [DeviceId]
                         -> IO ()
-testNonexistentScene rsrc1 rsrc2 _ = do
-  (conn1, _ ) <- getConnections rsrc1 rsrc2
+testNonexistentScene rsrc1 rsrc2 rdevs = do
+  (conn1, _ , _ ) <- getConnections rsrc1 rsrc2 rdevs
   let nonScn = fromRight $ fromText "55213c0c-e5c9-11e5-80f7-0050c2490048"
 
   (togglePower conn1 [SelSceneId nonScn] 1.0 >> expectExc)
