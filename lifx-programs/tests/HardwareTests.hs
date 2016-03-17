@@ -2,6 +2,7 @@
 
 module HardwareTests (hardwareTests) where
 
+import Control.Applicative
 import Control.Arrow
 import Control.Concurrent
 import Control.Exception
@@ -19,13 +20,13 @@ import Test.Tasty.HUnit
 
 import Lifx
 import Lifx.Cloud
+import Lifx.Internal
 import Lifx.Lan
 
 import Util
 
 hardwareTests =
-  let getDevs = return $ map (fromRight . fromText) ["d073d5029e03", "d073d502b95f"]
-  in withResource initCloud closeConnection
+  withResource initCloud closeConnection
     $ \cr -> withResource (initLan getDevs) closeConnection
              $ \lr -> withResource getDevs (const $ return ())
                       $ \ devs -> testGroup "Hardware Tests"
@@ -41,6 +42,9 @@ hardwareTests =
       lc <- openLanConnection (myLanSettings devs)
       threadDelay 1000000
       return lc
+
+getDevs :: IO [DeviceId]
+getDevs = cfgTestDevices <$> getConfig
 
 myLanSettings devs =
   defaultLanSettings { lsListScenes = return $ myScenes devs }

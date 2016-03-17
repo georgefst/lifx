@@ -46,3 +46,4 @@ should we provide instances like Hashable or Deepseq for IDs, colors, etc.?
 X reorder LanSettings and CloudSettings to match better and to put rarely-used settings last
 mark lights offline in Lan when they haven't been seen in a little while
 test for bad access token
+reimplement command line using optparse-applicative
