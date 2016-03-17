@@ -11,10 +11,12 @@ module Lifx.Lan
 
 import Lifx
 import qualified Lifx as E( EffectType( Pulse ) )
+import Lifx.Internal
 import Lifx.Lan.LowLevel
 import qualified Lifx.Lan.LowLevel as W( Waveform( Pulse ) )
 import Lifx.Lan.LowLevel.Util (untilKilled, endThread)
 
+import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.MVar
 import Control.Concurrent.STM
@@ -40,10 +42,12 @@ import Time.System
 -- | Parameters which can be passed to 'openLanConnection'.
 data LanSettings =
   LanSettings
-  { -- | Name of network interface to use, such as @en1@ or @eth0@.
-    -- Default is 'Nothing', which lets the operating system choose the
-    -- interface.
-    lsIfName      :: Maybe T.Text
+  { -- | 'IO' action which returns name of network interface to use,
+    -- such as @en1@ or @eth0@.  The default action is to look in
+    -- @~/.config/hs-lifx/config.json@.  If @interface@ is not specified
+    -- in the config file, the default is 'Nothing', which lets the
+    -- operating system choose the interface.
+    lsIfName      :: IO (Maybe T.Text)
     -- | Function to log a line of text.  This contains
     -- information which might be helpful for troubleshooting.
     -- Default is 'TIO.hPutStrLn' 'stderr'.
@@ -70,7 +74,7 @@ data LanSettings =
 defaultLanSettings :: LanSettings
 defaultLanSettings =
   LanSettings
-  { lsIfName      = Nothing
+  { lsIfName      = cfgInterface <$> getConfig
   , lsLog         = TIO.hPutStrLn stderr
   , lsPort        = 56700
   , lsListScenes  = return []
@@ -138,7 +142,8 @@ tvEmptyMap = newTVarIO M.empty
 -- | Create a new 'LanConnection', based on 'LanSettings'.
 openLanConnection :: LanSettings -> IO LanConnection
 openLanConnection ls = do
-  lan <- openLan' (lsIfName ls) (Just $ lsPort ls) (Just $ lsLog ls)
+  iface <- lsIfName ls
+  lan <- openLan' iface (Just $ lsPort ls) (Just $ lsLog ls)
   m1 <- tvEmptyMap
   m2 <- tvEmptyMap
   m3 <- tvEmptyMap
