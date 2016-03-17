@@ -47,3 +47,4 @@ X reorder LanSettings and CloudSettings to match better and to put rarely-used s
 mark lights offline in Lan when they haven't been seen in a little while
 test for bad access token
 reimplement command line using optparse-applicative
+change how sequence numbers are allocated
