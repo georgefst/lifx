@@ -34,11 +34,7 @@ hardwareTests =
                       , testGroup "LanAndCloud" (someTests lr cr devs)
                       ]
   where
-    initCloud = do
-      lifxTokenStr <- readFile "/Users/ppelleti/.lifxToken"
-      let lifxToken = fromRight $ fromText $ T.pack $ takeWhile (not . isSpace) lifxTokenStr
-          cs = defaultCloudSettings { csToken = return lifxToken }
-      openCloudConnection cs
+    initCloud = openCloudConnection defaultCloudSettings
     initLan devs = do
       lc <- openLanConnection (myLanSettings devs)
       threadDelay 1000000
