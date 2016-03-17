@@ -24,15 +24,16 @@ import Lifx.Lan
 import Util
 
 hardwareTests =
-  let devs = return $ map (fromRight . fromText) ["d073d5029e03", "d073d502b95f"]
+  let getDevs = return $ map (fromRight . fromText) ["d073d5029e03", "d073d502b95f"]
   in withResource initCloud closeConnection
-    $ \cr -> withResource (initLan devs) closeConnection
-             $ \lr -> testGroup "Hardware Tests"
-                      [ testGroup "Cloud" (someTests cr cr devs)
-                      , testGroup "Lan"   (someTests lr lr devs)
-                      , testGroup "CloudAndLan" (someTests cr lr devs)
-                      , testGroup "LanAndCloud" (someTests lr cr devs)
-                      ]
+    $ \cr -> withResource (initLan getDevs) closeConnection
+             $ \lr -> withResource getDevs (const $ return ())
+                      $ \ devs -> testGroup "Hardware Tests"
+                                  [ testGroup "Cloud" (someTests cr cr devs)
+                                  , testGroup "Lan"   (someTests lr lr devs)
+                                  , testGroup "CloudAndLan" (someTests cr lr devs)
+                                  , testGroup "LanAndCloud" (someTests lr cr devs)
+                                  ]
   where
     initCloud = openCloudConnection defaultCloudSettings
     initLan rdevs = do
