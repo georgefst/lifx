@@ -6,6 +6,7 @@ import Data.Int
 data MyISO8601_DateAndTime = MyISO8601_DateAndTime
     deriving (Show,Eq)
 
+-- Modified version of Hourglass's ISO8601_DateAndTime, to add milliseconds.
 instance TimeFormat MyISO8601_DateAndTime where
     toFormat _ = TimeFormatString
         [Format_Year,dash,Format_Month2,dash,Format_Day2 -- date
