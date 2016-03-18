@@ -244,9 +244,6 @@ parseUuid (Just v) = do
                 Just x -> return $ Just x
                 Nothing -> fail "could not parse uuid as a UUID"
 
-ununix :: Int64 -> DateTime
-ununix s = timeFromElapsed $ Elapsed $ Seconds s
-
 instance FromJSON Scene where
   parseJSON (Object v) = do
     myId      <- v .:  "uuid"

@@ -5,6 +5,8 @@ module Lifx.Cloud
        , CloudConnection
        , defaultCloudSettings
        , openCloudConnection
+       , RateLimit (..)
+       , getRateLimit
        ) where
 
 import Network.HTTP.Client
@@ -12,6 +14,7 @@ import Network.HTTP.Client.TLS
 import Network.HTTP.Types
 import Control.Applicative
 import Control.Concurrent
+import Control.Concurrent.STM
 import Control.Exception
 import Control.Monad
 import Data.Aeson hiding (Result)
@@ -20,8 +23,10 @@ import Data.Aeson.Types (Parser)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as L
+import qualified Data.CaseInsensitive as I
 import Data.Char
 import qualified Data.HashMap.Strict as H
+import Data.Hourglass
 import Data.List
 import Data.Maybe
 import Data.Monoid
@@ -34,7 +39,9 @@ import Data.Text.Format.Params
 -- import Data.Vector hiding (takeWhile, mapM_, (++), map, forM, concatMap, concat)
 import Data.Version
 -- import Debug.Trace
+import Text.Read
 import System.IO
+import Time.System
 
 import Lifx
 import Lifx.Internal
@@ -42,6 +49,7 @@ import Lifx.Internal
 import Lifx.Cloud.ErrorParser
 import Lifx.Cloud.Json
 import Lifx.Cloud.Preprocessor
+import Lifx.Cloud.Util
 
 import Paths_lifx_cloud
 
@@ -140,7 +148,32 @@ data CloudConnection =
   , ccUserAgent :: !B.ByteString
   , ccRoot :: !T.Text
   , ccWarn :: T.Text -> IO ()
+  , ccRateLimit :: TVar (Maybe RateLimit)
   }
+
+-- | Information returned by the server about
+-- <http://api.developer.lifx.com/docs/rate-limits rate limiting>.
+-- Includes both the server time and the client time when the rate
+-- limit was returned, to allow accounting for clock skew.
+data RateLimit =
+  RateLimit
+  { -- | Total number of requests allowed per window
+    rlLimit      :: !Int
+    -- | Remaining number of requests in this window
+  , rlRemaining  :: !Int
+    -- | Time (according to server) that the next window begins
+  , rlReset      :: DateTime
+    -- | Time (according to server) that this information was returned
+  , rlServerTime :: DateTime
+    -- | Time (according to client) that this information was returned
+  , rlClientTime :: DateTime
+  } deriving (Eq, Ord, Show, Read)
+
+-- | Get the rate limit information that was returned by the server
+-- when the most recent request was made.  Returns 'Nothing' if this
+-- is a brand new 'CloudConnection' which hasn't made a request yet.
+getRateLimit :: CloudConnection -> IO (Maybe RateLimit)
+getRateLimit cc = readTVarIO (ccRateLimit cc)
 
 wrapHttpException :: HttpException -> IO a
 wrapHttpException e = throwIO $ CloudHttpError (T.pack $ show e) (toException e)
@@ -150,11 +183,13 @@ openCloudConnection :: CloudSettings -> IO CloudConnection
 openCloudConnection cs = do
   mgr <- csManager cs `catch` wrapHttpException
   tok <- csToken cs
+  rateLimit <- newTVarIO Nothing
   return $ CloudConnection { ccManager = mgr
                            , ccToken = tok
                            , ccUserAgent = renderUserAgent $ csUserAgent cs
                            , ccRoot = csRoot cs
                            , ccWarn = csLog cs
+                           , ccRateLimit = rateLimit
                            }
 
 decodeUtf8Lenient :: B.ByteString -> T.Text
@@ -180,6 +215,9 @@ isJsonMimeType resp =
       Nothing -> False
       Just bs -> bs == appJson
 
+-- Return an error message from a response.  Returns the error
+-- message from the JSON body if possible, otherwise returns
+-- the HTTP status.
 extractMessage :: Response L.ByteString -> T.Text
 extractMessage resp = orElseStatus jsonMessage
   where orElseStatus Nothing =
@@ -226,6 +264,7 @@ performRequest cc req = performRequest' cc req `catch` wrapHttpException
 performRequest' :: FromJSON a => CloudConnection -> Request -> IO a
 performRequest' cc req = do
   resp <- httpLbs req (ccManager cc)
+  updateRateLimit (ccRateLimit cc) (headersToRateLimit $ responseHeaders resp)
   let stat = responseStatus resp
       code = statusCode stat
   when (code < 200 || code > 299) $ throwIO $ mkExcep $ extractMessage resp
@@ -237,6 +276,43 @@ performRequest' cc req = do
      -- decode the body a second time as type Warnings to get any warnings
      logWarnings (ccWarn cc) (decode' body)
      return x
+
+hLimit     = I.mk "X-RateLimit-Limit"
+hRemaining = I.mk "X-RateLimit-Remaining"
+hReset     = I.mk "X-RateLimit-Reset"
+
+unBS :: B.ByteString -> Maybe String
+unBS bs =
+  case TE.decodeUtf8' bs of
+   Left _ -> Nothing
+   Right txt -> Just $ T.unpack txt
+
+headersToRateLimit :: ResponseHeaders -> Maybe RateLimit
+headersToRateLimit hdrs = do
+  dateBS       <- hDate      `lookup` hdrs
+  limitBS      <- hLimit     `lookup` hdrs
+  remainingBS  <- hRemaining `lookup` hdrs
+  resetBS      <- hReset     `lookup` hdrs
+  dateStr      <- unBS dateBS
+  limitStr     <- unBS limitBS
+  remainingStr <- unBS remainingBS
+  resetStr     <- unBS resetBS
+  dateTime     <- timeParse MyRFC1123_DateAndTime $ drop 3 dateStr
+  limitInt     <- readMaybe limitStr
+  remainingInt <- readMaybe remainingStr
+  resetInt     <- readMaybe resetStr
+  return $ RateLimit { rlLimit = limitInt
+                     , rlRemaining = remainingInt
+                     , rlReset = ununix resetInt
+                     , rlServerTime = dateTime
+                     }
+
+updateRateLimit :: TVar (Maybe RateLimit) -> Maybe RateLimit -> IO ()
+updateRateLimit _ Nothing = return () -- don't update if couldn't parse headers
+updateRateLimit tv (Just rl) = do
+  now <- dateCurrent
+  let rl' = rl { rlClientTime = now }
+  atomically $ writeTVar tv $ Just rl'
 
 newtype StatePair = StatePair ([Selector], StateTransition)
 

@@ -30,10 +30,14 @@ hardwareTests =
     $ \cr -> withResource (initLan getDevs) closeConnection
              $ \lr -> withResource getDevs (const $ return ())
                       $ \ devs -> testGroup "Hardware Tests"
-                                  [ testGroup "Cloud" (someTests cr cr devs)
-                                  , testGroup "Lan"   (someTests lr lr devs)
-                                  , testGroup "CloudAndLan" (someTests cr lr devs)
-                                  , testGroup "LanAndCloud" (someTests lr cr devs)
+                                  [ testGroup "Cloud"
+                                    (someTests cr cr devs ++ cloudTests cr devs)
+                                  , testGroup "Lan"
+                                    (someTests lr lr devs)
+                                  , testGroup "CloudAndLan"
+                                    (someTests cr lr devs)
+                                  , testGroup "LanAndCloud"
+                                    (someTests lr cr devs)
                                   ]
   where
     initCloud = openCloudConnection defaultCloudSettings
@@ -108,6 +112,12 @@ setStatesDevId conn msg pairs = do
   let triples = zip3 pairs trs [0..]
   mapM_ (chkTransitionResultDevId msg) triples
   return trs
+
+cloudTests :: IO CloudConnection
+              -> IO [DeviceId]
+              -> [TestTree]
+cloudTests conn devs =
+  [ testCaseSteps "rate limit" (testRateLimit conn devs) ]
 
 someTests :: (Connection c1, Connection c2)
              => IO c1
@@ -848,3 +858,15 @@ testNonexistentScene rsrc1 rsrc2 rdevs = do
   (togglePower conn1 [SelSceneId nonScn] 1.0 >> expectExc)
     `catch` checkExc (SelectorNotFound $ SelSceneId nonScn)
   dly
+
+testRateLimit :: IO CloudConnection
+                 -> IO [DeviceId]
+                 -> (String -> IO ())
+                 -> IO ()
+testRateLimit rsrc _ step = do
+  conn <- rsrc
+  listLights conn [SelAll] needEverything
+  rateLimit <- getRateLimit conn
+  case rateLimit of
+   Nothing -> assertFailure "getRateLimit returned Nothing"
+   Just rl -> step (show rl)
