@@ -263,6 +263,7 @@ performRequest cc req = performRequest' cc req `catch` wrapHttpException
 
 performRequest' :: FromJSON a => CloudConnection -> Request -> IO a
 performRequest' cc req = do
+  getRateLimit cc >>= waitForRateLimit (ccWarn cc)
   resp <- httpLbs req (ccManager cc)
   updateRateLimit (ccRateLimit cc) (headersToRateLimit $ responseHeaders resp)
   let stat = responseStatus resp
@@ -313,6 +314,24 @@ updateRateLimit tv (Just rl) = do
   now <- dateCurrent
   let rl' = rl { rlClientTime = now }
   atomically $ writeTVar tv $ Just rl'
+
+waitForRateLimit :: (T.Text -> IO ()) -> Maybe RateLimit -> IO ()
+waitForRateLimit _ Nothing = return ()
+waitForRateLimit warn (Just rl) =
+  when (rlRemaining rl <= 0) $ do
+    now <- dateCurrent
+    let microseconds = calculateWait now rl
+    warn $ fmt "rate limiting: waiting {} microseconds" (Only microseconds)
+    threadDelay microseconds
+
+calculateWait :: DateTime -> RateLimit -> Int
+calculateWait now rl =
+  let (waitS, waitNS) = rlReset rl `timeDiffP` now
+      (skewS, skewNS) = rlClientTime rl `timeDiffP` rlServerTime rl
+      (Seconds s, NanoSeconds ns) = (waitS - skewS, waitNS - skewNS)
+      microseconds = toInteger s * 1000000 + toInteger ns `quot` 1000
+      limited = microseconds `min` 60000000 -- never wait more than a minute
+  in fromIntegral $ limited `max` 0
 
 newtype StatePair = StatePair ([Selector], StateTransition)
 
