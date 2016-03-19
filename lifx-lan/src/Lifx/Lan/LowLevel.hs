@@ -1,5 +1,6 @@
 module Lifx.Lan.LowLevel
-    ( SetWaveform(..),
+    ( SetColor(..), dfltHdr,
+      SetWaveform(..),
       StateInfo(..),
       StateVersion(..),
       StateWifiFirmware(..),
@@ -34,7 +35,8 @@ module Lifx.Lan.LowLevel
       reliableAction,
       reliableQuery,
       Interface,
-      HSBK16
+      HSBK16,
+      Header (..)
       ) where
 
 import Lifx.Lan.LowLevel.Util

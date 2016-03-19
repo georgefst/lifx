@@ -1,5 +1,6 @@
 module Lifx.Lan.LowLevel.Messages
-    ( SetWaveform(..),
+    ( SetColor(..),
+      SetWaveform(..),
       StateInfo(..),
       StateVersion(..),
       StateWifiFirmware(..),
@@ -425,7 +426,7 @@ data SetColor =
   { -- Reserved8 (stream)
     scColor :: HSBK16
   , scDuration :: !Word32
-  }
+  } deriving (Show, Read, Eq, Ord)
 
 instance MessageType SetColor where
   msgType _ = 102

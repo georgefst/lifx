@@ -63,7 +63,7 @@ data Header
     -- Reserved64
     , hdrType        :: !Word16
     -- Reserved16
-    } deriving Show
+    } deriving (Show, Read, Eq, Ord)
 
 all0dev :: DeviceId
 all0dev = read "000000000000"
