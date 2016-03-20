@@ -76,11 +76,13 @@ data LifxException =
 -- is not an instance of Eq
 instance Eq LifxException where
   (NoSuchInterface x y) == (NoSuchInterface x' y') = x == x' && y == y'
+  (NoAccessToken x) == (NoAccessToken x') = x == x'
   (CloudError x) == (CloudError x') = x == x'
   (CloudJsonError x y) == (CloudJsonError x' y') = x == x' && y == y'
   (CloudHttpError x _ ) == (CloudHttpError x' _ ) = x == x'
   (IllegalCharacter x) == (IllegalCharacter x') = x == x'
   (SelectorNotFound x) == (SelectorNotFound x') = x == x'
+  (NestedSceneIdSelector x y) == (NestedSceneIdSelector x' y') = x == x' && y == y'
   _ == _ = False
 
 instance Exception LifxException

@@ -50,3 +50,4 @@ reimplement command line using optparse-applicative
 change how sequence numbers are allocated
 move "Interface" from LowLevel types to base types
 expose all of the LowLevel messages?
+implement cycleLights for Lan
