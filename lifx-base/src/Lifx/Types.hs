@@ -88,7 +88,7 @@ instance Eq LifxException where
 instance Exception LifxException
 
 -- | The power state of a bulb.
-data Power = Off | On deriving (Show, Read, Eq, Ord)
+data Power = Off | On deriving (Show, Read, Eq, Ord, Bounded, Enum)
 
 -- | Color of light, specified as
 -- <https://en.wikipedia.org/wiki/HSL_and_HSV hue, saturation, brightness>,
@@ -568,7 +568,8 @@ data Result =
   , rStatus :: Status
   } deriving (Eq, Ord, Show, Read)
 
-data Status = Ok | TimedOut | Offline deriving (Eq, Ord, Show, Read)
+data Status = Ok | TimedOut | Offline
+            deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 data StateTransitionResult =
   StateTransitionResult
@@ -579,7 +580,7 @@ data StateTransitionResult =
 -- | The shape of the waveform of an 'Effect'.
 data EffectType = Pulse   -- ^ a square wave
                 | Breathe -- ^ a sine wave
-                  deriving (Eq, Ord, Show, Read)
+                  deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 -- | Specifies details of the effect performed by 'effect'.
 data Effect =

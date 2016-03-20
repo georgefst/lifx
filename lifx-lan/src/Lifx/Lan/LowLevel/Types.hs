@@ -39,7 +39,8 @@ instance Binary HSBK16 where
   get = HSBK <$> getWord16le <*> getWord16le <*> getWord16le <*> getWord16le
 
 
-data Waveform = Saw | Sine | HalfSine | Triangle | Pulse deriving (Show, Enum)
+data Waveform = Saw | Sine | HalfSine | Triangle | Pulse
+              deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 
 {- This is a combination of the parts called "Frame", "Frame Address",

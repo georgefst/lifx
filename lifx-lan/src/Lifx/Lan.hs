@@ -96,6 +96,7 @@ data UnknownSelectorBehavior =
     -- not be as desirable on a 'LanConnection' as it is on a
     -- @CloudConnection@.
   | ThrowOnUnknownSelector
+    deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 data CachedThing a = NotCached | Cached DateTime a deriving (Show, Eq, Ord)
 
