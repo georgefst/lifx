@@ -11,10 +11,10 @@ import Lifx
 import Lifx.Internal
 
 parseError :: T.Text -> Maybe LifxException
-parseError = parseAllMaybe errorMessage
+parseError = parseAllMaybe selectorError
 
-errorMessage :: Parser LifxException
-errorMessage =
+selectorError :: Parser LifxException
+selectorError =
   asciiCI "Could not find " >> SelectorNotFound <$> choice
   [ asciiCI "light with label: " >> selParse SelLabel
   , asciiCI "light with id: "    >> selParse SelDevId
