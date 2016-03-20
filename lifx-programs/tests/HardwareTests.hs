@@ -117,7 +117,9 @@ cloudTests :: IO CloudConnection
               -> IO [DeviceId]
               -> [TestTree]
 cloudTests conn devs =
-  [ testCaseSteps "rate limit" (testRateLimit conn devs) ]
+  [ testCaseSteps "rate limit" (testRateLimit conn devs)
+  , testCaseSteps "cycle" (testCycleLights conn conn devs)
+  ]
 
 someTests :: (Connection c1, Connection c2)
              => IO c1
@@ -246,6 +248,40 @@ testListLights rsrc1 rsrc2 rdevs step = do
   li <- listLights conn2 sels needEverything
   checkColor (zip3 devs (repeat On) (repeat defaultColor)) li
   checkLabels (tResults tr) li
+
+transitions = map (\x -> StateTransition (Just On) x 0) colors
+
+testCycleLights :: (Connection c1, Connection c2)
+                   => IO c1
+                   -> IO c2
+                   -> IO [DeviceId]
+                   -> (String -> IO ())
+                   -> IO ()
+testCycleLights rsrc1 rsrc2 rdevs step = do
+  (conn1, conn2, devs) <- getConnections rsrc1 rsrc2 rdevs
+  tr <- knownState conn1 devs step
+  let sels = map SelDevId devs
+
+  step "initial color"
+  r1 <- setState conn1 sels (last transitions)
+  dly
+
+  step "listing lights"
+  li1 <- listLights conn2 sels [NeedLabel, NeedPower, NeedColor]
+  checkLabels r1 li1
+  checkColor (zip3 devs (repeat On) (repeat $ last completeColors)) li1
+
+  -- 8 colors are okay, because up to 10 are allowed:
+  -- https://community.lifx.com/t/increase-limit-on-cycle-api-states/927
+  forM_ colors $ \color -> do
+    step $ "cycling to " ++ (T.unpack $ fromJust $ colorToText color)
+    r2 <- cycleLights conn1 sels transitions
+    dly
+
+    step "listing lights"
+    li2 <- listLights conn2 sels [NeedLabel, NeedPower, NeedColor]
+    checkLabels r2 li2
+    checkColor (zip3 devs (repeat On) (repeat $ makeComplete color)) li2
 
 testTogglePower :: (Connection c1, Connection c2)
                    => IO c1
