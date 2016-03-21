@@ -259,6 +259,11 @@ definitelyColor = fmap fromJust
 color16ToMaybeFrac :: HSBK16 -> MaybeColor
 color16ToMaybeFrac hsbk = justColor $ color16toFrac hsbk
 
+maxDuration :: FracSeconds
+maxDuration =
+  let maxms = maxBound :: Word32
+  in (fromIntegral maxms) / 1000
+
 f2ms :: FracSeconds -> Word32
 f2ms x = round $ 1000 * x
 
@@ -267,6 +272,11 @@ f2µs x = round $ 1e6 * x
 
 nanosPerSecond :: FracSeconds
 nanosPerSecond = 1e9
+
+checkDuration :: T.Text -> FracSeconds -> IO ()
+checkDuration name dur =
+  when (dur < 0 || dur > maxDuration) $ throwIO $ BadParam $
+    InvalidRange name 0 maxDuration
 
 unpackFirmwareVersion :: Word32 -> Version
 unpackFirmwareVersion v = Version (map fromIntegral [major, minor]) []
@@ -774,10 +784,12 @@ instance Connection LanConnection where
     listOfMVarToList result
 
   setStates lc pairs = do
+    mapM_ (checkDuration "duration") $ map (sDuration . snd) pairs
     result <- doSetStates lc pairs
     listOfMVarToList result
 
   effect lc sel eff = do
+    checkDuration "period" $ ePeriod eff
     result <- doEffect lc sel eff
     listOfMVarToList result
 
