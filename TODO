@@ -54,3 +54,4 @@ implement cycleLights for Lan
 properly handle parsing an empty selector list (since cloud seems okay with it)
 add direction to cycle
 use unbounded-delays in place of ThreadDelay
+convert HTTP status codes to HttpException

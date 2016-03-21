@@ -154,6 +154,7 @@ someTests conn1 conn2 devs =
   , testCase "nonexistent location" (testNonexistentLocation conn1 conn2 devs)
   , testCase "nonexistent scene (as selector)" (testNonexistentScene conn1 conn2 devs)
   , testCase "bad duration" (testBadDuration conn1 conn2 devs)
+  , testCase "bad hue" (testBadHue conn1 conn2 devs)
   ]
 
 effectTests :: (Connection c1, Connection c2)
@@ -915,6 +916,20 @@ testBadDuration rsrc1 rsrc2 rdevs = do
 
   where chk (InvalidEntries _ _ _ ) = False
         chk _ = True
+
+testBadHue :: (Connection c1, Connection c2)
+              => IO c1
+              -> IO c2
+              -> IO [DeviceId]
+              -> IO ()
+testBadHue rsrc1 rsrc2 rdevs = do
+  (conn1, _ , _ ) <- getConnections rsrc1 rsrc2 rdevs
+  let color = HSBK (Just 370) Nothing Nothing Nothing
+      trans = StateTransition Nothing color 0
+
+  (setState conn1 [SelAll] trans >> expectExc)
+    `catch` checkExc (BadParam $ InvalidRange "hue" 0 360)
+  dly
 
 testRateLimit :: IO CloudConnection
                  -> IO [DeviceId]
