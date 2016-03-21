@@ -18,6 +18,7 @@ the 'Connection' class, you'll need another package, such as
 module Lifx
        ( -- * Basic types
          LifxException(..)
+       , ParamError (..)
        , Power (..)
        , LiFrac
        , FracSeconds

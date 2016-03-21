@@ -70,9 +70,12 @@ data LifxException =
     --
     -- original scene ID / nested scene ID
   | NestedSceneIdSelector SceneId SceneId
+    -- | The value for a parameter was out of range, or otherwise
+    -- incorrect.
+  | BadParam ParamError
   deriving (Show, Typeable)
 
--- have to write this out by hand because SomeException
+-- have to write this out by hand because SomeException (in CloudHttpError)
 -- is not an instance of Eq
 instance Eq LifxException where
   (NoSuchInterface x y) == (NoSuchInterface x' y') = x == x' && y == y'
@@ -83,9 +86,20 @@ instance Eq LifxException where
   (IllegalCharacter x) == (IllegalCharacter x') = x == x'
   (SelectorNotFound x) == (SelectorNotFound x') = x == x'
   (NestedSceneIdSelector x y) == (NestedSceneIdSelector x' y') = x == x' && y == y'
+  (BadParam x) == (BadParam x') = x == x'
   _ == _ = False
 
 instance Exception LifxException
+
+-- | More detailed information about a 'BadParam' exception.
+data ParamError =
+    -- | No information is provided except the name of the parameter.
+    InvalidParam   { peName :: T.Text }
+    -- | The parameter is out of range.
+  | InvalidRange   { peName :: T.Text, peMin :: LiFrac, peMax :: LiFrac }
+    -- | A list parameter has too many or too few entries.
+  | InvalidEntries { peName :: T.Text, peMinEntries:: Int, peMaxEntries :: Int }
+    deriving (Eq, Ord, Show, Read)
 
 -- | The power state of a bulb.
 data Power = Off | On deriving (Show, Read, Eq, Ord, Bounded, Enum)
