@@ -274,9 +274,11 @@ nanosPerSecond :: FracSeconds
 nanosPerSecond = 1e9
 
 checkDuration :: T.Text -> FracSeconds -> IO ()
-checkDuration name dur =
-  when (dur < 0 || dur > maxDuration) $ throwIO $ BadParam $
-    InvalidRange name 0 maxDuration
+checkDuration = checkParam 0 maxDuration
+
+checkParam :: FracSeconds -> FracSeconds -> T.Text -> FracSeconds -> IO ()
+checkParam mn mx name param =
+  when (param < mn || param > mx) $ throwIO $ BadParam $ InvalidRange name mn mx
 
 unpackFirmwareVersion :: Word32 -> Version
 unpackFirmwareVersion v = Version (map fromIntegral [major, minor]) []
@@ -778,18 +780,39 @@ effectTypeToWaveform :: EffectType -> Waveform
 effectTypeToWaveform E.Pulse = W.Pulse
 effectTypeToWaveform Breathe = Sine
 
+checkEffect :: Effect -> IO ()
+checkEffect eff = do
+  checkDuration "period" $ ePeriod eff
+  checkParam 0 1 "peak" $ ePeak eff
+
+checkTransition :: StateTransition -> IO ()
+checkTransition st = do
+  checkDuration "duration" $ sDuration st
+  checkColor $ sColor st
+
+checkColor :: MaybeColor -> IO ()
+checkColor c = do
+  checkComponent 0 360 "hue" $ hue c
+  checkComponent 0 1 "saturation" $ saturation c
+  checkComponent 0 1 "brightness" $ brightness c
+  checkComponent minKelvin maxKelvin "kelvin" $ kelvin c
+
+checkComponent :: LiFrac -> LiFrac -> T.Text -> Maybe LiFrac -> IO ()
+checkComponent _ _ _ Nothing = return ()
+checkComponent mn mx name (Just x) = checkParam mn mx name x
+
 instance Connection LanConnection where
   listLights lc sel needed = do
     result <- doListLights lc sel needed
     listOfMVarToList result
 
   setStates lc pairs = do
-    mapM_ (checkDuration "duration") $ map (sDuration . snd) pairs
+    mapM_ checkTransition $ map snd pairs
     result <- doSetStates lc pairs
     listOfMVarToList result
 
   effect lc sel eff = do
-    checkDuration "period" $ ePeriod eff
+    checkEffect eff
     result <- doEffect lc sel eff
     listOfMVarToList result
 

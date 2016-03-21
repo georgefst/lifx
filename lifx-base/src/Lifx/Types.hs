@@ -137,6 +137,10 @@ type Color = HSBK LiFrac
 -- possible to specify a subset of HSBK.
 type MaybeColor = HSBK (Maybe LiFrac)
 
+minKelvin, maxKelvin :: LiFrac
+minKelvin = 2500
+maxKelvin = 9000
+
 -- https://community.lifx.com/t/comprehensive-list-of-recognized-color-names/1067/2
 white, red, orange, yellow, green, cyan, blue, purple, pink :: MaybeColor
 white  = HSBK Nothing    (Just 0) Nothing Nothing
