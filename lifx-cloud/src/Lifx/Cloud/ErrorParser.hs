@@ -11,7 +11,7 @@ import Lifx
 import Lifx.Internal
 
 parseError :: T.Text -> Maybe LifxException
-parseError = parseAllMaybe selectorError
+parseError = parseAllMaybe anyError
 
 anyError :: Parser LifxException
 anyError = selectorError <|> (BadParam <$> paramError)

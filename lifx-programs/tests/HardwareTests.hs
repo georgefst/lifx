@@ -153,6 +153,7 @@ someTests conn1 conn2 devs =
   , testCase "nonexistent location id" (testNonexistentLocationId conn1 conn2 devs)
   , testCase "nonexistent location" (testNonexistentLocation conn1 conn2 devs)
   , testCase "nonexistent scene (as selector)" (testNonexistentScene conn1 conn2 devs)
+  , testCase "bad duration" (testBadDuration conn1 conn2 devs)
   ]
 
 effectTests :: (Connection c1, Connection c2)
@@ -788,6 +789,11 @@ checkScenes scene li = do
 checkExc :: LifxException -> LifxException -> IO ()
 checkExc expected actual = assertEqual "exception" expected actual
 
+checkParamExc :: (ParamError -> Bool) -> LifxException -> IO ()
+checkParamExc f (BadParam pe) =
+  when (not $ f pe) $ assertFailure $ "not expecting " ++ show pe
+checkParamExc _ exc = assertFailure $ "expecting BadParam but got " ++ show exc
+
 expectExc :: IO ()
 expectExc = assertFailure "expected an exception, and didn't get one"
 
@@ -894,6 +900,21 @@ testNonexistentScene rsrc1 rsrc2 rdevs = do
   (togglePower conn1 [SelSceneId nonScn] 1.0 >> expectExc)
     `catch` checkExc (SelectorNotFound $ SelSceneId nonScn)
   dly
+
+testBadDuration :: (Connection c1, Connection c2)
+                        => IO c1
+                        -> IO c2
+                        -> IO [DeviceId]
+                        -> IO ()
+testBadDuration rsrc1 rsrc2 rdevs = do
+  (conn1, _ , _ ) <- getConnections rsrc1 rsrc2 rdevs
+
+  (togglePower conn1 [SelAll] (-1) >> expectExc)
+    `catch` checkParamExc chk
+  dly
+
+  where chk (InvalidEntries _ _ _ ) = False
+        chk _ = True
 
 testRateLimit :: IO CloudConnection
                  -> IO [DeviceId]
