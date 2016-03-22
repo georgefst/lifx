@@ -224,7 +224,12 @@ isJsonMimeType resp =
 extractMessage :: Response L.ByteString -> LifxException
 extractMessage resp = orElseStatus jsonMessage
   where orElseStatus Nothing =
-          wrapHttpException $ StatusCodeException
+          CloudHttpError
+          ( fmt "{} {}"
+            ( statusCode $ responseStatus resp
+              , decodeUtf8Lenient $ statusMessage $ responseStatus resp )
+          )
+          $ toException $ StatusCodeException
           (responseStatus resp)
           (responseHeaders resp)
           (responseCookieJar resp)

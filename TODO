@@ -41,7 +41,7 @@ mock cloud API to test error handling
 test NestedSceneIdSelector
 Quickcheck tests for things which are round-trippable: IDs, JSON, messages, colors
 X fancier UserAgent
-obey rate limit for cloud API
+X obey rate limit for cloud API
 should we provide instances like Hashable or Deepseq for IDs, colors, etc.?
 X reorder LanSettings and CloudSettings to match better and to put rarely-used settings last
 mark lights offline in Lan when they haven't been seen in a little while
