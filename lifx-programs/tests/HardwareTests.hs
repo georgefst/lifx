@@ -155,6 +155,7 @@ someTests conn1 conn2 devs =
   , testCase "nonexistent scene (as selector)" (testNonexistentScene conn1 conn2 devs)
   , testCase "bad duration" (testBadDuration conn1 conn2 devs)
   , testCase "bad hue" (testBadHue conn1 conn2 devs)
+  , testCase "empty selector" (testEmptySelectors conn1 conn2 devs)
   ]
 
 effectTests :: (Connection c1, Connection c2)
@@ -930,6 +931,18 @@ testBadHue rsrc1 rsrc2 rdevs = do
   (setState conn1 [SelAll] trans >> expectExc)
     `catch` checkExc (BadParam $ InvalidRange "hue" 0 360)
   dly
+
+testEmptySelectors :: (Connection c1, Connection c2)
+                      => IO c1
+                      -> IO c2
+                      -> IO [DeviceId]
+                      -> IO ()
+testEmptySelectors rsrc1 rsrc2 rdevs = do
+  (conn1, _ , _ ) <- getConnections rsrc1 rsrc2 rdevs
+  let trans = StateTransition Nothing purple 0
+
+  r <- setState conn1 [] trans
+  assertEqual "Result" [] r
 
 testRateLimit :: IO CloudConnection
                  -> IO [DeviceId]
