@@ -27,7 +27,7 @@ selectorString = selAll <|> selLabel <|> selDevId <|>
                  selSceneId
 
 selectorList :: Parser [Selector]
-selectorList = selectorString `sepBy1` (char ',')
+selectorList = selectorString `sepBy` (char ',')
 
 selParse :: LifxId a => (a -> Selector) -> Parser Selector
 selParse cnstr = do
