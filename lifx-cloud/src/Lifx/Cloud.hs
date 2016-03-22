@@ -175,13 +175,16 @@ data RateLimit =
 getRateLimit :: CloudConnection -> IO (Maybe RateLimit)
 getRateLimit cc = readTVarIO (ccRateLimit cc)
 
-wrapHttpException :: HttpException -> IO a
-wrapHttpException e = throwIO $ CloudHttpError (T.pack $ show e) (toException e)
+throwHttpException :: HttpException -> IO a
+throwHttpException e = throwIO $ wrapHttpException e
+
+wrapHttpException :: HttpException -> LifxException
+wrapHttpException e = CloudHttpError (T.pack $ show e) (toException e)
 
 -- | Create a new 'CloudConnection', based on 'CloudSettings'.
 openCloudConnection :: CloudSettings -> IO CloudConnection
 openCloudConnection cs = do
-  mgr <- csManager cs `catch` wrapHttpException
+  mgr <- csManager cs `catch` throwHttpException
   tok <- csToken cs
   rateLimit <- newTVarIO Nothing
   return $ CloudConnection { ccManager = mgr
@@ -218,13 +221,14 @@ isJsonMimeType resp =
 -- Return an error message from a response.  Returns the error
 -- message from the JSON body if possible, otherwise returns
 -- the HTTP status.
-extractMessage :: Response L.ByteString -> T.Text
+extractMessage :: Response L.ByteString -> LifxException
 extractMessage resp = orElseStatus jsonMessage
   where orElseStatus Nothing =
-          fmt "{} {}"
-          ( statusCode $ responseStatus resp
-          , decodeUtf8Lenient $ statusMessage $ responseStatus resp )
-        orElseStatus (Just txt) = txt
+          wrapHttpException $ StatusCodeException
+          (responseStatus resp)
+          (responseHeaders resp)
+          (responseCookieJar resp)
+        orElseStatus (Just txt) = mkExcep txt
         jsonMessage = do
           unless (isJsonMimeType resp) Nothing
           msg <- decode' $ responseBody resp
@@ -259,7 +263,7 @@ mkExcep msg =
    Nothing -> CloudError msg
 
 performRequest :: FromJSON a => CloudConnection -> Request -> IO a
-performRequest cc req = performRequest' cc req `catch` wrapHttpException
+performRequest cc req = performRequest' cc req `catch` throwHttpException
 
 performRequest' :: FromJSON a => CloudConnection -> Request -> IO a
 performRequest' cc req = do
@@ -268,7 +272,7 @@ performRequest' cc req = do
   updateRateLimit (ccRateLimit cc) (headersToRateLimit $ responseHeaders resp)
   let stat = responseStatus resp
       code = statusCode stat
-  when (code < 200 || code > 299) $ throwIO $ mkExcep $ extractMessage resp
+  when (code < 200 || code > 299) $ throwIO $ extractMessage resp
   let body = responseBody resp
   -- decode the body as the return type
   case eitherDecode' body of
