@@ -20,6 +20,7 @@ module Lifx
          LifxException(..)
        , ParamError (..)
        , Power (..)
+       , Direction (..)
        , LiFrac
        , FracSeconds
          -- * Colors

@@ -44,6 +44,17 @@ instance ToJSON Power where
   toJSON On  = String "on"
   toJSON Off = String "off"
 
+instance FromJSON Direction where
+  parseJSON (String "forward") = return Forward
+  parseJSON (String "backward") = return Backward
+  parseJSON (String txt) =
+    fail $ "expected direction to be 'forward' or 'backward', but got " ++ show txt
+  parseJSON _ = fail "expected a JSON string for direction"
+
+instance ToJSON Direction where
+  toJSON Forward = String "forward"
+  toJSON Backward = String "backward"
+
 instance FromJSON Selector where
   parseJSON (String txt) =
     case parseSelector txt of

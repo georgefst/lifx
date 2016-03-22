@@ -278,7 +278,7 @@ testCycleLights rsrc1 rsrc2 rdevs step = do
   -- https://community.lifx.com/t/increase-limit-on-cycle-api-states/927
   forM_ colors $ \color -> do
     step $ "cycling to " ++ (T.unpack $ fromJust $ colorToText color)
-    r2 <- cycleLights conn1 sels transitions
+    r2 <- cycleLights conn1 sels transitions Forward
     dly
 
     step "listing lights"

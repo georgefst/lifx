@@ -408,10 +408,10 @@ instance Connection CloudConnection where
         req' = (urlEncodedBody params req) { method = methodPut }
     unResultWrapper <$> performRequest cc req'
 
-  cycleLights cc sel states = do
+  cycleLights cc sel states dir = do
     txt <- selectorsToTextThrowIO sel
     req <- endpoint cc ("lights/" <> txt <> "/cycle")
-    let states' = encode $ object ["states" .= states]
+    let states' = encode $ object ["states" .= states, "direction" .= dir]
         req' = (jsonPut req states') { method = methodPost }
     unResultWrapper <$> performRequest cc req'
 

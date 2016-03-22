@@ -516,6 +516,7 @@ class Connection t where
   cycleLights :: t                    -- ^ The connection.
                  -> [Selector]        -- ^ The lights to operate on.
                  -> [StateTransition] -- ^ States to cycle through
+                 -> Direction
                  -> IO [Result]
 
   -- | Terminates the 'Connection' and frees any resources associated
@@ -532,6 +533,10 @@ sceneStateToStatePair dur scenest =
                    , sColor = ssColor scenest
                    , sDuration = dur
                    })
+
+-- | The direction that the 'cycleLights' method will go in.
+data Direction = Forward | Backward
+               deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 -- | An amount of time, specified as a floating-point number of seconds.
 type FracSeconds = Double
