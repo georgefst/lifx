@@ -50,6 +50,7 @@ library
 
   other-modules: Lifx.ColorParser
                , Lifx.Config
+               , Lifx.Connection
                , Lifx.ProductTable
                , Lifx.SelectorParser
                , Lifx.ToText
