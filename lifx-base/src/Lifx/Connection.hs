@@ -110,6 +110,16 @@ class Connection t where
                  -> [StateTransition] -- ^ States to cycle through
                  -> Direction
                  -> IO [Result]
+  cycleLights conn sels states dir = do
+    -- TODO: refactor
+    li <- listLights conn sels [NeedPower, NeedColor]
+    let available (LightInfo { lConnected = True, lPower = (Just _ ) }) = True
+        available _ = False
+        (up, down) = partition available li
+        transition = nextState dir states up
+        timedOut x = Result (lId x) Nothing TimedOut
+    results <- setState conn (map (SelDevId . lId) up) transition
+    return $ map timedOut down ++ results
 
   -- | Terminates the 'Connection' and frees any resources associated
   -- with it.
@@ -125,3 +135,36 @@ sceneStateToStatePair dur scenest =
                    , sColor = ssColor scenest
                    , sDuration = dur
                    })
+
+comparePower :: Maybe Power -> Maybe Power -> LiFrac
+comparePower (Just On) (Just Off) = 1
+comparePower (Just Off) (Just On) = 1
+comparePower _ _ = 0
+
+compareColor :: MaybeColor -> MaybeColor -> LiFrac
+compareColor x y =
+  compareComponent (hue x) (hue y) 360 +
+  compareComponent (saturation x) (saturation y) 1 +
+  compareComponent (brightness x) (brightness y) 1 +
+  compareComponent (kelvin x) (kelvin y) (9000 - 2500)
+
+compareComponent :: Maybe LiFrac -> Maybe LiFrac -> LiFrac -> LiFrac
+compareComponent (Just x) (Just y) scale = diff * diff
+  where diff = (x - y) / scale
+compareComponent _ _ _ = 0
+
+compareStates :: StateTransition -> LightInfo -> LiFrac
+compareStates st li =
+  comparePower (sPower st) (lPower li) +
+  compareColor (sColor st) (lColor li)
+
+evaluateState :: StateTransition -> [LightInfo] -> LiFrac
+evaluateState st lis = sum $ map (compareStates st) lis
+
+bestState :: [StateTransition] -> [LightInfo] -> Int
+bestState sts lis = snd $ minimum $ zipWith with sts [0..]
+  where with st idx = (evaluateState st lis, idx)
+
+nextState :: Direction -> [StateTransition] -> [LightInfo] -> StateTransition
+nextState Forward  sts lis = sts !! ((bestState sts lis + 1) `mod` length sts)
+nextState Backward sts lis = sts !! ((bestState sts lis - 1) `mod` length sts)

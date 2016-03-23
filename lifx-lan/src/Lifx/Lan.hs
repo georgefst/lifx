@@ -818,7 +818,5 @@ instance Connection LanConnection where
 
   listScenes lc = lsListScenes $ lcSettings lc
 
-  cycleLights lc sel states = undefined
-
   closeConnection lc =
     endThread (lsLog $ lcSettings lc) "discovery" (lcThread lc)

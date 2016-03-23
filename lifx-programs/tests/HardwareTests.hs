@@ -118,7 +118,6 @@ cloudTests :: IO CloudConnection
               -> [TestTree]
 cloudTests conn devs =
   [ testCaseSteps "rate limit" (testRateLimit conn devs)
-  , testCaseSteps "cycle" (testCycleLights conn conn devs)
   ]
 
 someTests :: (Connection c1, Connection c2)
@@ -142,6 +141,7 @@ someTests conn1 conn2 devs =
   , testGroup "breathe effect" (effectTests conn1 conn2 devs
                                 defaultEffect { eType = Breathe, eCycles = 1.5 }
                                 {- ++ breatheOnlyTests conn1 conn2 devs -})
+  , testCaseSteps "cycle" (testCycleLights conn1 conn2 devs)
   , testCaseSteps "activate scene" (testActivateScene conn1 conn2 devs)
   , testCaseSteps "select by scene" (testSelectScene conn1 conn2 devs)
   , testCaseSteps "select by label" (testSelectLabel conn1 conn2 devs)
