@@ -70,3 +70,4 @@ import Lifx.SelectorParser
 import Lifx.Util
 import Lifx.Types
 import Lifx.ProductTable
+import Lifx.ToText

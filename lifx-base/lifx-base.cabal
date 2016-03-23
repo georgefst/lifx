@@ -52,6 +52,7 @@ library
                , Lifx.Config
                , Lifx.ProductTable
                , Lifx.SelectorParser
+               , Lifx.ToText
                , Lifx.Types
                , Lifx.Util
 
