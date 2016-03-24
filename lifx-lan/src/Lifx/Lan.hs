@@ -35,7 +35,6 @@ import Data.Version
 import Data.Word
 import GHC.Float
 import System.IO
--- import System.IO.Unsafe
 import System.Mem.Weak
 import Time.System
 
@@ -162,19 +161,6 @@ openLanConnection ls = do
 getLan :: LanConnection -> Lan
 getLan = lcLan
 
-{-
-data MVarList a = Empty | Cons { car :: a , cdr :: MVar (MVarList a) }
-                deriving Eq
-
-mVarListToList :: MVar (MVarList a) -> IO [a]
-mVarListToList mvl = do
-  l <- takeMVar mvl
-  case l of
-   Empty -> return []
-   Cons lHead lTail -> do
-     lTail' <- mVarListToList lTail
-     return (lHead : lTail')
--}
 
 listOfMVarToList :: [MVar (Either SomeException a)] -> IO [a]
 listOfMVarToList = mapM takeMVarThrow
@@ -316,21 +302,6 @@ listOneLight lc messagesNeeded cl = do
               secs = s' + ns' / 1e9
           in li { lSecondsSinceSeen = secs }
 
-{-
-appendLightInfo :: TVar (Maybe (MVar (MVarList LightInfo)))
-                   -> LightInfo
-                   -> IO ()
-appendLightInfo tv li = do
-  mv <- newEmptyMVar
-  f <- atomically $ do
-    mby <- readTVar tv
-    case mby of
-     (Just mvPrev) -> do
-       writeTVar tv (Just mv)
-       return $ putMVar mvPrev $ Cons { car = li , cdr = mv }
-     Nothing -> return $ return ()
-  f
--}
 
 cbForMessage :: (LanSettings, Bulb, FinCont)
                 -> MessageNeeded
@@ -685,25 +656,6 @@ setOneLightPower lc (Just pwr) dur cl cbFail cbSucc =
   reliableAction rp (setPower bulb pwr $ f2ms dur) cbSucc cbFail
   where rp = lsRetryParams $ lcSettings lc
         bulb = clBulb cl
-
-{-
-blockingQuery :: RetryParams
-                 -> ((a -> IO ()) -> IO ())
-                 -> IO (Maybe a)
-blockingQuery rp query = do
-  mv <- newEmptyMVar
-  let cbSucc x = putMVar mv (Just x)
-      cbFail = putMVar mv Nothing
-  reliableQuery rp query cbSucc cbFail
-  takeMVar mv
-
-blockingAction :: RetryParams
-                  -> (IO () -> IO ())
-                  -> IO (Maybe ())
-blockingAction rp action =
-  blockingQuery rp query
-  where query cb = action $ cb ()
--}
 
 
 doEffect :: LanConnection

@@ -24,28 +24,3 @@ main = do
     [ pureTests
     , hardwareTests
     ]
-
-  -- print li
-  -- putStrLn ""
-
-  {-
-  tr <- setStates lc [([SelAll], st)]
-  tr <- togglePower lc [SelAll] 3.0
-  tr <- effect lc [SelAll] defaultEffect { eColor = red
-                                         , eType = Breathe
-                                         , eCycles = 5
-                                         , eFromColor = green
-                                         , ePowerOn = True
-                                         }
-  tr <- listScenes lc
-  let scn = fromRight $ fromText "44f42e8c-96fe-4663-a280-a72e65249162"
-  tr <- activateScene lc scn 10.0
-  -}
-
-  -- step "cycleLights"
-
-  -- cycleLights conn sels [st, st2]
-  -- return ()
-  -- print tr
-
-  -- step "closing connection"
