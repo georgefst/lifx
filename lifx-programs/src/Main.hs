@@ -128,6 +128,7 @@ data LightRow =
   , lrLocation :: [T.Text]
   }
 
+columns :: [Column (LightRow -> [T.Text])]
 columns =
   [ Column Lft Lft 16 32  40 ["Label"]               lrLabel
   , Column Lft Lft  3  3   0 ["Pwr", "Power"]        lrPower
@@ -141,6 +142,7 @@ columns =
   , Column Lft Lft  8 32  34 ["Location"]            lrLocation
   ]
 
+fixedCols :: Int -> [FixedColumn (LightRow -> [T.Text])]
 fixedCols w = fixColumns w columns
 
 prRow :: Int -> LightRow -> T.Text
