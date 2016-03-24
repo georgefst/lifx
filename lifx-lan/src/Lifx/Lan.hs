@@ -250,13 +250,13 @@ colorFracTo16 c = HSBK
   , kelvin = round $ kelvin c
   }
 
-justColor :: Color -> MaybeColor
+justColor :: Color -> PartialColor
 justColor = fmap Just
 
-definitelyColor :: MaybeColor -> Color
+definitelyColor :: PartialColor -> Color
 definitelyColor = fmap fromJust
 
-color16ToMaybeFrac :: HSBK16 -> MaybeColor
+color16ToMaybeFrac :: HSBK16 -> PartialColor
 color16ToMaybeFrac hsbk = justColor $ color16toFrac hsbk
 
 maxDuration :: FracSeconds
@@ -635,7 +635,7 @@ setOneLightState lc st cl = do
 
 -- If Kelvin is set, set saturation to 0 (white), unless saturation is also
 -- explicitly set.
-desaturateKelvin :: MaybeColor -> MaybeColor
+desaturateKelvin :: PartialColor -> PartialColor
 desaturateKelvin (HSBK h Nothing b k@(Just _ )) = HSBK h (Just 0) b k
 desaturateKelvin x = x
 
@@ -647,7 +647,7 @@ getOneLight :: LanConnection
                -> Bool
                -> CachedLight
                -> IO ()
-               -> ((Power, MaybeColor) -> IO ())
+               -> ((Power, PartialColor) -> IO ())
                -> IO ()
 getOneLight _ True _ _ cbSucc = cbSucc (Off, emptyColor)
 getOneLight lc False cl cbFail cbSucc =
@@ -657,8 +657,8 @@ getOneLight lc False cl cbFail cbSucc =
         succ sl = cbSucc (slPower sl, color16ToMaybeFrac $ slColor sl)
 
 setOneLightColor :: LanConnection
-                    -> MaybeColor
-                    -> MaybeColor
+                    -> PartialColor
+                    -> PartialColor
                     -> FracSeconds
                     -> CachedLight
                     -> IO ()
@@ -755,8 +755,8 @@ effectOneLight lc eff cl = do
   return mv
 
 setOneLightWaveform :: LanConnection
-                       -> MaybeColor
-                       -> MaybeColor
+                       -> PartialColor
+                       -> PartialColor
                        -> Effect
                        -> CachedLight
                        -> IO ()
@@ -790,14 +790,14 @@ checkTransition st = do
   checkDuration "duration" $ sDuration st
   checkColor $ sColor st
 
-checkColor :: MaybeColor -> IO ()
+checkColor :: PartialColor -> IO ()
 checkColor c = do
   checkComponent 0 360 "hue" $ hue c
   checkComponent 0 1 "saturation" $ saturation c
   checkComponent 0 1 "brightness" $ brightness c
   checkComponent minKelvin maxKelvin "kelvin" $ kelvin c
 
-checkComponent :: LiFrac -> LiFrac -> T.Text -> Maybe LiFrac -> IO ()
+checkComponent :: ColorChannel -> ColorChannel -> T.Text -> Maybe ColorChannel -> IO ()
 checkComponent _ _ _ Nothing = return ()
 checkComponent mn mx name (Just x) = checkParam mn mx name x
 

@@ -137,35 +137,35 @@ sceneStateToStatePair dur scenest =
                    , sDuration = dur
                    })
 
-comparePower :: Maybe Power -> Maybe Power -> LiFrac
+comparePower :: Maybe Power -> Maybe Power -> ColorChannel
 comparePower (Just On) (Just Off) = 1
 comparePower (Just Off) (Just On) = 1
 comparePower _ _ = 0
 
-compareColor :: MaybeColor -> MaybeColor -> LiFrac
+compareColor :: PartialColor -> PartialColor -> ColorChannel
 compareColor x y =
   compareComponent360 (hue x) (hue y) +
   compareComponent (saturation x) (saturation y) 1 +
   compareComponent (brightness x) (brightness y) 1 +
   compareComponent (kelvin x) (kelvin y) (9000 - 2500)
 
-compareComponent :: Maybe LiFrac -> Maybe LiFrac -> LiFrac -> LiFrac
+compareComponent :: Maybe ColorChannel -> Maybe ColorChannel -> ColorChannel -> ColorChannel
 compareComponent (Just x) (Just y) scale = diff * diff
   where diff = (x - y) / scale
 compareComponent _ _ _ = 0
 
-compareComponent360 :: Maybe LiFrac -> Maybe LiFrac -> LiFrac
+compareComponent360 :: Maybe ColorChannel -> Maybe ColorChannel -> ColorChannel
 compareComponent360 (Just x) (Just y) = min (diff1 * diff1) (diff2 * diff2)
   where diff1 = (x - y) / 360
         diff2 = ((x + 180) `mod'` 360 - (y + 180) `mod'` 360) / 360
 compareComponent360 _ _ = 0
 
-compareStates :: StateTransition -> LightInfo -> LiFrac
+compareStates :: StateTransition -> LightInfo -> ColorChannel
 compareStates st li =
   comparePower (sPower st) (lPower li) +
   compareColor (sColor st) (lColor li)
 
-evaluateState :: StateTransition -> [LightInfo] -> LiFrac
+evaluateState :: StateTransition -> [LightInfo] -> ColorChannel
 evaluateState st lis = sum $ map (compareStates st) lis
 
 bestState :: [StateTransition] -> [LightInfo] -> Int

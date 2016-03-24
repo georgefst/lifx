@@ -410,7 +410,7 @@ testSetPower rsrc1 rsrc2 rdevs step = do
   checkColor (zip3 devs (repeat On) (repeat defaultColor)) li'
   checkLabels (tResults tr') li'
 
-stateFromColor :: MaybeColor -> StateTransition
+stateFromColor :: PartialColor -> StateTransition
 stateFromColor c = StateTransition { sPower = Just On
                                    , sColor = c
                                    , sDuration = 0
@@ -770,7 +770,7 @@ assertConsistentHue    = assertConsistent (assertCloseEnough360 (360 / 500))
 assertConsistentSatBri = assertConsistent (assertCloseEnough (1 / 500))
 assertConsistentKelvin = assertConsistent (assertCloseEnough 3)
 
-assertConsistentColor :: String -> MaybeColor -> MaybeColor -> IO ()
+assertConsistentColor :: String -> PartialColor -> PartialColor -> IO ()
 assertConsistentColor msg expected actual = do
   -- https://community.lifx.com/t/some-weird-observations-when-writing-automated-tests/1080
   assertConsistentHue    (msg ++ ": hue")        (hue expected) (hue actual)

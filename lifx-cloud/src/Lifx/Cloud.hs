@@ -179,7 +179,7 @@ throwHttpException :: HttpException -> IO a
 throwHttpException e = throwIO $ wrapHttpException e
 
 wrapHttpException :: HttpException -> LifxException
-wrapHttpException e = CloudHttpError (T.pack $ show e) (toException e)
+wrapHttpException e = HttpError (T.pack $ show e) (toException e)
 
 -- | Create a new 'CloudConnection', based on 'CloudSettings'.
 openCloudConnection :: CloudSettings -> IO CloudConnection
@@ -224,7 +224,7 @@ isJsonMimeType resp =
 extractMessage :: Response L.ByteString -> LifxException
 extractMessage resp = orElseStatus jsonMessage
   where orElseStatus Nothing =
-          CloudHttpError
+          HttpError
           ( fmt "{} {}"
             ( statusCode $ responseStatus resp
               , decodeUtf8Lenient $ statusMessage $ responseStatus resp )
@@ -265,7 +265,7 @@ mkExcep :: T.Text -> LifxException
 mkExcep msg =
   case parseError msg of
    (Just exc) -> exc
-   Nothing -> CloudError msg
+   Nothing -> RemoteError msg
 
 performRequest :: FromJSON a => CloudConnection -> Request -> IO a
 performRequest cc req = performRequest' cc req `catch` throwHttpException
@@ -281,7 +281,7 @@ performRequest' cc req = do
   let body = responseBody resp
   -- decode the body as the return type
   case eitherDecode' body of
-   Left msg -> throwIO $ CloudJsonError (T.pack msg) body
+   Left msg -> throwIO $ JsonError (T.pack msg) body
    Right x -> do
      -- decode the body a second time as type Warnings to get any warnings
      logWarnings (ccWarn cc) (decode' body)

@@ -76,7 +76,7 @@ parseIdStruct (Just (Object v)) = do
   return (i, n)
 parseIdStruct _ = return (Nothing, Nothing)
 
-combineColorBrightness :: Maybe Value -> Maybe Double -> Parser MaybeColor
+combineColorBrightness :: Maybe Value -> Maybe Double -> Parser PartialColor
 combineColorBrightness c b = do
   c' <- parseC c
   return $ addBrightness c' b
@@ -91,7 +91,7 @@ combineColorBrightness c b = do
           return $ HSBK myHue mySaturation myBrightness myKelvin
         parseC _ = fail "expected a JSON object for color"
 
-parseColorBrightness :: Object -> Parser MaybeColor
+parseColorBrightness :: Object -> Parser PartialColor
 parseColorBrightness v = do
     myColorObj         <- v .:? "color"
     myBrightness       <- v .:? "brightness"

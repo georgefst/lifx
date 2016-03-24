@@ -21,11 +21,11 @@ module Lifx
        , ParamError (..)
        , Power (..)
        , Direction (..)
-       , LiFrac
+       , ColorChannel
        , FracSeconds
          -- * Colors
        , HSBK (..)
-       , Color , MaybeColor
+       , Color , PartialColor
        , combineColors, emptyColor , isEmptyColor, isCompleteColor
        , colorToText
        , parseColor

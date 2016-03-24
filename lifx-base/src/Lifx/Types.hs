@@ -50,17 +50,15 @@ data LifxException =
     -- name of config file
   | NoAccessToken FilePath
     -- | LIFX cloud servers returned the given error message.
-  | CloudError T.Text
+  | RemoteError T.Text
     -- | Was unable to parse the JSON returned by LIFX cloud servers.
     --
     -- error message / response body
-    -- TODO: rename to JsonError
-  | CloudJsonError T.Text L.ByteString
+  | JsonError T.Text L.ByteString
     -- | An error occurred making an HTTP request to the cloud.
     --
     -- error message / exception which can be cast to @HttpException@
-    -- TODO: rename to HttpError
-  | CloudHttpError T.Text SomeException
+  | HttpError T.Text SomeException
     -- | The given character is not allowed in a label.
   | IllegalCharacter Char
     -- | The given selector was not found.
@@ -75,14 +73,14 @@ data LifxException =
   | BadParam ParamError
   deriving (Show, Typeable)
 
--- have to write this out by hand because SomeException (in CloudHttpError)
+-- have to write this out by hand because SomeException (in HttpError)
 -- is not an instance of Eq
 instance Eq LifxException where
   (NoSuchInterface x y) == (NoSuchInterface x' y') = x == x' && y == y'
   (NoAccessToken x) == (NoAccessToken x') = x == x'
-  (CloudError x) == (CloudError x') = x == x'
-  (CloudJsonError x y) == (CloudJsonError x' y') = x == x' && y == y'
-  (CloudHttpError x _ ) == (CloudHttpError x' _ ) = x == x'
+  (RemoteError x) == (RemoteError x') = x == x'
+  (JsonError x y) == (JsonError x' y') = x == x' && y == y'
+  (HttpError x _ ) == (HttpError x' _ ) = x == x'
   (IllegalCharacter x) == (IllegalCharacter x') = x == x'
   (SelectorNotFound x) == (SelectorNotFound x') = x == x'
   (NestedSceneIdSelector x y) == (NestedSceneIdSelector x' y') = x == x' && y == y'
@@ -96,7 +94,7 @@ data ParamError =
     -- | No information is provided except the name of the parameter.
     InvalidParam   { peName :: T.Text }
     -- | The parameter is out of range.
-  | InvalidRange   { peName :: T.Text, peMin :: LiFrac, peMax :: LiFrac }
+  | InvalidRange   { peName :: T.Text, peMin :: ColorChannel, peMax :: ColorChannel }
     -- | A list parameter has too many or too few entries.
   | InvalidEntries { peName :: T.Text, peMinEntries:: Int, peMaxEntries :: Int }
     deriving (Eq, Ord, Show, Read)
@@ -124,25 +122,23 @@ instance Functor HSBK where
                   }
 
 
--- TODO: rename to ColorChannel
 -- | One channel of a color.
-type LiFrac = Double
+type ColorChannel = Double
 
 -- | A color specified as floating point hue (0.0 - 360.0),
 -- saturation (0.0 - 1.0), brightness (0.0 - 1.0), and kelvin (2500.0 - 9000.0).
-type Color = HSBK LiFrac
+type Color = HSBK ColorChannel
 
--- TODO: rename to PartialColor
 -- | Same as 'Color', but each of the HSBK components is a 'Maybe', so it's
 -- possible to specify a subset of HSBK.
-type MaybeColor = HSBK (Maybe LiFrac)
+type PartialColor = HSBK (Maybe ColorChannel)
 
-minKelvin, maxKelvin :: LiFrac
+minKelvin, maxKelvin :: ColorChannel
 minKelvin = 2500
 maxKelvin = 9000
 
 -- https://community.lifx.com/t/comprehensive-list-of-recognized-color-names/1067/2
-white, red, orange, yellow, green, cyan, blue, purple, pink :: MaybeColor
+white, red, orange, yellow, green, cyan, blue, purple, pink :: PartialColor
 white  = HSBK Nothing    (Just 0) Nothing Nothing
 red    = HSBK (Just 0)   (Just 1) Nothing Nothing
 orange = HSBK (Just 36)  (Just 1) Nothing Nothing
@@ -153,11 +149,11 @@ blue   = HSBK (Just 250) (Just 1) Nothing Nothing
 purple = HSBK (Just 280) (Just 1) Nothing Nothing
 pink   = HSBK (Just 325) (Just 1) Nothing Nothing
 
--- | Combines two 'MaybeColor's, so that if either color has 'Just' in a
+-- | Combines two 'PartialColor's, so that if either color has 'Just' in a
 -- particular component, that value appears in the output.  If both
 -- colors have 'Just' in a component, the second color takes precedence
 -- over the first for that component.
-combineColors :: MaybeColor -> MaybeColor -> MaybeColor
+combineColors :: PartialColor -> PartialColor -> PartialColor
 combineColors x y = HSBK
   { hue = hue x `combineMaybe` hue y
   , saturation = saturation x `combineMaybe` saturation y
@@ -377,15 +373,15 @@ data Selector = SelAll
                 deriving (Show, Read, Eq, Ord)
 
 
--- | A 'MaybeColor' where all components are 'Nothing'.
-emptyColor :: MaybeColor
+-- | A 'PartialColor' where all components are 'Nothing'.
+emptyColor :: PartialColor
 emptyColor = HSBK Nothing Nothing Nothing Nothing
 
--- | Are all components of this 'MaybeColor' 'Nothing'?
+-- | Are all components of this 'PartialColor' 'Nothing'?
 isEmptyColor (HSBK Nothing Nothing Nothing Nothing) = True
 isEmptyColor _ = False
 
--- | Are all components of this 'MaybeColor' 'Just'?
+-- | Are all components of this 'PartialColor' 'Just'?
 isCompleteColor (HSBK (Just _ ) (Just _ ) (Just _ ) (Just _ )) = True
 isCompleteColor _ = False
 
@@ -445,7 +441,7 @@ data LightInfo =
   , lLabel :: Maybe Label -- ^ Human-readable label given to the bulb.
   , lConnected :: Bool
   , lPower :: Maybe Power
-  , lColor :: MaybeColor
+  , lColor :: PartialColor
   , lGroupId :: Maybe GroupId
   , lGroup :: Maybe Label
   , lLocationId :: Maybe LocationId
@@ -463,7 +459,7 @@ data LightInfo =
 data StateTransition =
   StateTransition
   { sPower :: Maybe Power
-  , sColor :: MaybeColor
+  , sColor :: PartialColor
   , sDuration :: FracSeconds
   } deriving (Eq, Ord, Show, Read)
 
@@ -492,8 +488,8 @@ data EffectType = Pulse   -- ^ a square wave
 data Effect =
   Effect
   { eType :: EffectType      -- ^ The shape of the waveform.  Default 'Pulse'.
-  , eColor :: MaybeColor     -- ^ The color of the effect.
-  , eFromColor :: MaybeColor -- ^ The color to start from.  'emptyColor'
+  , eColor :: PartialColor     -- ^ The color of the effect.
+  , eFromColor :: PartialColor -- ^ The color to start from.  'emptyColor'
                              -- means start from the current color.
                              -- Default 'emptyColor'.
   , ePeriod :: FracSeconds   -- ^ The period of the waveform in seconds.
@@ -537,7 +533,7 @@ data SceneState =
   SceneState
   { ssSel   :: Selector
   , ssPower :: Maybe Power
-  , ssColor :: MaybeColor
+  , ssColor :: PartialColor
   } deriving (Eq, Ord, Show, Read)
 
 -- | Scenes are uniquely identified by a 'U.UUID'.

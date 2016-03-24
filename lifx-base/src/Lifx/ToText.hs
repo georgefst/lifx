@@ -19,14 +19,14 @@ textualize (key, Just value) = Just $ fmt "{}:{}" (key, value)
 -- | When given 'emptyColor', returns 'Nothing'.  Otherwise, returns
 -- 'Just' a non-empty string which, when fed to 'Lifx.parseColor', would
 -- parse as the given color.
-colorToText :: MaybeColor -> Maybe T.Text
+colorToText :: PartialColor -> Maybe T.Text
 colorToText c@(HSBK h s b k)
   | isEmptyColor c = Nothing
   | otherwise =
       -- kelvin has to go before saturation because of weird behavior:
       -- https://community.lifx.com/t/interpolating-colors-whites/573/8
       -- Also, kelvin has to be an Int and not a Double like the others,
-      -- or else we get CloudError "Unable to parse color: kelvin:5000.00"
+      -- or else we get RemoteError "Unable to parse color: kelvin:5000.00"
       let k' = ("kelvin", fmap round k :: Maybe Int)
           hsb = zip ["hue", "saturation", "brightness"] [h, s, b]
           components1 = mapMaybe textualize [k']

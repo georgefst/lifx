@@ -46,5 +46,5 @@ getConfig = do
   bs <- B.readFile name `catch` handler
   let lbs = L.fromStrict bs
   case eitherDecode' lbs of
-   Left msg -> throwIO $ CloudJsonError (T.pack msg) lbs
+   Left msg -> throwIO $ JsonError (T.pack msg) lbs
    Right x -> return x

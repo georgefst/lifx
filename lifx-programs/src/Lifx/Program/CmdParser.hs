@@ -20,27 +20,27 @@ data LiteArgs =
   , aTarget :: Targets
   , aCmd :: LiteCmd
   , aHelp :: Maybe (HelpFormat, TextFormat)
-  , aDuration :: LiFrac
+  , aDuration :: ColorChannel
   } deriving (Show, Eq, Ord)
 
 data LiteCmd = CmdNone
              | CmdList    !Int
              | CmdOn
              | CmdOff
-             | CmdColor   { lcColor :: MaybeColor }
-             | CmdPulse   { lcColor :: MaybeColor, lcPulse :: PulseArg }
-             | CmdBreathe { lcColor :: MaybeColor, lcPulse :: PulseArg }
+             | CmdColor   { lcColor :: PartialColor }
+             | CmdPulse   { lcColor :: PartialColor, lcPulse :: PulseArg }
+             | CmdBreathe { lcColor :: PartialColor, lcPulse :: PulseArg }
              | CmdPing
              | CmdSetLabel Text
                deriving (Show, Eq, Ord)
 
 data PulseArg =
   PulseArg
-  { paPeriod    :: LiFrac
-  , paCycles    :: LiFrac
+  { paPeriod    :: ColorChannel
+  , paCycles    :: ColorChannel
   , paPersist   :: Bool
   , paPowerOn   :: Bool
-  , paPeak      :: LiFrac
+  , paPeak      :: ColorChannel
   } deriving (Show, Eq, Ord)
 
 defPulseArg = PulseArg
@@ -103,7 +103,7 @@ cFlags =
   , mkCFlag "kelvin"     "2500-9000" (\c x -> c { kelvin = Just x })
   ]
 
-mkCFlag :: String -> String -> (MaybeColor -> LiFrac -> MaybeColor)
+mkCFlag :: String -> String -> (PartialColor -> ColorChannel -> PartialColor)
            -> Flag LiteArgs
 mkCFlag name range f =
   flagReq [[head name], name] cflagUpdate "FLOAT"
@@ -131,7 +131,7 @@ pFlags =
     updPowerOn = updBool (\b p -> p { paPowerOn = b })
     updPeak = updFrac (\n p -> p { paPeak = n })
 
-updFrac :: (LiFrac -> PulseArg -> PulseArg)
+updFrac :: (ColorChannel -> PulseArg -> PulseArg)
            -> String
            -> LiteArgs
            -> Either String LiteArgs

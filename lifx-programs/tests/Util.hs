@@ -23,10 +23,10 @@ fromRight = either error id
 fromRight' :: Show a => Either a b -> b
 fromRight' = either (error . show) id
 
-justColor :: Color -> MaybeColor
+justColor :: Color -> PartialColor
 justColor = fmap Just
 
-definitelyColor :: MaybeColor -> Color
+definitelyColor :: PartialColor -> Color
 definitelyColor = fmap fromJust
 
 fst3 :: (a, b, c) -> a
@@ -64,16 +64,16 @@ assertColorEqual msg expected actual = do
   assertCloseEnough (1 / 500) (msg ++ ": brightness") (brightness expected) (brightness actual)
   assertCloseEnough 3 (msg ++ ": kelvin") (kelvin expected) (kelvin actual)
 
-colors :: [MaybeColor]
+colors :: [PartialColor]
 colors = [red, orange, yellow, green, cyan, blue, purple, pink]
 
 completeColors :: [Color]
 completeColors = map makeComplete colors
 
-makeComplete :: MaybeColor -> Color
+makeComplete :: PartialColor -> Color
 makeComplete c = definitelyColor $ combineColors (justColor defaultColor) c
 
-hueColor :: LiFrac -> MaybeColor
+hueColor :: ColorChannel -> PartialColor
 hueColor h = HSBK (Just h) (Just 1) Nothing Nothing
 
 -- LIFX cloud seems to not change the hue if the saturation is 0.

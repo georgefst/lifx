@@ -11,14 +11,14 @@ import Lifx.Types
 import Lifx.Util
 
 -- | Parses a string as a color, returning 'Nothing' on failure, or 'Just'
--- a 'MaybeColor' on success which contains the HSBK color (or partial
+-- a 'PartialColor' on success which contains the HSBK color (or partial
 -- HSBK color) specified by the string.  Accepts colors in
 -- <http://api.developer.lifx.com/docs/colors the same format> as the
 -- LIFX Cloud API.
-parseColor :: T.Text -> Maybe MaybeColor
+parseColor :: T.Text -> Maybe PartialColor
 parseColor = parseAllMaybe colorString
 
-colorString :: Parser MaybeColor
+colorString :: Parser PartialColor
 colorString = colorName <|> colorHSBK <|> colorHexRGB <|> colorDecRGB
 
 colorName =
@@ -66,7 +66,7 @@ colorDecRGB = do
   b <- decimal
   return $ rgbToHsbk r g b
 
-rgbToHsbk :: Int -> Int -> Int -> MaybeColor
+rgbToHsbk :: Int -> Int -> Int -> PartialColor
 rgbToHsbk r' g' b' =
   let
     rgb = map ((/ 255) . fromIntegral) [r', g', b']

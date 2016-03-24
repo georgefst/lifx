@@ -193,18 +193,18 @@ cmdList w sem bulb = do
                 tr $ prRow w $ mkRow bulb shi sl shf sv si sg slo
                 atomically $ signalTSem sem
 
-f2ms :: LiFrac -> Word32
+f2ms :: ColorChannel -> Word32
 f2ms x = round $ 1000 * x
 
-cmdPower :: Power -> LiFrac -> TSem -> Bulb -> IO ()
+cmdPower :: Power -> ColorChannel -> TSem -> Bulb -> IO ()
 cmdPower pwr dur sem bulb = do
   let ra = myAction sem bulb
   ra "setPower" (setPower bulb pwr $ f2ms dur) $ atomically $ signalTSem sem
 
-justColor :: Color -> MaybeColor
+justColor :: Color -> PartialColor
 justColor = fmap Just
 
-definitelyColor :: MaybeColor -> Color
+definitelyColor :: PartialColor -> Color
 definitelyColor = fmap fromJust
 
 color16toFrac :: HSBK16 -> Color
@@ -224,7 +224,7 @@ colorFracTo16 c = HSBK
   }
 
 
-cmdColor :: MaybeColor -> LiFrac -> TSem -> Bulb -> IO ()
+cmdColor :: PartialColor -> ColorChannel -> TSem -> Bulb -> IO ()
 cmdColor ca dur sem bulb = do
   let rq = myQuery sem bulb
   if isCompleteColor ca
@@ -237,7 +237,7 @@ cmdColor ca dur sem bulb = do
     ra = myAction sem bulb
     setColor' newC = ra "setColor" (setColor bulb (colorFracTo16 $ definitelyColor newC) $ f2ms dur) (atomically $ signalTSem sem)
 
-cmdWave :: Waveform -> MaybeColor -> C.PulseArg -> TSem -> Bulb -> IO ()
+cmdWave :: Waveform -> PartialColor -> C.PulseArg -> TSem -> Bulb -> IO ()
 cmdWave wf ca pa sem bulb = do
   let rq = myQuery sem bulb
   if isCompleteColor ca
@@ -261,7 +261,7 @@ cmdWave wf ca pa sem bulb = do
 
 -- as long as c2 is not empty, acts like combineColors
 -- if c2 is empty, find a color "opposite" c1
-combineColors2 :: MaybeColor -> MaybeColor -> MaybeColor
+combineColors2 :: PartialColor -> PartialColor -> PartialColor
 combineColors2 c1 c2
   | isEmptyColor c2 = c1 `combineColors` contrastingColor
   | otherwise = c1 `combineColors` c2
@@ -340,7 +340,7 @@ cmdPing pingMap bulb = forkIO_ $ do
         writeTVar pingMap pm'
     threadDelay 1000000 -- 1 second
 
-cmd2func :: C.LiteCmd -> LiFrac -> TSem -> Bulb -> IO ()
+cmd2func :: C.LiteCmd -> ColorChannel -> TSem -> Bulb -> IO ()
 cmd2func (C.CmdList w) _ = cmdList w
 cmd2func C.CmdOn dur = cmdPower On dur
 cmd2func C.CmdOff dur = cmdPower Off dur
