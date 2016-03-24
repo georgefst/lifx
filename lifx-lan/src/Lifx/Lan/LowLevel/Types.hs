@@ -26,7 +26,10 @@ import Data.Word ( Word8, Word16, Word32, Word64 )
 import Lifx
 import Lifx.Lan.LowLevel.Util
 
+-- | The name of a network interface, such as @en1@ or @eth0@.
 type Interface = T.Text
+
+-- | A color where each component is a 16-bit integer.
 type HSBK16 = HSBK Word16
 
 instance Binary HSBK16 where
