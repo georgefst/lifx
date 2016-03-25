@@ -195,10 +195,10 @@ cmdList w sem bulb = do
                 tr $ prRow w $ mkRow bulb shi sl shf sv si sg slo
                 atomically $ signalTSem sem
 
-f2ms :: ColorChannel -> Word32
+f2ms :: FracSeconds -> Word32
 f2ms x = round $ 1000 * x
 
-cmdPower :: Power -> ColorChannel -> TSem -> Bulb -> IO ()
+cmdPower :: Power -> FracSeconds -> TSem -> Bulb -> IO ()
 cmdPower pwr dur sem bulb = do
   let ra = myAction sem bulb
   ra "setPower" (setPower bulb pwr $ f2ms dur) $ atomically $ signalTSem sem
@@ -226,7 +226,7 @@ colorFracTo16 c = HSBK
   }
 
 
-cmdColor :: PartialColor -> ColorChannel -> TSem -> Bulb -> IO ()
+cmdColor :: PartialColor -> FracSeconds -> TSem -> Bulb -> IO ()
 cmdColor ca dur sem bulb = do
   let rq = myQuery sem bulb
   if isCompleteColor ca
@@ -342,7 +342,7 @@ cmdPing pingMap bulb = forkIO_ $ do
         writeTVar pingMap pm'
     threadDelay 1000000 -- 1 second
 
-cmd2func :: C.LiteCmd -> ColorChannel -> TSem -> Bulb -> IO ()
+cmd2func :: C.LiteCmd -> FracSeconds -> TSem -> Bulb -> IO ()
 cmd2func (C.CmdList w) _ = cmdList w
 cmd2func C.CmdOn dur = cmdPower On dur
 cmd2func C.CmdOff dur = cmdPower Off dur
