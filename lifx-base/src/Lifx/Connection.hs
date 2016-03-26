@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lifx.Connection where
+module Lifx.Connection (Connection (..)) where
 
 import Control.Exception
 import Data.Fixed
@@ -103,13 +103,13 @@ class Connection t where
 
   -- | Determines which 'StateTransition' most closely matches the
   -- current state of the specified lights, and then activates the
-  -- next 'StateTransition' in the list, wrapping around to the
-  -- beginning if necessary.  Corresponds to
+  -- next (or previous) 'StateTransition' in the list, wrapping around
+  -- to the beginning (or end) if necessary.  Corresponds to
   -- <http://api.developer.lifx.com/docs/cycle Cycle> endpoint.
   cycleLights :: t                    -- ^ The connection.
                  -> [Selector]        -- ^ The lights to operate on.
                  -> [StateTransition] -- ^ States to cycle through
-                 -> Direction
+                 -> Direction         -- ^ Go forward or backward?
                  -> IO [Result]
   cycleLights conn sels states dir = do
     -- TODO: refactor
