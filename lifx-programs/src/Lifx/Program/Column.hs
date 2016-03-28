@@ -104,7 +104,7 @@ displayCol col txts
 
 displayRow :: [FixedColumn a] -> [[T.Text]] -> T.Text
 displayRow cols txts =
-  T.intercalate spc $ map (uncurry displayCol) $ zip cols txts
+  T.intercalate spc $ zipWith displayCol cols txts
   where spc = T.singleton ' '
 
 displayHeader :: [FixedColumn a] -> T.Text
@@ -117,7 +117,7 @@ listSingleton :: a -> [a]
 listSingleton x = [x]
 
 displaySep :: [FixedColumn a] -> T.Text
-displaySep cols = displayRow cols $ repeat $ dashes
+displaySep cols = displayRow cols $ repeat dashes
 
 displayRow' :: [FixedColumn (a -> [T.Text])] -> a -> T.Text
 displayRow' cols u = displayRow cols $ map f cols

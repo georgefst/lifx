@@ -39,10 +39,9 @@ assertCloseEnough :: (Num a, Ord a, Show a)
                      -> a
                      -> IO ()
 assertCloseEnough fudge msg expected actual =
-  if abs (expected - actual) < fudge
-  then return ()
-  else assertFailure (msg ++ ": " ++ show expected ++ " and " ++
-                      show actual ++ " not within " ++ show fudge)
+  unless (abs (expected - actual) < fudge) $
+    assertFailure (msg ++ ": " ++ show expected ++ " and " ++
+                   show actual ++ " not within " ++ show fudge)
 
 assertCloseEnough360 :: (Num a, Ord a, Show a)
                         => a
@@ -51,10 +50,9 @@ assertCloseEnough360 :: (Num a, Ord a, Show a)
                         -> a
                         -> IO ()
 assertCloseEnough360 fudge msg expected actual =
-  if abs (expected - actual) < fudge || abs (expected + 360 - actual) < fudge
-  then return ()
-  else assertFailure (msg ++ ": " ++ show expected ++ " and " ++
-                      show actual ++ " not within " ++ show fudge)
+  unless (abs (expected - actual) < fudge || abs (expected + 360 - actual) < fudge) $
+    assertFailure (msg ++ ": " ++ show expected ++ " and " ++
+                   show actual ++ " not within " ++ show fudge)
 
 assertColorEqual :: String -> Color -> Color -> IO ()
 assertColorEqual msg expected actual = do

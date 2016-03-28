@@ -23,7 +23,7 @@ import Control.Concurrent.STM
     ( STM, TArray, TVar, writeTVar, readTVar, newTVar, atomically )
 -}
 import Control.Exception
-import Control.Monad ( when, forever )
+import Control.Monad ( when, forever, unless )
 import Data.Array.MArray ( writeArray, readArray, newListArray )
 import Data.Binary
     ( Binary(..),
@@ -419,7 +419,7 @@ reliableQuery rp query cbSucc cbFail = do
                  d <- readTVar v
                  writeTVar v True
                  return d
-               when (not done') $ cbSucc x
+               unless done' $ cbSucc x
              let remainingµs = limitµs - totalµs
                  intervalµs = round $ interval * microsPerSecond
                  delayµs = min remainingµs intervalµs

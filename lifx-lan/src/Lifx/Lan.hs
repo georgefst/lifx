@@ -371,7 +371,7 @@ applySelectors lc sels = do
         expandScene scenes sel@(SelSceneId sid) = do
           case find (\s -> sid == scId s) scenes of
            Nothing -> behave4USLC lc sel
-           (Just scene) -> mapM (avoidNested sid) $ map ssSel $ scStates scene
+           (Just scene) -> mapM (avoidNested sid . ssSel) (scStates scene)
         expandScene _ sel = return [sel]
 
         avoidNested parentSid (SelSceneId sid) =
@@ -507,7 +507,7 @@ discoveryCb lc bulb = do
        let pairs = [ (dtOfCt (clLocation lite), QueryLocation)
                    , (dtOfCt (clGroup    lite), QueryGroup)
                    , (dtOfCt (clLabel    lite), QueryLabel) ]
-       in return [ snd $ head $ sort pairs ] -- just update the oldest one
+       in return [ snd $ minimum pairs ] -- just update the oldest one
   doQuery queries
 
   where
@@ -642,7 +642,7 @@ setOneLightColor lc oldColor newColor dur cl cbFail cbSucc
   where rp = lsRetryParams $ lcSettings lc
         bulb = clBulb cl
         combinedColor = oldColor `combineColors` newColor
-        c = (colorFracTo16 $ definitelyColor combinedColor)
+        c = colorFracTo16 $ definitelyColor combinedColor
 
 setOneLightPower :: LanConnection
                     -> Maybe Power
@@ -678,16 +678,16 @@ effectOneLight lc eff cl = do
       timeout = putResult TimedOut
       fromColor = eFromColor eff
       color = eColor eff
-      nd2setColor = not $ isEmptyColor $ fromColor
-      nd2combineColor = (not ((isEmptyColor $ fromColor) ||
-                              (isCompleteColor $ fromColor))) ||
-                        (not $ isCompleteColor $ color)
+      nd2setColor = not $ isEmptyColor fromColor
+      nd2combineColor = (not ((isEmptyColor fromColor) ||
+                              (isCompleteColor fromColor))) ||
+                        (not $ isCompleteColor color)
       nd2restoreColor = nd2setColor && not (ePersist eff)
       nd2getPwr = ePowerOn eff
       skipGet = not nd2restoreColor && not nd2getPwr && not nd2combineColor
   getOneLight lc skipGet cl timeout $
     \(origPwr, origColor) ->
-      setOneLightColor lc origColor (fromColor) 0 cl timeout $
+      setOneLightColor lc origColor fromColor 0 cl timeout $
         let nd2ChangePwr = ePowerOn eff && (origPwr == Off)
             (newPwr, restorePwr) = if nd2ChangePwr
                                    then (Just On, Just Off)
@@ -759,7 +759,7 @@ instance Connection LanConnection where
     listOfMVarToList result
 
   setStates lc pairs = do
-    mapM_ checkTransition $ map snd pairs
+    mapM_ (checkTransition . snd) pairs
     result <- doSetStates lc pairs
     listOfMVarToList result
 

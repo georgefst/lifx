@@ -793,7 +793,7 @@ checkExc expected actual = assertEqual "exception" expected actual
 
 checkParamExc :: (ParamError -> Bool) -> LifxException -> IO ()
 checkParamExc f (BadParam pe) =
-  when (not $ f pe) $ assertFailure $ "not expecting " ++ show pe
+  unless (f pe) $ assertFailure $ "not expecting " ++ show pe
 checkParamExc _ exc = assertFailure $ "expecting BadParam but got " ++ show exc
 
 expectExc :: IO ()
@@ -915,7 +915,7 @@ testBadDuration rsrc1 rsrc2 rdevs = do
     `catch` checkParamExc chk
   dly
 
-  where chk (InvalidEntries _ _ _ ) = False
+  where chk (InvalidEntries {}) = False
         chk _ = True
 
 testBadHue :: (Connection c1, Connection c2)

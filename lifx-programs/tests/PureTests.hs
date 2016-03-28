@@ -19,7 +19,7 @@ import Lifx
 
 import Util
 
-pureTests = testGroup "Pure Tests" $
+pureTests = testGroup "Pure Tests"
     [ testCase "testRGB" testRGB
     , testCase "sceneIdTest" sceneIdTest
     , testCase "selectorTest" selectorTest

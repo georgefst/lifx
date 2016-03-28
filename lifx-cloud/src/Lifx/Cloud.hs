@@ -385,7 +385,7 @@ instance Connection CloudConnection where
     req <- endpoint cc ("lights/" <> txt <> "/toggle")
     let durTxt = fmt "{}" (Only dur)
         params = [("duration", TE.encodeUtf8 durTxt)]
-        req' = (urlEncodedBody params req)
+        req' = urlEncodedBody params req
     unResultWrapper <$> performRequest cc req'
 
   effect cc sel eff = do
@@ -403,7 +403,7 @@ instance Connection CloudConnection where
                              Breathe -> Just $ fmt "{}" (Only $ ePeak eff)
                              _       -> Nothing)
                  ]
-        req' = (urlEncodedBody params req)
+        req' = urlEncodedBody params req
     unResultWrapper <$> performRequest cc req'
 
   listScenes cc = do

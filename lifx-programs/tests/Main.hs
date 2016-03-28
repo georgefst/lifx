@@ -19,7 +19,7 @@ import Util
 import PureTests
 import HardwareTests
 
-main = do
+main =
   defaultMain $ testGroup "All Tests"
     [ pureTests
     , hardwareTests
