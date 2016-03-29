@@ -27,6 +27,7 @@ pureTests = testGroup "Pure Tests"
     , testCase "selectorsToTextErrorTest" selectorsToTextErrorTest
     , testCase "lifxIdTest" lifxIdTest
     , testCase "lifxIdByteStringErrorTest" lifxIdByteStringErrorTest
+    , testCase "lifxIdTextErrorTest" lifxIdTextErrorTest
     , testCase "colorErrorTest" colorErrorTest
     , testCase "selectorErrorTest" selectorErrorTest
     ]
@@ -274,6 +275,13 @@ testLifxIdByteStringError msg len dummy = do
                  ++ show len ++ " bytes, but got 3"
   assertEqual msg (Left expected) x
 
+testSceneIdByteStringError :: (LifxId a, Show a, Eq a) => String -> Int -> a -> IO ()
+testSceneIdByteStringError msg len dummy = do
+  let bs = "abc"
+      x = fromByteString bs `asTypeOf` Right dummy
+      expected = "Can't parse UUID"
+  assertEqual msg (Left expected) x
+
 testLifxIdTextError :: (LifxId a, Show a, Eq a) => String -> Int -> a -> IO ()
 testLifxIdTextError msg len dummy = do
   let txt = "aabbcc"
@@ -290,6 +298,19 @@ testLifxIdTextError msg len dummy = do
       expected'' = "Got crud \"xx\" after " ++ msg
   assertEqual msg (Left expected'') x''
 
+testSceneIdTextError :: (LifxId a, Show a, Eq a) => String -> Int -> a -> IO ()
+testSceneIdTextError msg len dummy = do
+  let txt = "aabbcc"
+      x = fromText txt `asTypeOf` Right dummy
+      expected = "Can't parse UUID"
+  assertEqual msg (Left expected) x
+  let txt' = "aabbccd"
+      x' = fromText txt' `asTypeOf` Right dummy
+  assertEqual msg (Left expected) x'
+  let txt'' = "00xx"
+      x'' = fromText txt'' `asTypeOf` Right dummy
+  assertEqual msg (Left expected) x''
+
 lifxIdTest :: IO ()
 lifxIdTest = do
   testLifxId "DeviceId"     6 (undefined :: DeviceId)
@@ -301,9 +322,18 @@ lifxIdTest = do
 
 lifxIdByteStringErrorTest :: IO ()
 lifxIdByteStringErrorTest = do
-  testLifxId "DeviceId"     6 (undefined :: DeviceId)
-  testLifxId "GroupId"     16 (undefined :: GroupId)
-  testLifxId "LocationId"  16 (undefined :: LocationId)
-  testLifxId "Label"       32 (undefined :: Label)
-  testLifxId "AccessToken" 32 (undefined :: AccessToken)
-  testLifxId "SceneId"     16 (undefined :: SceneId)
+  testLifxIdByteStringError  "DeviceId"     6 (undefined :: DeviceId)
+  testLifxIdByteStringError  "GroupId"     16 (undefined :: GroupId)
+  testLifxIdByteStringError  "LocationId"  16 (undefined :: LocationId)
+  testLifxIdByteStringError  "Label"       32 (undefined :: Label)
+  testLifxIdByteStringError  "AccessToken" 32 (undefined :: AccessToken)
+  testSceneIdByteStringError "SceneId"     16 (undefined :: SceneId)
+
+lifxIdTextErrorTest :: IO ()
+lifxIdTextErrorTest = do
+  testLifxIdTextError  "DeviceId"     6 (undefined :: DeviceId)
+  testLifxIdTextError  "GroupId"     16 (undefined :: GroupId)
+  testLifxIdTextError  "LocationId"  16 (undefined :: LocationId)
+  -- testLifxIdTextError "Label"       32 (undefined :: Label)
+  testLifxIdTextError  "AccessToken" 32 (undefined :: AccessToken)
+  testSceneIdTextError "SceneId"     16 (undefined :: SceneId)
