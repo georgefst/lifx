@@ -1,5 +1,6 @@
 module Lifx.Program.Column
-       ( Direction (..)
+       ( Width
+       , Direction (..)
        , Column (..)
        , FixedColumn (..)
        , fixColumns
@@ -13,14 +14,16 @@ import Data.List
 import Data.Maybe
 import qualified Data.Text as T
 
+type Width = Int
+
 data Direction = Lft | Rgt deriving (Eq, Ord, Read, Show)
 
 data Column a =
   Column
   { cJustify :: !Direction
   , cTruncate :: !Direction
-  , cMinWidth :: !Int
-  , cMaxWidth :: !Int
+  , cMinWidth :: !Width
+  , cMaxWidth :: !Width
   , cPriority :: !Int -- width is allocated to columns by priority
   , cName :: [T.Text] -- list of possible column names of different widths
   , cUser :: a -- whatever data the user wants to put here
@@ -35,7 +38,7 @@ data FixedColumn a =
   , rUser :: a
   } deriving (Eq, Ord, Read, Show)
 
-pickBest :: [T.Text] -> Int -> T.Text
+pickBest :: [T.Text] -> Width -> T.Text
 pickBest names' width' = fromMaybe T.empty $ pb names' width'
   where pb [] _ = Nothing
         pb (name:names) width = Just $ better width name $ pb names width
@@ -48,7 +51,7 @@ pickBest names' width' = fromMaybe T.empty $ pb names' width'
           | T.length n1 < T.length n2 = n1
           | otherwise = n2
 
-convertCol :: Column a -> Int -> FixedColumn a
+convertCol :: Column a -> Width -> FixedColumn a
 convertCol col width =
   FixedColumn
   { rJustify = cJustify col
@@ -58,7 +61,7 @@ convertCol col width =
   , rUser = cUser col
   }
 
-expandCols :: Int -> [(Int, Column a)] -> [(Int, FixedColumn a)]
+expandCols :: Width -> [(Width, Column a)] -> [(Width, FixedColumn a)]
 expandCols _ [] = []
 expandCols budget ((orig, col) : rest) =
   (orig, convertCol col (cMinWidth col + moreWidth))
@@ -67,7 +70,7 @@ expandCols budget ((orig, col) : rest) =
         moreWidth | desired > budget = budget
                   | otherwise = desired
 
-truncateCols :: Int -> [Column a] -> [FixedColumn a]
+truncateCols :: Width -> [Column a] -> [FixedColumn a]
 truncateCols _ [] = []
 truncateCols budget (col : rest)
   | budget <= 0 = []
@@ -76,7 +79,7 @@ truncateCols budget (col : rest)
         width | minWidth < budget = minWidth
               | otherwise = budget
 
-fixColumns :: Int -> [Column a] -> [FixedColumn a]
+fixColumns :: Width -> [Column a] -> [FixedColumn a]
 fixColumns width cols =
   if minWidth >= width
   then truncateCols width cols

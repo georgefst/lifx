@@ -205,10 +205,9 @@ columns =
   , Column Lft Lft  8 32  34 ["Location"]            lrLocation
   ]
 
-type Width = Int
 type FixedCols = [FixedColumn (LightRow -> [T.Text])]
 
-fixedCols :: Int -> FixedCols
+fixedCols :: Width -> FixedCols
 fixedCols w = fixColumns w columns
 
 {-
