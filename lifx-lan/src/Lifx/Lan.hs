@@ -522,12 +522,15 @@ discoveryCb lc bulb = do
        let lite = CachedLight bulb NotCached NotCached NotCached
        writeTVar (lcLights lc) $ M.insert (deviceId bulb) lite lites
        return [ QueryLocation , QueryGroup , QueryLabel ] -- update all three
-     (Just lite) ->
-       -- FIXME: what if bulb changes (same id, new ip)
+     (Just lite) -> do
+       -- in case bulb changes (same id, new ip)
+       when (bulb /= clBulb lite) $
+         let lite' = lite { clBulb = bulb }
+         in writeTVar (lcLights lc) $ M.insert (deviceId bulb) lite' lites
        let pairs = [ (dtOfCt (clLocation lite), QueryLocation)
                    , (dtOfCt (clGroup    lite), QueryGroup)
                    , (dtOfCt (clLabel    lite), QueryLabel) ]
-       in return [ snd $ minimum pairs ] -- just update the oldest one
+       return [ snd $ minimum pairs ] -- just update the oldest one
   doQuery queries
 
   where

@@ -124,7 +124,7 @@ data Lan
 
 instance Show Lan where
   show (Lan { stIfName = ifname }) =
-    maybe "(unspecified interface)" T.unpack ifname
+    maybe "*" T.unpack ifname
 
 instance Eq Lan where
   x1 == x2 = x1 `compare` x2 == EQ
