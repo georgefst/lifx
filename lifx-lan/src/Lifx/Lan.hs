@@ -286,7 +286,7 @@ listOneLight lc messagesNeeded cl = do
   let fin li = do
         now <- dateCurrent
         putMVar mv $ Right $ adjustSeen now li
-  gatherInfo (lcSettings lc, bulb, fin) messagesNeeded eli
+  gatherInfo (lc, bulb, fin) messagesNeeded eli
   return mv
 
   where bulb = clBulb cl
@@ -303,13 +303,14 @@ listOneLight lc messagesNeeded cl = do
           in li { lSecondsSinceSeen = secs }
 
 
-cbForMessage :: (LanSettings, Bulb, FinCont)
+cbForMessage :: (LanConnection, Bulb, FinCont)
                 -> MessageNeeded
                 -> NxtCont
                 -> LightInfo
                 -> IO ()
-cbForMessage (ls, bulb, finCont) mneed nxtCont li = f mneed
-  where rq q cb = reliableQuery (lsRetryParams ls) (q bulb) cb $ do
+cbForMessage (lc, bulb, finCont) mneed nxtCont li = f mneed
+  where ls = lcSettings lc
+        rq q cb = reliableQuery (lsRetryParams ls) (q bulb) cb $ do
                     (lsLog ls)
                       (T.pack $ show bulb ++ " not responding to " ++ opName)
                     finCont li
@@ -323,9 +324,18 @@ cbForMessage (ls, bulb, finCont) mneed nxtCont li = f mneed
         f NeedGetInfo         = rq getInfo         cbInfo
         f NeedGetHostFirmware = rq getHostFirmware cbHostFirmware
 
-        cbLight sl         = nxtCont (trLight sl)
-        cbGroup sg         = nxtCont (trGroup sg)
-        cbLocation slo     = nxtCont (trLocation slo)
+        cbLight sl         = do
+          now <- dateCurrent
+          atomically $ updateLabel lc (deviceId bulb) now sl
+          nxtCont (trLight sl)
+        cbGroup sg         = do
+          now <- dateCurrent
+          atomically $ updateGroup lc (deviceId bulb) now sg
+          nxtCont (trGroup sg)
+        cbLocation slo     = do
+          now <- dateCurrent
+          atomically $ updateLocation lc (deviceId bulb) now slo
+          nxtCont (trLocation slo)
         cbVersion sv       = nxtCont (trVersion sv)
         cbHostInfo shi     = nxtCont (trHostInfo shi)
         cbInfo si          = nxtCont (trInfo si)
@@ -336,9 +346,11 @@ cbForMessage (ls, bulb, finCont) mneed nxtCont li = f mneed
                         , lLabel = Just (slLabel sl)
                         }
         trGroup sg = li { lGroupId = Just (sgGroup sg)
+                        -- TODO: lookup group name
                         , lGroup   = Just (sgLabel sg)
                         }
         trLocation slo = li { lLocationId = Just (sloLocation slo)
+                            -- TODO: lookup location name
                             , lLocation   = Just (sloLabel slo)
                             }
         trVersion sv = li { lProduct = productFromId (svVendor sv) (svProduct sv)
@@ -625,7 +637,10 @@ getOneLight lc False cl cbFail cbSucc =
   reliableQuery rp (getLight bulb) succ cbFail
   where rp = lsRetryParams $ lcSettings lc
         bulb = clBulb cl
-        succ sl = cbSucc (slPower sl, color16ToMaybeFrac $ slColor sl)
+        succ sl = do
+          now <- dateCurrent
+          atomically $ updateLabel lc (deviceId bulb) now sl
+          cbSucc (slPower sl, color16ToMaybeFrac $ slColor sl)
 
 setOneLightColor :: LanConnection
                     -> PartialColor

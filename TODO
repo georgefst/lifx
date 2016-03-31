@@ -54,7 +54,7 @@ expose all of the LowLevel messages?
 X implement cycleLights for Lan
 X properly handle parsing an empty selector list (since cloud seems okay with it)
 X add direction to cycle
-use unbounded-delays in place of ThreadDelay
+- use unbounded-delays in place of ThreadDelay
 X convert HTTP status codes to HttpException
 use stack; try with different versions of ghc
 update label/group/location in cache when doing listLights
