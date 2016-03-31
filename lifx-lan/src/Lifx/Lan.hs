@@ -330,12 +330,16 @@ cbForMessage (lc, bulb, finCont) mneed nxtCont li = f mneed
           nxtCont (trLight sl)
         cbGroup sg         = do
           now <- dateCurrent
-          atomically $ updateGroup lc (deviceId bulb) now sg
-          nxtCont (trGroup sg)
+          groups <- atomically $ do
+            updateGroup lc (deviceId bulb) now sg
+            readTVar (lcGroups lc)
+          nxtCont (trGroup sg groups)
         cbLocation slo     = do
           now <- dateCurrent
-          atomically $ updateLocation lc (deviceId bulb) now slo
-          nxtCont (trLocation slo)
+          locations <- atomically $ do
+            updateLocation lc (deviceId bulb) now slo
+            readTVar (lcLocations lc)
+          nxtCont (trLocation slo locations)
         cbVersion sv       = nxtCont (trVersion sv)
         cbHostInfo shi     = nxtCont (trHostInfo shi)
         cbInfo si          = nxtCont (trInfo si)
@@ -345,20 +349,24 @@ cbForMessage (lc, bulb, finCont) mneed nxtCont li = f mneed
                         , lPower = Just (slPower sl)
                         , lLabel = Just (slLabel sl)
                         }
-        trGroup sg = li { lGroupId = Just (sgGroup sg)
-                        -- TODO: lookup group name
-                        , lGroup   = Just (sgLabel sg)
-                        }
-        trLocation slo = li { lLocationId = Just (sloLocation slo)
-                            -- TODO: lookup location name
-                            , lLocation   = Just (sloLabel slo)
-                            }
-        trVersion sv = li { lProduct = productFromId (svVendor sv) (svProduct sv)
-                          , lHardwareVersion = Just (fromIntegral $ svVersion sv)
-                          }
-        trHostInfo shi = li { lTemperature = Just (fromIntegral (shiMcuTemperature shi) / 100) }
-        trInfo si = li { lUptime = Just (fromIntegral (siUptime si) / nanosPerSecond) }
-        trHostFirmware shf = li { lFirmwareVersion = Just (unpackFirmwareVersion $ shfVersion shf) }
+        trGroup sg groups =
+          li { lGroupId = Just (sgGroup sg)
+             , lGroup   = claLabel <$> M.lookup (sgGroup sg) groups
+             }
+        trLocation slo locations =
+          li { lLocationId = Just (sloLocation slo)
+             , lLocation   = claLabel <$> M.lookup (sloLocation slo) locations
+             }
+        trVersion sv =
+          li { lProduct = productFromId (svVendor sv) (svProduct sv)
+             , lHardwareVersion = Just (fromIntegral $ svVersion sv)
+             }
+        trHostInfo shi =
+          li { lTemperature = Just (fromIntegral (shiMcuTemperature shi) / 100) }
+        trInfo si =
+          li { lUptime = Just (fromIntegral (siUptime si) / nanosPerSecond) }
+        trHostFirmware shf =
+          li { lFirmwareVersion = Just (unpackFirmwareVersion $ shfVersion shf) }
 
 behave4US :: UnknownSelectorBehavior -> Selector -> IO [a]
 behave4US IgnoreUnknownSelector  _   = return []

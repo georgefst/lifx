@@ -57,5 +57,5 @@ X add direction to cycle
 - use unbounded-delays in place of ThreadDelay
 X convert HTTP status codes to HttpException
 use stack; try with different versions of ghc
-update label/group/location in cache when doing listLights
+X update label/group/location in cache when doing listLights
 typeclass method for setting label
