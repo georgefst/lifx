@@ -36,11 +36,11 @@ data LiteCmd = CmdNone
 
 data PulseArg =
   PulseArg
-  { paPeriod    :: ColorChannel
-  , paCycles    :: ColorChannel
+  { paPeriod    :: FracSeconds
+  , paCycles    :: Double
   , paPersist   :: Bool
   , paPowerOn   :: Bool
-  , paPeak      :: ColorChannel
+  , paPeak      :: Double
   } deriving (Show, Eq, Ord)
 
 defPulseArg = PulseArg
