@@ -503,9 +503,33 @@ doListLights :: LanConnection
 doListLights lc sels needed = do
   let messagesNeeded = whatsNeeded needed
       oi = lsOfflineInterval $ lcSettings lc
+  (groups, locations) <-
+    atomically ((,) <$> readTVar (lcGroups lc) <*> readTVar (lcLocations lc))
   lites <- applySelectors lc sels
   now <- dateCurrent
-  forM lites $ checkAlive now oi (listOneLight lc messagesNeeded) (offlineLightInfo groups locations)
+  forM lites $ checkAlive now oi (listOneLight lc messagesNeeded) (offlineLightInfo now groups locations)
+
+offlineLightInfo :: DateTime
+                 -> M.Map GroupId CachedLabel
+                 -> M.Map LocationId CachedLabel
+                 -> CachedLight
+                 -> LightInfo
+offlineLightInfo now groups locations lite =
+  (emptyLightInfo (deviceId $ clBulb lite) last)
+    { lLabel = maybeFromCached $ clLabel lite
+    , lConnected = False
+    , lGroupId = grp
+    , lGroup = maybeLookup grp groups
+    , lLocationId = loc
+    , lLocation = maybeLookup loc locations
+    , lSecondsSinceSeen = since
+    }
+  where last = lastSeen lite
+        since = now `timeDiffFracSeconds` last
+        grp = maybeFromCached $ clGroup lite
+        loc = maybeFromCached $ clLocation lite
+        maybeLookup Nothing _ = Nothing
+        maybeLookup (Just k) m = fmap claLabel $ M.lookup k m
 
 updateLabelCache :: Ord a
                     => TVar (M.Map a CachedLabel)
