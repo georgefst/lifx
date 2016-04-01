@@ -63,6 +63,12 @@ data LanSettings =
     -- | Specifies timeouts and how aggressively to retry when messages
     -- time out.  Default is 'defaultRetryParams'.
   , lsRetryParams :: RetryParams
+    -- | How frequently to poll the network for new devices.
+    -- | Default is 1.5 seconds.
+  , lsDiscoveryPollInterval :: FracSeconds
+    -- | If a bulb is not seen for this amount of time, it is marked Offline.
+    -- | Default is 5 seconds.
+  , lsOfflineInterval :: FracSeconds
     -- | Port that LIFX bulbs are listening on.  Default is @56700@, which
     -- is the correct value for LIFX bulbs.  The only reason to change this
     -- is if you want to mock the bulbs for testing.
@@ -78,6 +84,8 @@ defaultLanSettings =
   , lsPort        = 56700
   , lsListScenes  = return []
   , lsRetryParams = defaultRetryParams
+  , lsDiscoveryPollInterval = 1.5
+  , lsOfflineInterval = 5
   , lsUnknownSelectorBehavior = ThrowOnUnknownSelector
   }
 
@@ -495,15 +503,16 @@ dtOfCt NotCached = longAgo
 dtOfCt (Cached dt _ ) = dt
 
 microsPerSecond = 1e6
-discoveryTime = 1.5
+-- discoveryTime = 1.5
 fastDiscoveryTime = 0.25
 
 discoveryThread :: TMVar LanConnection -> IO ()
 discoveryThread tmv = do
   lc <- atomically $ takeTMVar tmv
+  let discoveryTime = lsDiscoveryPollInterval $ lcSettings lc
   forM_ [1..3] $ \_ -> do
     db lc
-    td fastDiscoveryTime
+    td $ min discoveryTime fastDiscoveryTime
   untilKilled (lsLog $ lcSettings lc) "discovery" $ do
     db lc
     td discoveryTime
