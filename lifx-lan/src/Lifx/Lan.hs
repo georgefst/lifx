@@ -305,7 +305,7 @@ listOneLight lc messagesNeeded cl = do
           cbForMessage stuff mneed (gatherInfo stuff mneeds) li
 
         adjustSeen now li =
-          let secs = timeDiffFracSeconds (lLastSeen li) now
+          let secs = timeDiffFracSeconds now (lLastSeen li)
           in li { lSecondsSinceSeen = secs }
 
 timeDiffFracSeconds :: (Timeable t1, Timeable t2) => t1 -> t2 -> FracSeconds
@@ -480,7 +480,7 @@ checkAlive :: DateTime
               -> CachedLight
               -> IO (MVar (Either SomeException a))
 checkAlive now offlineInterval ifAlive ifDead lite =
-  if (now `timeDiffFracSeconds` lastSeen lite > offlineInterval)
+  if (now `timeDiffFracSeconds` lastSeen lite <= offlineInterval)
   then ifAlive lite
   else do
     mv <- newEmptyMVar
