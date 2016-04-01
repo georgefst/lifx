@@ -305,11 +305,14 @@ listOneLight lc messagesNeeded cl = do
           cbForMessage stuff mneed (gatherInfo stuff mneeds) li
 
         adjustSeen now li =
-          let (Seconds s, NanoSeconds ns) = timeDiffP (lLastSeen li) now
-              [s', ns'] = map fromIntegral [s, ns]
-              secs = s' + ns' / 1e9
+          let secs = timeDiffFracSeconds (lLastSeen li) now
           in li { lSecondsSinceSeen = secs }
 
+timeDiffFracSeconds :: (Timeable t1, Timeable t2) => t1 -> t2 -> FracSeconds
+timeDiffFracSeconds t1 t2 =
+  let (Seconds s, NanoSeconds ns) = timeDiffP t1 t2
+      [s', ns'] = map fromIntegral [s, ns]
+  in s' + ns' / 1e9
 
 cbForMessage :: (LanConnection, Bulb, FinCont)
                 -> MessageNeeded
@@ -470,6 +473,29 @@ selectFilter (SelLocationId lid) (CachedLight {clLocation = (Cached _ lid')}) =
 selectFilter sel _ = error $ "unimplemented selector " ++ show sel
 
 
+checkAlive :: DateTime
+              -> FracSeconds
+              -> (CachedLight -> IO (MVar (Either SomeException a)))
+              -> (CachedLight -> a)
+              -> CachedLight
+              -> IO (MVar (Either SomeException a))
+checkAlive now offlineInterval ifAlive ifDead lite =
+  if (now `timeDiffFracSeconds` lastSeen lite > offlineInterval)
+  then ifAlive lite
+  else do
+    mv <- newEmptyMVar
+    putMVar mv $ Right $ ifDead lite
+    return mv
+
+
+offlineResult :: CachedLight -> Result
+offlineResult lite = Result
+  { rId = deviceId $ clBulb lite
+  , rLabel = maybeFromCached $ clLabel lite
+  , rStatus = Offline
+  }
+
+
 doListLights :: LanConnection
                 -> [Selector]
                 -> [InfoNeeded]
@@ -611,9 +637,11 @@ setOneState :: LanConnection
                -> IO (MVar (Either SomeException StateTransitionResult))
 setOneState lc pair@(sels, st) = do
   mv <- newEmptyMVar
+  now <- dateCurrent
+  let oi = lsOfflineInterval $ lcSettings lc
   forkFinallyMVar mv $ do
     lites <- applySelectors lc sels
-    results <- forM lites $ setOneLightState lc st
+    results <- forM lites $ checkAlive now oi (setOneLightState lc st) offlineResult
     results' <- listOfMVarToList results
     return (StateTransitionResult pair results')
   return mv
@@ -699,7 +727,9 @@ doEffect :: LanConnection
             -> IO [MVar (Either SomeException Result)]
 doEffect lc sels eff = do
   lites <- applySelectors lc sels
-  forM lites $ effectOneLight lc eff
+  now <- dateCurrent
+  let oi = lsOfflineInterval $ lcSettings lc
+  forM lites $ checkAlive now oi (effectOneLight lc eff) offlineResult
 
 effectOneLight :: LanConnection
                   -> Effect
