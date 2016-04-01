@@ -502,8 +502,10 @@ doListLights :: LanConnection
                 -> IO [MVar (Either SomeException LightInfo)]
 doListLights lc sels needed = do
   let messagesNeeded = whatsNeeded needed
+      oi = lsOfflineInterval $ lcSettings lc
   lites <- applySelectors lc sels
-  forM lites $ listOneLight lc messagesNeeded
+  now <- dateCurrent
+  forM lites $ checkAlive now oi (listOneLight lc messagesNeeded) (offlineLightInfo groups locations)
 
 updateLabelCache :: Ord a
                     => TVar (M.Map a CachedLabel)
