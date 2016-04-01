@@ -367,9 +367,25 @@ cmdColor ca dur sem bulb = do
     setColor' newC = ra "setColor" (setColor bulb (colorFracTo16 $ definitelyColor newC) $ f2ms dur) (atomically $ signalTSem sem)
 -}
 
-cmdEffect :: Connection c => Effect -> c -> [Selector] -> IO ()
-cmdEffect eff conn sels = effect conn sels eff >>= prResults
 
+cmdWave :: Connection c
+           => EffectType
+           -> PartialColor
+           -> C.PulseArg
+           -> c
+           -> [Selector]
+           -> IO ()
+cmdWave et ca pa conn sels =
+  effect conn sels eff >>= prResults
+  where eff = defaultEffect
+              { eType = et
+              , eColor = ca
+              , ePeriod = C.paPeriod pa
+              , eCycles = C.paCycles pa
+              , ePersist = C.paPersist pa
+              , ePowerOn = C.paPowerOn pa
+              , ePeak = C.paPeak pa
+              }
 
 {-
 cmdWave :: Waveform -> PartialColor -> C.PulseArg -> TSem -> Bulb -> IO ()
@@ -481,8 +497,8 @@ cmd2func (C.CmdList w) _ = cmdList (fixedCols w)
 cmd2func C.CmdOn dur = cmdPower On dur
 cmd2func C.CmdOff dur = cmdPower Off dur
 cmd2func (C.CmdColor ca) dur = cmdColor ca dur
--- cmd2func (C.CmdPulse ca pa) _ = cmdWave Pulse ca pa
--- cmd2func (C.CmdBreathe ca pa) _ = cmdWave Sine ca pa
+cmd2func (C.CmdPulse ca pa) _ = cmdWave Pulse ca pa
+cmd2func (C.CmdBreathe ca pa) _ = cmdWave Breathe ca pa
 -- cmd2func (C.CmdSetLabel lbl) _ = cmdSetLabel lbl
 
 lsHeader :: Int -> IO ()
