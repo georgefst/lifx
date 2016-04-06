@@ -122,6 +122,14 @@ class Connection t where
     results <- setState conn (map (SelDevId . lId) up) transition
     return $ map timedOut down ++ results
 
+  -- | Change the label of the specified light.  Throws 'Unsupported'
+  -- in the cloud backend.
+  setLabel :: t                    -- ^ The connection.
+              -> DeviceId          -- ^ The light to operate on.
+              -> Label             -- ^ The new label for the light.
+              -> IO Result
+  setLabel _ _ _ = throwIO $ Unsupported "setLabel"
+
   -- | Terminates the 'Connection' and frees any resources associated
   -- with it.
   closeConnection :: t        -- ^ The connection to terminate.

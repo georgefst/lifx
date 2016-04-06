@@ -31,7 +31,7 @@ import System.Console.CmdArgs.Explicit
 import System.Exit
 import System.Hourglass
 
-import Lifx hiding (Pulse, NeedGroup)
+import Lifx hiding (Pulse, NeedGroup, setLabel)
 import Lifx.Internal
 import Lifx.Lan.LowLevel
 

@@ -40,7 +40,7 @@ import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
 import Data.Word ( Word16, Word32, Word64 )
 
-import Lifx
+import Lifx hiding (setLabel)
 import Lifx.Internal
 
 import Lifx.Lan.LowLevel.Util

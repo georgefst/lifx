@@ -71,6 +71,8 @@ data LifxException =
     -- | The value for a parameter was out of range, or otherwise
     -- incorrect.
   | BadParam ParamError
+    -- | The backend does not support something you asked it to do.
+  | Unsupported T.Text
   deriving (Show, Typeable)
 
 -- have to write this out by hand because SomeException (in HttpError)
@@ -85,6 +87,7 @@ instance Eq LifxException where
   (SelectorNotFound x) == (SelectorNotFound x') = x == x'
   (NestedSceneIdSelector x y) == (NestedSceneIdSelector x' y') = x == x' && y == y'
   (BadParam x) == (BadParam x') = x == x'
+  (Unsupported x) == (Unsupported x') = x == x'
   _ == _ = False
 
 instance Exception LifxException
