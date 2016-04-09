@@ -15,7 +15,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as L
-import Data.Hourglass
+-- import Data.Hourglass
 import Data.Int
 import Data.List (find, partition)
 import Data.Maybe
@@ -30,7 +30,7 @@ import Data.Text.Format.Params
 import qualified Data.Text.Lazy as LT
 import Data.Typeable
 import qualified Data.UUID.Types as U
-import Data.Version
+-- import Data.Version
 import Data.Word
 import Debug.Trace
 import Text.ParserCombinators.ReadP (skipSpaces)
@@ -101,6 +101,9 @@ data ParamError =
     -- | A list parameter has too many or too few entries.
   | InvalidEntries { peName :: T.Text, peMinEntries:: Int, peMaxEntries :: Int }
     deriving (Eq, Ord, Show, Read)
+
+-- | An amount of time, specified as a floating-point number of seconds.
+type FracSeconds = Double
 
 -- | The power state of a bulb.
 data Power = Off | On deriving (Show, Read, Eq, Ord, Bounded, Enum)
@@ -363,6 +366,28 @@ instance FromJSON AccessToken where
   parseJSON = implParseJson
 
 
+-- | Scenes are uniquely identified by a 'U.UUID'.
+newtype SceneId = SceneId { unSceneId :: U.UUID } deriving (Eq, Ord)
+
+instance Show SceneId where
+  showsPrec prec sid = showsPrec prec (unSceneId sid)
+
+instance Read SceneId where
+  readsPrec prec str = map (first SceneId) (readsPrec prec str)
+
+sceneFromUuid :: Maybe U.UUID -> Either String SceneId
+sceneFromUuid u = maybe (Left "Can't parse UUID") (Right . SceneId) u
+
+instance LifxId SceneId where
+  toByteString (SceneId uu) = L.toStrict $ U.toByteString uu
+  fromByteString bs = sceneFromUuid $ U.fromByteString $ L.fromStrict bs
+  toText (SceneId uu) = U.toText uu
+  fromText bs = sceneFromUuid $ U.fromText bs
+
+instance FromJSON SceneId where
+  parseJSON = implParseJson
+
+
 -- | Represents a <http://api.developer.lifx.com/docs/selectors selector>
 -- for addressing a set of lights.
 data Selector = SelAll
@@ -411,151 +436,3 @@ data Product =
     -- or a variable color temperature of white.
   , pCapabilities :: Capabilities
   } deriving (Show, Read, Eq, Ord)
-
-
-----------------------------------------------------------------------
-
-
--- | The direction that the 'cycleLights' method will go in.
-data Direction = Forward | Backward
-               deriving (Eq, Ord, Show, Read, Bounded, Enum)
-
--- | An amount of time, specified as a floating-point number of seconds.
-type FracSeconds = Double
-
--- | Hints about what information is needed from 'listLights'.
-data InfoNeeded = NeedLabel | NeedPower | NeedColor | NeedGroup | NeedLocation
-                | NeedProduct | NeedTemperature | NeedUptime
-                | NeedFirmwareVersion | NeedHardwareVersion
-                deriving (Show, Read, Eq, Ord, Bounded, Enum)
-
--- | A list of all possible values of 'InfoNeeded', thus requesting as much
--- information as possible be returned.
-needEverything :: [InfoNeeded]
-needEverything = [minBound .. maxBound]
-
--- | Information about a light, returned by 'listLights'.
-data LightInfo =
-  LightInfo
-  { lId :: DeviceId       -- ^ MAC address of bulb.  Primary way of
-                          -- identifying and addressing bulbs.
-  , lUuid :: Maybe U.UUID -- ^ An alternate way of identifying a bulb. Doesn't
-                          -- seem all that useful, but the Cloud API provides it.
-  , lLabel :: Maybe Label -- ^ Human-readable label given to the bulb.
-  , lConnected :: Bool
-  , lPower :: Maybe Power
-  , lColor :: PartialColor
-  , lGroupId :: Maybe GroupId
-  , lGroup :: Maybe Label
-  , lLocationId :: Maybe LocationId
-  , lLocation :: Maybe Label
-  , lLastSeen :: DateTime
-  , lSecondsSinceSeen :: FracSeconds
-  , lProduct :: Maybe Product     -- ^ information about the model of bulb
-  , lTemperature :: Maybe Double  -- ^ in degrees Celsius
-  , lUptime :: Maybe FracSeconds  -- ^ time since power was applied to bulb
-  , lFirmwareVersion :: Maybe Version
-  , lHardwareVersion :: Maybe Int
-  } deriving (Eq, Ord, Show, Read)
-
-
-data StateTransition =
-  StateTransition
-  { sPower :: Maybe Power
-  , sColor :: PartialColor
-  , sDuration :: FracSeconds
-  } deriving (Eq, Ord, Show, Read)
-
-data Result =
-  Result
-  { rId :: DeviceId
-  , rLabel :: Maybe Label
-  , rStatus :: Status
-  } deriving (Eq, Ord, Show, Read)
-
-data Status = Ok | TimedOut | Offline
-            deriving (Eq, Ord, Show, Read, Bounded, Enum)
-
-data StateTransitionResult =
-  StateTransitionResult
-  { tOperation :: ([Selector], StateTransition)
-  , tResults :: [Result]
-  } deriving (Eq, Ord, Show, Read)
-
--- | The shape of the waveform of an 'Effect'.
-data EffectType = Pulse   -- ^ a square wave
-                | Breathe -- ^ a sine wave
-                  deriving (Eq, Ord, Show, Read, Bounded, Enum)
-
--- | Specifies details of the effect performed by 'effect'.
-data Effect =
-  Effect
-  { eType :: EffectType      -- ^ The shape of the waveform.  Default 'Pulse'.
-  , eColor :: PartialColor     -- ^ The color of the effect.
-  , eFromColor :: PartialColor -- ^ The color to start from.  'emptyColor'
-                             -- means start from the current color.
-                             -- Default 'emptyColor'.
-  , ePeriod :: FracSeconds   -- ^ The period of the waveform in seconds.
-                             -- Default 1.0.
-  , eCycles :: Double        -- ^ The total duration of the effect, as
-                             -- multiples of the period.  Default 1.0.
-  , ePersist :: Bool         -- ^ 'False' means return to original color
-                             -- when effect is complete.  Default 'False'.
-  , ePowerOn :: Bool         -- ^ Turn power on if it is off?  Default 'True'.
-  , ePeak :: Double          -- ^ For 'Breathe', specifies where in the period
-                             -- the effect is brightest.  For 'Pulse', specifies
-                             -- the duty cycle of the pulse on @LanConnection@, or
-                             -- is ignored on @CloudConnection@.  0.0 - 1.0.
-                             -- Default 0.5.
-  } deriving (Eq, Ord, Show, Read)
-
--- | Returns an 'Effect' with default settings.
-defaultEffect :: Effect
-defaultEffect = Effect
-  { eType = Pulse
-  , eColor = emptyColor
-  , eFromColor = emptyColor
-  , ePeriod = 1.0
-  , eCycles = 1.0
-  , ePersist = False
-  , ePowerOn = True
-  , ePeak = 0.5
-  }
-
-data Scene =
-  Scene
-  { scId :: SceneId
-  , scName :: T.Text
-  , scUpdatedAt :: DateTime
-  , scCreatedAt :: DateTime
-  , scAccount :: Maybe U.UUID
-  , scStates :: [SceneState]
-  } deriving (Eq, Ord, Show, Read)
-
-data SceneState =
-  SceneState
-  { ssSel   :: Selector
-  , ssPower :: Maybe Power
-  , ssColor :: PartialColor
-  } deriving (Eq, Ord, Show, Read)
-
--- | Scenes are uniquely identified by a 'U.UUID'.
-newtype SceneId = SceneId { unSceneId :: U.UUID } deriving (Eq, Ord)
-
-instance Show SceneId where
-  showsPrec prec sid = showsPrec prec (unSceneId sid)
-
-instance Read SceneId where
-  readsPrec prec str = map (first SceneId) (readsPrec prec str)
-
-sceneFromUuid :: Maybe U.UUID -> Either String SceneId
-sceneFromUuid u = maybe (Left "Can't parse UUID") (Right . SceneId) u
-
-instance LifxId SceneId where
-  toByteString (SceneId uu) = L.toStrict $ U.toByteString uu
-  fromByteString bs = sceneFromUuid $ U.fromByteString $ L.fromStrict bs
-  toText (SceneId uu) = U.toText uu
-  fromText bs = sceneFromUuid $ U.fromText bs
-
-instance FromJSON SceneId where
-  parseJSON = implParseJson
