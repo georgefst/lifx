@@ -671,6 +671,7 @@ main = do
       cmd = C.aCmd args
       settings = defaultLanSettings { lsUnknownSelectorBehavior = IgnoreUnknownSelector }
   conn <- openLanConnection settings `E.catch` prLifxException
+  threadDelay 1000000
   let func = cmd2func cmd (C.aDuration args)
   hdrIfNeeded cmd
   findAndRun conn func (C.aTarget args) 15 S.empty
