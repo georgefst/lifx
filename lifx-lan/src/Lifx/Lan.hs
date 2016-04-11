@@ -12,8 +12,8 @@ module Lifx.Lan
 import Lifx
 import qualified Lifx as E( EffectType( Pulse ) )
 import Lifx.Internal
-import Lifx.Lan.LowLevel
-import qualified Lifx.Lan.LowLevel as W( Waveform( Pulse ) )
+import Lifx.Lan.LowLevel hiding (setLabel)
+import qualified Lifx.Lan.LowLevel as W( Waveform( Pulse ) , setLabel )
 import Lifx.Lan.LowLevel.Util (untilKilled, endThread)
 
 import Control.Applicative
@@ -53,7 +53,7 @@ data LanSettings =
   , lsLog         :: T.Text -> IO ()
     -- | Specifies whether an unknown selector should result in an
     -- exception (which matches the cloud behavior), or should just be
-    -- ignored.  Default is 'ThrowOnUnkownSelector'.
+    -- ignored.  Default is 'ThrowOnUnknownSelector'.
   , lsUnknownSelectorBehavior :: UnknownSelectorBehavior
     -- | Unlike the Cloud API, the LAN Protocol does not have a notion of
     -- scenes built-in.  Therefore, you can provide this function to
@@ -172,11 +172,13 @@ getLan = lcLan
 
 listOfMVarToList :: [MVar (Either SomeException a)] -> IO [a]
 listOfMVarToList = mapM takeMVarThrow
-  where takeMVarThrow mv = do
-          v <- takeMVar mv
-          case v of
-           Left exc -> throwIO exc
-           Right r -> return r
+
+takeMVarThrow :: MVar (Either SomeException a) -> IO a
+takeMVarThrow mv = do
+  v <- takeMVar mv
+  case v of
+   Left exc -> throwIO exc
+   Right r -> return r
 
 forkFinallyMVar :: (MVar (Either SomeException a)) -> IO a -> IO ThreadId
 forkFinallyMVar mv f = forkFinally f (putMVar mv)
@@ -823,6 +825,32 @@ effectTypeToWaveform :: EffectType -> Waveform
 effectTypeToWaveform E.Pulse = W.Pulse
 effectTypeToWaveform Breathe = Sine
 
+
+setOneLightLabel :: LanConnection
+                    -> Label
+                    -> CachedLight
+                    -> IO ()
+                    -> IO ()
+                    -> IO ()
+setOneLightLabel lc lbl cl cbFail cbSucc =
+  reliableAction rp (W.setLabel bulb lbl) cbSucc cbFail
+  where rp = lsRetryParams $ lcSettings lc
+        bulb = clBulb cl
+
+labelOneLight :: LanConnection
+                 -> Label
+                 -> CachedLight
+                 -> IO (MVar (Either SomeException Result))
+labelOneLight lc lbl cl = do
+  mv <- newEmptyMVar
+  let did = deviceId (clBulb cl)
+      oldLbl = maybeFromCached (clLabel cl)
+      putTimeout = putMVar mv (Right $ Result did oldLbl TimedOut)
+      putOk = putMVar mv (Right $ Result did (Just lbl) Ok)
+  setOneLightLabel lc lbl cl putTimeout putOk
+  return mv
+
+
 checkEffect :: Effect -> IO ()
 checkEffect eff = do
   checkDuration "period" $ ePeriod eff
@@ -860,6 +888,16 @@ instance Connection LanConnection where
     listOfMVarToList result
 
   listScenes lc = lsListScenes $ lcSettings lc
+
+  setLabel lc dev lbl = do
+    lites <- atomically $ readTVar $ lcLights lc
+    case dev `M.lookup` lites of
+     Nothing -> throwIO $ SelectorNotFound $ SelDevId dev
+     (Just lite) -> do
+       now <- dateCurrent
+       let oi = lsOfflineInterval $ lcSettings lc
+       mv <- checkAlive now oi (labelOneLight lc lbl) offlineResult lite
+       takeMVarThrow mv
 
   closeConnection lc =
     endThread (lsLog $ lcSettings lc) "discovery" (lcThread lc)
