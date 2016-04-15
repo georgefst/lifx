@@ -387,6 +387,17 @@ cmdWave et ca pa conn sels =
               , ePeak = C.paPeak pa
               }
 
+cmdSetLabel :: Connection c
+               => T.Text
+               -> c
+               -> [Selector]
+               -> IO ()
+cmdSetLabel txt conn [SelDevId dev] = do
+  let lbl = either error id $ fromText txt
+  result <- setLabel conn dev lbl
+  prResults [result]
+cmdSetLabel _ _ _ = TIO.putStrLn "Need just one Device ID"
+
 {-
 cmdWave :: Waveform -> PartialColor -> C.PulseArg -> TSem -> Bulb -> IO ()
 cmdWave wf ca pa sem bulb = do
@@ -499,7 +510,7 @@ cmd2func C.CmdOff dur = cmdPower Off dur
 cmd2func (C.CmdColor ca) dur = cmdColor ca dur
 cmd2func (C.CmdPulse ca pa) _ = cmdWave Pulse ca pa
 cmd2func (C.CmdBreathe ca pa) _ = cmdWave Breathe ca pa
--- cmd2func (C.CmdSetLabel lbl) _ = cmdSetLabel lbl
+cmd2func (C.CmdSetLabel lbl) _ = cmdSetLabel lbl
 
 lsHeader :: Int -> IO ()
 lsHeader w = do
