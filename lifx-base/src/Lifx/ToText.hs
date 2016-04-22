@@ -49,7 +49,7 @@ selectorToText (SelSceneId x)    = "scene_id:"    <> toText x
 -- | Renders a list of 'Selector's as a comma-separated string.
 selectorsToText :: [Selector] -> Either LifxException T.Text
 selectorsToText sels = do
-  let illegalChars = ",/"
+  let illegalChars = ",/" :: String
       checkChars t = checkChars' t $ T.find (`elem` illegalChars) t
       checkChars' t Nothing = Right t
       checkChars' _ (Just c) = Left $ IllegalCharacter c
