@@ -113,6 +113,7 @@ data CachedLight =
   , clLocation :: CachedThing LocationId
   , clGroup    :: CachedThing GroupId
   , clLabel    :: CachedThing Label
+  , clFirstSeen :: DateTime
   } deriving (Show, Eq, Ord)
 
 data CachedLabel =
@@ -282,7 +283,8 @@ unpackFirmwareVersion v = Version (map fromIntegral [major, minor]) []
         minor = v .&. 0xffff
 
 lastSeen :: CachedLight -> DateTime
-lastSeen cl = maximum [ dtOfCt (clLocation cl)
+lastSeen cl = fromMaybe (clFirstSeen cl) $
+              maximum [ dtOfCt (clLocation cl)
                       , dtOfCt (clGroup    cl)
                       , dtOfCt (clLabel    cl)
                       ]
@@ -548,13 +550,15 @@ updateLabelCache tv key lbl upd = do
       cache' = M.insert key cl cache
   when doUpdate $ writeTVar tv cache'
 
+{-
 longAgo = DateTime d t
   where d = Date 1776 July 4
         t = TimeOfDay (Hours 0) (Minutes 0) (Seconds 0) (NanoSeconds 0)
+-}
 
-dtOfCt :: CachedThing a -> DateTime
-dtOfCt NotCached = longAgo
-dtOfCt (Cached dt _ ) = dt
+dtOfCt :: CachedThing a -> Maybe DateTime
+dtOfCt NotCached = Nothing
+dtOfCt (Cached dt _ ) = Just dt
 
 microsPerSecond = 1e6
 -- discoveryTime = 1.5
@@ -578,11 +582,12 @@ data Query = QueryLocation | QueryGroup | QueryLabel deriving (Show, Eq, Ord)
 
 discoveryCb :: LanConnection -> Bulb -> IO ()
 discoveryCb lc bulb = do
+  now <- dateCurrent
   queries <- atomically $ do
     lites <- readTVar (lcLights lc)
     case deviceId bulb `M.lookup` lites of
      Nothing -> do
-       let lite = CachedLight bulb NotCached NotCached NotCached
+       let lite = CachedLight bulb NotCached NotCached NotCached now
        writeTVar (lcLights lc) $ M.insert (deviceId bulb) lite lites
        return [ QueryLocation , QueryGroup , QueryLabel ] -- update all three
      (Just lite) -> do

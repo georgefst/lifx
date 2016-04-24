@@ -56,7 +56,7 @@ X properly handle parsing an empty selector list (since cloud seems okay with it
 X add direction to cycle
 - use unbounded-delays in place of ThreadDelay
 X convert HTTP status codes to HttpException
-use stack; try with different versions of ghc
+X use stack; try with different versions of ghc
 X update label/group/location in cache when doing listLights
-typeclass method for setting label
-don't treat lights as offline if we haven't heard from them yet
+X typeclass method for setting label
+X don't treat lights as offline if we haven't heard from them yet
