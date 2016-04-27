@@ -10,7 +10,8 @@ module Lifx.Lan
     ) where
 
 import Lifx
-import qualified Lifx as E( EffectType( Pulse ) )
+import Lifx.Connection
+import qualified Lifx.Connection as E( EffectType( Pulse ) )
 import Lifx.Internal
 import Lifx.Lan.LowLevel hiding (setLabel)
 import qualified Lifx.Lan.LowLevel as W( Waveform( Pulse ) , setLabel )

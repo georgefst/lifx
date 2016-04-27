@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Lifx.Connection ( Connection (..)
-                       , Direction (..)
                        , InfoNeeded (..)
                        , needEverything
                        , LightInfo (..)
@@ -9,11 +8,12 @@ module Lifx.Connection ( Connection (..)
                        , Result (..)
                        , Status (..)
                        , StateTransitionResult (..)
+                       , Scene (..)
+                       , SceneState (..)
                        , EffectType (..)
                        , Effect (..)
                        , defaultEffect
-                       , Scene (..)
-                       , SceneState (..)
+                       , Direction (..)
                        ) where
 
 import Control.Exception

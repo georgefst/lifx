@@ -20,7 +20,6 @@ module Lifx
          LifxException(..)
        , ParamError (..)
        , Power (..)
-       , Direction (..)
        , ColorChannel
        , FracSeconds
        , Interface
@@ -49,21 +48,6 @@ module Lifx
        , Product (..)
        , Capabilities (..)
        , productFromId
-         -- * Effects
-       , EffectType (..)
-       , Effect (..)
-       , defaultEffect
-         -- * Connections
-       , Connection (..)
-       , InfoNeeded (..)
-       , needEverything
-       , LightInfo (..)
-       , StateTransition (..)
-       , Result (..)
-       , Status (..)
-       , StateTransitionResult (..)
-       , Scene (..)
-       , SceneState (..)
        ) where
 
 import Lifx.ColorParser
@@ -72,4 +56,3 @@ import Lifx.Util
 import Lifx.Types
 import Lifx.ProductTable
 import Lifx.ToText
-import Lifx.Connection

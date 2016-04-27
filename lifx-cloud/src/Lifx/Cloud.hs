@@ -19,7 +19,6 @@ import Control.Exception
 import Control.Monad
 import Data.Aeson hiding (Result)
 import Data.Aeson.Types (Parser)
--- import Data.Aeson.Encode.Pretty
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as L
@@ -36,14 +35,13 @@ import qualified Data.Text.Encoding.Error as TEE
 import qualified Data.Text.IO as TIO
 import Data.Text.Format hiding (print)
 import Data.Text.Format.Params
--- import Data.Vector hiding (takeWhile, mapM_, (++), map, forM, concatMap, concat)
 import Data.Version
--- import Debug.Trace
 import Text.Read
 import System.IO
 import Time.System
 
 import Lifx
+import Lifx.Connection
 import Lifx.Internal
 
 import Lifx.Cloud.ErrorParser

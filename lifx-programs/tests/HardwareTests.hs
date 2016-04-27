@@ -20,6 +20,7 @@ import Test.Tasty.HUnit
 
 import Lifx
 import Lifx.Cloud
+import Lifx.Connection
 import Lifx.Internal
 import Lifx.Lan
 

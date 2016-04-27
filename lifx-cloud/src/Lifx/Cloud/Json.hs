@@ -32,6 +32,7 @@ import Text.Read hiding (String)
 
 import Lifx
 import Lifx.Cloud.Util
+import Lifx.Connection
 
 instance FromJSON Power where
   parseJSON (String "on") = return On
