@@ -46,7 +46,7 @@ data LanSettings =
     -- @~/.config/hs-lifx/config.json@.  If @interface@ is not specified
     -- in the config file, the default is 'Nothing', which lets the
     -- operating system choose the interface.
-    lsIfName      :: IO (Maybe T.Text)
+    lsIfName      :: IO (Maybe Interface)
     -- | Function to log a line of text.  This contains
     -- information which might be helpful for troubleshooting.
     -- Default is 'TIO.hPutStrLn' 'stderr'.

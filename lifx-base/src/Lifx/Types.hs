@@ -44,7 +44,7 @@ data LifxException =
     -- | Specified LAN interface does not exist.
     --
     -- requested interface name / list of valid interface names
-    NoSuchInterface T.Text [T.Text]
+    NoSuchInterface Interface [Interface]
     -- | No access token was specified in the config file.
     --
     -- name of config file
