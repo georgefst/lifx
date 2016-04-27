@@ -23,6 +23,7 @@ module Lifx
        , Direction (..)
        , ColorChannel
        , FracSeconds
+       , Interface
          -- * Colors
        , HSBK (..)
        , Color , PartialColor

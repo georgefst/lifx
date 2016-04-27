@@ -49,7 +49,7 @@ X mark lights offline in Lan when they haven't been seen in a little while
 test for bad access token
 reimplement command line using optparse-applicative
 change how sequence numbers are allocated
-move "Interface" from LowLevel types to base types
+X move "Interface" from LowLevel types to base types
 expose all of the LowLevel messages?
 X implement cycleLights for Lan
 X properly handle parsing an empty selector list (since cloud seems okay with it)

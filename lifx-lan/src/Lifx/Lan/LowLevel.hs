@@ -34,7 +34,6 @@ module Lifx.Lan.LowLevel
       defaultRetryParams,
       reliableAction,
       reliableQuery,
-      Interface,
       HSBK16,
       Header (..)
       ) where

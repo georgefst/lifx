@@ -102,6 +102,9 @@ data ParamError =
   | InvalidEntries { peName :: T.Text, peMinEntries:: Int, peMaxEntries :: Int }
     deriving (Eq, Ord, Show, Read)
 
+-- | The name of a network interface, such as @en1@ or @eth0@.
+type Interface = T.Text
+
 -- | An amount of time, specified as a floating-point number of seconds.
 type FracSeconds = Double
 
