@@ -1,6 +1,5 @@
 module Lifx.Lan.LowLevel.Messages
-    ( SetColor(..),
-      SetWaveform(..),
+    ( SetWaveform(..),
       StateInfo(..),
       StateVersion(..),
       StateWifiFirmware(..),

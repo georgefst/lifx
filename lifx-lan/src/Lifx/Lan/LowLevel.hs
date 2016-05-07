@@ -1,6 +1,5 @@
 module Lifx.Lan.LowLevel
-    ( SetColor(..), dfltHdr,
-      SetWaveform(..),
+    ( SetWaveform(..),
       StateInfo(..),
       StateVersion(..),
       StateWifiFirmware(..),

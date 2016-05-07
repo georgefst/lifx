@@ -153,29 +153,3 @@ executable foo
   default-language:    Haskell2010
 
   -- ghc-options: -ddump-minimal-imports
-
-executable decode
-  -- .hs or .lhs file containing the Main module.
-  main-is: decode.hs
-
-  -- Modules included in this executable, other than Main.
-  -- other-modules:
-
-  -- LANGUAGE extensions used by modules in this package.
-  -- other-extensions:
-
-  -- Other library packages from which modules are imported.
-  build-depends:       base >= 4.5 && < 5
-                     , base16-bytestring >= 0.1.1 && < 0.2
-                     , binary >= 0.7 && < 0.9
-                     , bytestring >= 0.10 && < 0.11
-                     , lifx-base >= 0.1 && < 0.2
-                     , lifx-lan >= 0.1 && < 0.2
-
-  -- Directories containing source files.
-  hs-source-dirs: src
-
-  -- Base language which the package is written in.
-  default-language:    Haskell2010
-
-  -- ghc-options: -ddump-minimal-imports
