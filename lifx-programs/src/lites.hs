@@ -233,15 +233,14 @@ cmd2func (C.CmdPulse ca pa) _ = cmdWave Pulse ca pa
 cmd2func (C.CmdBreathe ca pa) _ = cmdWave Breathe ca pa
 cmd2func (C.CmdSetLabel lbl) _ = cmdSetLabel lbl
 
-lsHeader :: Int -> IO ()
-lsHeader w = do
-  tr $ displayHeader $ fixedCols w
-  tr $ displaySep    $ fixedCols w
+lsHeader :: [FixedColumn a] -> IO ()
+lsHeader fc = do
+  tr $ displayHeader fc
+  tr $ displaySep    fc
 
 hdrIfNeeded :: C.LiteCmd -> IO ()
-hdrIfNeeded (C.CmdList w) = lsHeader w
-hdrIfNeeded _ = return ()
-
+hdrIfNeeded (C.CmdList w) = lsHeader $ fixedCols w
+hdrIfNeeded _ = lsHeader resultsFixedCols
 
 linfoToLiteIds :: LightInfo -> LiteIds
 linfoToLiteIds li = LiteIds
@@ -316,8 +315,8 @@ main = do
       cmd = C.aCmd args
       settings = defaultLanSettings { lsUnknownSelectorBehavior = IgnoreUnknownSelector }
   conn <- openLanConnection settings `E.catch` prLifxException
-  threadDelay 1000000
+  -- threadDelay 1000000
   let func = cmd2func cmd (C.aDuration args)
   hdrIfNeeded cmd
-  findAndRun conn func (C.aTarget args) 15 S.empty
+  findAndRun conn func (C.aTarget args) 20 S.empty
   closeConnection conn
