@@ -160,10 +160,11 @@ listLite fc li = tr $ displayRow' fc $ mkRow li
 listLites :: FixedCols -> [LightInfo] -> IO ()
 listLites fc li = mapM_ (listLite fc) li
 
-cmdList :: Connection c => FixedCols -> c -> [Selector] -> IO ()
+cmdList :: Connection c => FixedCols -> c -> [Selector] -> IO Bool
 cmdList fc conn sels = do
   li <- listLights conn sels needEverything
   listLites fc li
+  return True
 
 resultsColumns =
   [ Column Lft Lft  8 32  0 ["Label"]     (replicate 1 . fmtLabel . rLabel)
@@ -173,13 +174,14 @@ resultsColumns =
 
 resultsFixedCols = fixColumns 80 resultsColumns
 
-prResults :: [Result] -> IO ()
-prResults results = forM_ results $ tr . displayRow' resultsFixedCols
+prResults :: [Result] -> IO Bool
+prResults results = do
+  forM_ results $ tr . displayRow' resultsFixedCols
+  return True
 
-cmdPower :: Connection c => Power -> FracSeconds -> c -> [Selector] -> IO ()
-cmdPower pwr dur conn sels =
+cmdPower :: Connection c => Power -> FracSeconds -> c -> [Selector] -> IO Bool
+cmdPower pwr dur conn sels = do
   setState conn sels (StateTransition (Just pwr) emptyColor dur) >>= prResults
-
 
 
 cmdColor :: Connection c
@@ -187,7 +189,7 @@ cmdColor :: Connection c
             -> FracSeconds
             -> c
             -> [Selector]
-            -> IO ()
+            -> IO Bool
 cmdColor pc dur conn sels =
   setState conn sels (StateTransition Nothing pc dur) >>= prResults
 
@@ -199,7 +201,7 @@ cmdWave :: Connection c
            -> C.PulseArg
            -> c
            -> [Selector]
-           -> IO ()
+           -> IO Bool
 cmdWave et ca pa conn sels =
   effect conn sels eff >>= prResults
   where eff = defaultEffect
@@ -216,15 +218,19 @@ cmdSetLabel :: Connection c
                => T.Text
                -> c
                -> [Selector]
-               -> IO ()
+               -> IO Bool
 cmdSetLabel txt conn [SelDevId dev] = do
   let lbl = either error id $ fromText txt
   result <- setLabel conn dev lbl
   prResults [result]
-cmdSetLabel _ _ _ = TIO.putStrLn "Need just one Device ID"
+  return False
+cmdSetLabel _ _ [] = return True
+cmdSetLabel _ _ _ = do
+  TIO.putStrLn "Need just one Device ID"
+  return False
 
 
-cmd2func :: Connection c => C.LiteCmd -> FracSeconds -> c -> [Selector] -> IO ()
+cmd2func :: Connection c => C.LiteCmd -> FracSeconds -> c -> [Selector] -> IO Bool
 cmd2func (C.CmdList w) _ = cmdList (fixedCols w)
 cmd2func C.CmdOn dur = cmdPower On dur
 cmd2func C.CmdOff dur = cmdPower Off dur
@@ -292,7 +298,7 @@ matchesTarget (TargSome tm) lids = True `S.member` S.map (`tmatch` lids) tm
 
 findAndRun :: Connection c
               => c
-              -> (c -> [Selector] -> IO ())
+              -> (c -> [Selector] -> IO Bool)
               -> Targets
               -> Int
               -> S.Set DeviceId
@@ -306,8 +312,8 @@ findAndRun conn func targs n s = do
       selected' = selected `S.difference` s
       s' = selected `S.union` s
       sels = map SelDevId $ S.toList selected'
-  func conn sels
-  findAndRun conn func targs (n - 1) s'
+  more <- func conn sels
+  when more $ findAndRun conn func targs (n - 1) s'
 
 main = do
   args <- C.parseCmdLine
