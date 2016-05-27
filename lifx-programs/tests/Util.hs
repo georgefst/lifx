@@ -60,7 +60,7 @@ assertColorEqual msg expected actual = do
   assertCloseEnough360 (360 / 500) (msg ++ ": hue") (hue expected) (hue actual)
   assertCloseEnough (1 / 500) (msg ++ ": saturation") (saturation expected) (saturation actual)
   assertCloseEnough (1 / 500) (msg ++ ": brightness") (brightness expected) (brightness actual)
-  assertCloseEnough 3 (msg ++ ": kelvin") (kelvin expected) (kelvin actual)
+  assertCloseEnough 4 (msg ++ ": kelvin") (kelvin expected) (kelvin actual)
 
 colors :: [PartialColor]
 colors = [red, orange, yellow, green, cyan, blue, purple, pink]
