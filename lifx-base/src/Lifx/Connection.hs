@@ -47,6 +47,12 @@ data Direction = Forward | Backward
                deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 -- | Hints about what information is needed from 'listLights'.
+-- A backend can use these hints to avoid collecting unneeded
+-- information when generating 'LightInfo'.  However, beware that this is
+-- only a hint, and the backend is free to return more information
+-- than requested.  Also, the backend might still return
+-- 'Nothing' for fields which are requested, in case of error, or
+-- in case the backend does not support that field.
 data InfoNeeded = NeedLabel | NeedPower | NeedColor | NeedGroup | NeedLocation
                 | NeedProduct | NeedTemperature | NeedUptime
                 | NeedFirmwareVersion | NeedHardwareVersion
@@ -58,6 +64,9 @@ needEverything :: [InfoNeeded]
 needEverything = [minBound .. maxBound]
 
 -- | Information about a light, returned by 'listLights'.
+-- Most fields are 'Maybe', and may be omitted if there is an error,
+-- if the field is not supported by the backend, or if the field
+-- was not requested with an 'InfoNeeded'.
 data LightInfo =
   LightInfo
   { lId :: DeviceId       -- ^ MAC address of bulb.  Primary way of
