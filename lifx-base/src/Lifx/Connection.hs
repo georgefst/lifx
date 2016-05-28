@@ -1,3 +1,18 @@
+{-|
+Module      : Lifx.Connection
+Description : Typeclass for a connection to LIFX bulbs
+Copyright   : © Patrick Pelletier, 2016
+License     : BSD3
+Maintainer  : code@funwithsoftware.org
+Stability   : experimental
+Portability : GHC
+
+This module contains the 'Connection' typeclass, which represents a
+connection to a collection of LIFX bulbs.  For an implementation of
+the 'Connection' class, you'll need another package, such as
+@lifx-lan@ or @lifx-cloud@.
+-}
+
 {-# LANGUAGE OverloadedStrings #-}
 
 module Lifx.Connection ( Connection (..)

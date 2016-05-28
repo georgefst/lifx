@@ -1,7 +1,7 @@
 {-|
 Module      : Lifx
 Description : Types for use by packages that interface with LIFX smart bulbs
-Copyright   : (c) Patrick Pelletier, 2016
+Copyright   : © Patrick Pelletier, 2016
 License     : BSD3
 Maintainer  : code@funwithsoftware.org
 Stability   : experimental
@@ -9,10 +9,6 @@ Portability : GHC
 
 This module contains some types for representing basic concepts used
 in interfacing with <https://www.lifx.com/ LIFX smart light bulbs>.
-It also contains the 'Connection' typeclass, which represents a
-connection to a collection of LIFX bulbs.  For an implementation of
-the 'Connection' class, you'll need another package, such as
-@lifx-lan@ or @lifx-cloud@.
 -}
 
 module Lifx

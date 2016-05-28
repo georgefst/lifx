@@ -13,7 +13,13 @@ version:             0.1.0.0
 synopsis:            basic types for packages that control LIFX bulbs
 
 -- A longer description of the package.
--- description:
+description:
+    This package contains some types for representing basic concepts used
+    in interfacing with <https://www.lifx.com/ LIFX smart light bulbs>.
+    It also contains the 'Connection' typeclass, which represents a
+    connection to a collection of LIFX bulbs.  For an implementation of
+    the 'Connection' class, you'll need another package, such as
+    @lifx-lan@ or @lifx-cloud@.
 
 -- The license under which the package is released.
 license:             BSD3

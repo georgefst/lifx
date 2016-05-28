@@ -15,7 +15,6 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as L
--- import Data.Hourglass
 import Data.Int
 import Data.List (find, partition)
 import Data.Maybe
@@ -30,7 +29,6 @@ import Data.Text.Format.Params
 import qualified Data.Text.Lazy as LT
 import Data.Typeable
 import qualified Data.UUID.Types as U
--- import Data.Version
 import Data.Word
 import Debug.Trace
 import Text.ParserCombinators.ReadP (skipSpaces)
@@ -95,11 +93,21 @@ instance Exception LifxException
 -- | More detailed information about a 'BadParam' exception.
 data ParamError =
     -- | No information is provided except the name of the parameter.
-    InvalidParam   { peName :: T.Text }
+    InvalidParam
+    { peName :: T.Text      -- ^ Name of parameter
+    }
     -- | The parameter is out of range.
-  | InvalidRange   { peName :: T.Text, peMin :: ColorChannel, peMax :: ColorChannel }
+  | InvalidRange
+    { peName :: T.Text      -- ^ Name of parameter
+    , peMin :: ColorChannel -- ^ Minimum acceptable value for the parameter
+    , peMax :: ColorChannel -- ^ Maximum acceptable value for the parameter
+    }
     -- | A list parameter has too many or too few entries.
-  | InvalidEntries { peName :: T.Text, peMinEntries:: Int, peMaxEntries :: Int }
+  | InvalidEntries
+    { peName :: T.Text      -- ^ Name of parameter
+    , peMinEntries:: Int    -- ^ Minimum acceptable number of items in list
+    , peMaxEntries :: Int   -- ^ Maximum acceptable number of items in list
+    }
     deriving (Eq, Ord, Show, Read)
 
 -- | The name of a network interface, such as @en1@ or @eth0@.
