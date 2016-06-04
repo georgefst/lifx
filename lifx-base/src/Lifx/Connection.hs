@@ -91,6 +91,7 @@ data LightInfo =
   } deriving (Eq, Ord, Show, Read)
 
 
+-- | A change in color and/or power, over a period of time.
 data StateTransition =
   StateTransition
   { sPower :: Maybe Power
@@ -98,20 +99,26 @@ data StateTransition =
   , sDuration :: FracSeconds
   } deriving (Eq, Ord, Show, Read)
 
+-- | Result of executing an operation.
 data Result =
   Result
-  { rId :: DeviceId
-  , rLabel :: Maybe Label
-  , rStatus :: Status
+  { rId :: DeviceId       -- ^ ID of affected light
+  , rLabel :: Maybe Label -- ^ Label of affected light
+  , rStatus :: Status     -- ^ Whether the operation was successful on this light
   } deriving (Eq, Ord, Show, Read)
 
+-- | Whether an operation was successful on a particular light.
 data Status = Ok | TimedOut | Offline
             deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
+-- | Result of applying a 'StateTransition' to one or more 'Selector's.
 data StateTransitionResult =
   StateTransitionResult
-  { tOperation :: ([Selector], StateTransition)
-  , tResults :: [Result]
+  { tOperation :: ([Selector], StateTransition) -- ^ The affected selectors and
+                                                -- the transition applied to them.
+  , tResults :: [Result]                        -- ^ For each light selected,
+                                                -- the result of the operation
+                                                -- on that light.
   } deriving (Eq, Ord, Show, Read)
 
 -- | The shape of the waveform of an 'Effect'.
@@ -154,16 +161,20 @@ defaultEffect = Effect
   , ePeak = 0.5
   }
 
+-- | A predefined set of state changes for specific lights.
 data Scene =
   Scene
-  { scId :: SceneId
-  , scName :: T.Text
-  , scUpdatedAt :: DateTime
-  , scCreatedAt :: DateTime
-  , scAccount :: Maybe U.UUID
-  , scStates :: [SceneState]
+  { scId :: SceneId           -- ^ A unique identifier for this scene.
+  , scName :: T.Text          -- ^ The name of this scene.
+  , scUpdatedAt :: DateTime   -- ^ Most recent time the scene was updated.
+  , scCreatedAt :: DateTime   -- ^ Time the scene was originally created.
+  , scAccount :: Maybe U.UUID -- ^ A unique identifier for the user who
+                              -- created this scene.  May be 'Nothing' if
+                              -- this is not a cloud scene.
+  , scStates :: [SceneState]  -- ^ A list of states to apply to selectors.
   } deriving (Eq, Ord, Show, Read)
 
+-- | A change in power and/or color, applied to a 'Selector'.
 data SceneState =
   SceneState
   { ssSel   :: Selector
