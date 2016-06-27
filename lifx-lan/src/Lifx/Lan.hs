@@ -44,7 +44,7 @@ data LanSettings =
   LanSettings
   { -- | 'IO' action which returns name of network interface to use,
     -- such as @en1@ or @eth0@.  The default action is to look in
-    -- @~/.config/hs-lifx/config.json@.  If @interface@ is not specified
+    -- @~\/.config\/hs-lifx\/config.json@.  If @interface@ is not specified
     -- in the config file, the default is 'Nothing', which lets the
     -- operating system choose the interface.
     lsIfName      :: IO (Maybe Interface)
@@ -65,10 +65,10 @@ data LanSettings =
     -- time out.  Default is 'defaultRetryParams'.
   , lsRetryParams :: RetryParams
     -- | How frequently to poll the network for new devices.
-    -- | Default is 1.5 seconds.
+    -- Default is 1.5 seconds.
   , lsDiscoveryPollInterval :: FracSeconds
     -- | If a bulb is not seen for this amount of time, it is marked Offline.
-    -- | Default is 5 seconds.
+    -- Default is 5 seconds.
   , lsOfflineInterval :: FracSeconds
     -- | Port that LIFX bulbs are listening on.  Default is @56700@, which
     -- is the correct value for LIFX bulbs.  The only reason to change this

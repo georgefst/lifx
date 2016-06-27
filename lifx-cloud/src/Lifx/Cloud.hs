@@ -67,7 +67,7 @@ data CloudSettings =
     csManager :: IO Manager
     -- | 'IO' action which returns an 'AccessToken' for the cloud account
     -- to use.  The default action is to look for the access token in
-    -- @~/.config/hs-lifx/config.json@, and to throw 'NoAccessToken' if
+    -- @~\/.config\/hs-lifx\/config.json@, and to throw 'NoAccessToken' if
     -- @token@ is not specified in the config file.
   , csToken :: IO AccessToken
     -- | The
