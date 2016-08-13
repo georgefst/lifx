@@ -1,22 +1,28 @@
-LIFX TODO:
+library:
+
+support both Wifi/Mcu Info/Firmware
+Haddock docs
+config file
+should we provide instances like Hashable or Deepseq for IDs, colors, etc.?
+what about Buildable instances?
+change how sequence numbers are allocated
+expose all of the LowLevel messages?
+
+program:
 
 configurable columns
 get terminal width
+fix argument parsing
+port program to use typeclass
+reimplement command line using optparse-applicative
+
+testing:
+
 mock bulb
 mock http server
-support both Wifi/Mcu Info/Firmware
-fix argument parsing
-Haddock docs
 tests for IgnoreUnknownSelector
 test for powering on for effect
-port program to use typeclass
-config file
 mock cloud API to test error handling
 test NestedSceneIdSelector
 Quickcheck tests for things which are round-trippable: IDs, JSON, messages, colors
-should we provide instances like Hashable or Deepseq for IDs, colors, etc.?
-what about Buildable instances?
 test for bad access token
-reimplement command line using optparse-applicative
-change how sequence numbers are allocated
-expose all of the LowLevel messages?
