@@ -87,7 +87,7 @@ data StateHostInfo
     { shiSignal :: !Float
     , shiTX :: !Word32
     , shiRX :: !Word32
-    , shiMcuTemperature :: !Int16 -- in hundredths of a degree Celsius
+    , shiMcuTemperature :: !Int16 -- ^ in hundredths of a degree Celsius
     } deriving Show
 
 instance MessageType StateHostInfo where
@@ -123,9 +123,10 @@ getHostFirmware bulb@(Bulb st _ _ ) cb = do
 
 data StateHostFirmware
   = StateHostFirmware
-    { shfBuild :: !Word64
+    { shfBuild :: !Word64   -- ^ Build date in nanoseconds since UNIX epoch
       -- Reserved64
-    , shfVersion :: !Word32
+    , shfVersion :: !Word32 -- ^ Major version in most significant 16 bits.
+                            --   Minor version in least significant 16 bits.
     } deriving Show
 
 instance MessageType StateHostFirmware where
@@ -163,9 +164,10 @@ getWifiFirmware bulb@(Bulb st _ _ ) cb = do
 
 data StateWifiFirmware
   = StateWifiFirmware
-    { swfBuild :: !Word64
+    { swfBuild :: !Word64   -- ^ Build date in nanoseconds since UNIX epoch
       -- Reserved64
-    , swfVersion :: !Word32
+    , swfVersion :: !Word32 -- ^ Major version in most significant 16 bits.
+                            --   Minor version in least significant 16 bits.
     } deriving Show
 
 instance MessageType StateWifiFirmware where
@@ -221,11 +223,12 @@ getVersion bulb@(Bulb st _ _ ) cb = do
 
 ----------------------------------------------------------
 
+-- | Use 'productFromId' to convert 'svVendor' and 'svProduct' to a 'Product'
 data StateVersion =
   StateVersion
   { svVendor :: !Word32
   , svProduct :: !Word32
-  , svVersion :: !Word32
+  , svVersion :: !Word32 -- ^ An integer version number for the hardware
   } deriving Show
 
 instance MessageType StateVersion where
@@ -259,9 +262,9 @@ getInfo bulb@(Bulb st _ _ ) cb = do
 
 data StateInfo =
   StateInfo
-  { siTime :: !Word64
-  , siUptime :: !Word64
-  , siDowntime :: !Word64
+  { siTime :: !Word64      -- ^ Current time, in nanoseconds since UNIX epoch
+  , siUptime :: !Word64    -- ^ How long power has been applied to bulb, in nanoseconds
+  , siDowntime :: !Word64  -- ^ Does not seem to be meaningful
   } deriving Show
 
 instance MessageType StateInfo where
@@ -450,12 +453,12 @@ setColor bulb@(Bulb st _ _ ) color duration cb = do
 data SetWaveform =
   SetWaveform
   { -- Reserved8 (stream)
-    swTransient :: !Bool
-  , swColor :: HSBK16
-  , swPeriod :: !Word32
-  , swCycles :: !Float
-  , swDutyCycle :: !Int16
-  , swWaveform :: Waveform
+    swTransient :: !Bool   -- ^ Restore original color after effect
+  , swColor :: HSBK16      -- ^ Color of effect
+  , swPeriod :: !Word32    -- ^ Length of a cycle in milliseconds
+  , swCycles :: !Float     -- ^ Number of cycles; yes, this can be fractional
+  , swDutyCycle :: !Int16  -- ^ Has different meanings depending on 'swWaveform'
+  , swWaveform :: Waveform -- ^ Shape of waveform
   } deriving Show
 
 instance MessageType SetWaveform where
@@ -492,12 +495,13 @@ data SetPower =
 
 ----------------------------------------------------------
 
+-- | The LIFX documentation refers to this simply as @State@.
 data StateLight =
   StateLight
-  { slColor :: HSBK16
+  { slColor :: HSBK16    -- ^ Current color of light
     -- Reserved16 (dim)
-  , slPower :: !Power
-  , slLabel :: Label
+  , slPower :: !Power    -- ^ Current power state of light
+  , slLabel :: Label     -- ^ Current label of light
     -- Reserved64 (tags)
   } deriving Show
 
