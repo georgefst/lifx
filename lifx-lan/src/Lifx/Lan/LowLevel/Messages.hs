@@ -124,7 +124,6 @@ getHostFirmware bulb@(Bulb st _ _ ) cb = do
 data StateHostFirmware
   = StateHostFirmware
     { shfBuild :: !Word64   -- ^ Build date in nanoseconds since UNIX epoch
-      -- Reserved64
     , shfVersion :: !Word32 -- ^ Major version in most significant 16 bits.
                             --   Minor version in least significant 16 bits.
     } deriving Show
@@ -165,7 +164,6 @@ getWifiFirmware bulb@(Bulb st _ _ ) cb = do
 data StateWifiFirmware
   = StateWifiFirmware
     { swfBuild :: !Word64   -- ^ Build date in nanoseconds since UNIX epoch
-      -- Reserved64
     , swfVersion :: !Word32 -- ^ Major version in most significant 16 bits.
                             --   Minor version in least significant 16 bits.
     } deriving Show
@@ -499,10 +497,8 @@ data SetPower =
 data StateLight =
   StateLight
   { slColor :: HSBK16    -- ^ Current color of light
-    -- Reserved16 (dim)
   , slPower :: !Power    -- ^ Current power state of light
   , slLabel :: Label     -- ^ Current label of light
-    -- Reserved64 (tags)
   } deriving Show
 
 instance MessageType StateLight where
