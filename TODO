@@ -1,62 +1,22 @@
 LIFX TODO:
 
-X add duration to color, power
-X set label
-X get group, location
-- named colors
-X default pulse in opposite color
-X multiply brightness, saturation by 100
-X migrate "types" to be used by lowlevel, too
 configurable columns
 get terminal width
-X be smarter about how long to run
-typeclass for LIFX
-cloud interface
 mock bulb
 mock http server
-X change power to boolean in records
-X change label to Text in records
 support both Wifi/Mcu Info/Firmware
-- clean up argument parser by moving color to LiteArgs
-more parallelism: get all first, then set all
-change selectors (text for cmdline, allow multiple for API)
 fix argument parsing
-- add timed operation
 Haddock docs
-X ping stats on Control-C
-tests
-X split into multiple packages (lifx-base, lifx-lan, lifx-cloud, lifx-prog, columns)
-caching (e. g. for groups, locations, scenes)
-
-LIFX TODO 2:
-
-Finish Haddock documentation.
 tests for IgnoreUnknownSelector
 test for powering on for effect
-X do planned renamings
 port program to use typeclass
 config file
-X support unspecified interface
 mock cloud API to test error handling
 test NestedSceneIdSelector
 Quickcheck tests for things which are round-trippable: IDs, JSON, messages, colors
-X fancier UserAgent
-X obey rate limit for cloud API
 should we provide instances like Hashable or Deepseq for IDs, colors, etc.?
 what about Buildable instances?
-X reorder LanSettings and CloudSettings to match better and to put rarely-used settings last
-X mark lights offline in Lan when they haven't been seen in a little while
 test for bad access token
 reimplement command line using optparse-applicative
 change how sequence numbers are allocated
-X move "Interface" from LowLevel types to base types
 expose all of the LowLevel messages?
-X implement cycleLights for Lan
-X properly handle parsing an empty selector list (since cloud seems okay with it)
-X add direction to cycle
-- use unbounded-delays in place of ThreadDelay
-X convert HTTP status codes to HttpException
-X use stack; try with different versions of ghc
-X update label/group/location in cache when doing listLights
-X typeclass method for setting label
-X don't treat lights as offline if we haven't heard from them yet
