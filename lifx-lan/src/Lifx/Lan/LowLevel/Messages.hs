@@ -305,11 +305,12 @@ getLocation bulb @(Bulb st _ _ ) cb = do
 
 ----------------------------------------------------------
 
+-- | <https://community.lifx.com/t/lan-protocol-group-support/253/9>
 data StateLocation =
   StateLocation
-  { sloLocation  :: LocationId
-  , sloLabel     :: Label
-  , sloUpdatedAt :: !Word64
+  { sloLocation  :: LocationId -- ^ opaque identifier for location which is stable across label changes
+  , sloLabel     :: Label      -- ^ human-readable name of location
+  , sloUpdatedAt :: !Word64    -- ^ time that label or location was last changed, in nanoseconds since the UNIX epoch
   } deriving Show
 
 instance MessageType StateLocation where
@@ -345,11 +346,12 @@ getGroup bulb @(Bulb st _ _ ) cb = do
 
 ----------------------------------------------------------
 
+-- | <https://community.lifx.com/t/lan-protocol-group-support/253/9>
 data StateGroup =
   StateGroup
-  { sgGroup     :: GroupId
-  , sgLabel     :: Label
-  , sgUpdatedAt :: !Word64
+  { sgGroup     :: GroupId -- ^ opaque identifier for group which is stable across label changes
+  , sgLabel     :: Label   -- ^ human-readable name of group
+  , sgUpdatedAt :: !Word64 -- ^ time that label or group was last changed, in nanoseconds since the UNIX epoch
   } deriving Show
 
 instance MessageType StateGroup where
@@ -455,7 +457,10 @@ data SetWaveform =
   , swColor :: HSBK16      -- ^ Color of effect
   , swPeriod :: !Word32    -- ^ Length of a cycle in milliseconds
   , swCycles :: !Float     -- ^ Number of cycles; yes, this can be fractional
-  , swDutyCycle :: !Int16  -- ^ Has different meanings depending on 'swWaveform'
+  , swDutyCycle :: !Int16  -- ^ If 0, an equal amount of time is spent on the
+                           --   original color and 'swColor'.  If positive,
+                           --   more time is spent on the original color.
+                           --   If negative, more time is spent on 'swColor'.
   , swWaveform :: Waveform -- ^ Shape of waveform
   } deriving Show
 
