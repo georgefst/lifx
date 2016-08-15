@@ -75,7 +75,10 @@ instance Binary GetHostInfo where
   put _ = return ()
   get = return GetHostInfo
 
-getHostInfo :: Bulb -> (StateHostInfo -> IO ()) -> IO ()
+-- | Get information from the host microcontroller
+getHostInfo :: Bulb                        -- ^ the bulb to operate on
+               -> (StateHostInfo -> IO ()) -- ^ callback
+               -> IO ()
 getHostInfo bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetHostInfo
@@ -114,7 +117,10 @@ instance Binary GetHostFirmware where
   put _ = return ()
   get = return GetHostFirmware
 
-getHostFirmware :: Bulb -> (StateHostFirmware -> IO ()) -> IO ()
+-- | Get the version of the firmware running on the host microcontroller
+getHostFirmware :: Bulb                            -- ^ the bulb to operate on
+                   -> (StateHostFirmware -> IO ()) -- ^ callback
+                   -> IO ()
 getHostFirmware bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetHostFirmware
@@ -154,7 +160,10 @@ instance Binary GetWifiFirmware where
   put _ = return ()
   get = return GetWifiFirmware
 
-getWifiFirmware :: Bulb -> (StateWifiFirmware -> IO ()) -> IO ()
+-- | Get the version of the firmware running on the wifi microcontroller
+getWifiFirmware :: Bulb                            -- ^ the bulb to operate on
+                   -> (StateWifiFirmware -> IO ()) -- ^ callback
+                   -> IO ()
 getWifiFirmware bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetWifiFirmware
@@ -214,7 +223,10 @@ instance Binary GetVersion where
   put _ = return ()
   get = return GetVersion
 
-getVersion :: Bulb -> (StateVersion -> IO ()) -> IO ()
+-- | Get product and hardware version of the bulb
+getVersion :: Bulb                       -- ^ the bulb to operate on
+              -> (StateVersion -> IO ()) -- ^ callback
+              -> IO ()
 getVersion bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetVersion
@@ -251,7 +263,10 @@ instance Binary GetInfo where
   put _ = return ()
   get = return GetInfo
 
-getInfo :: Bulb -> (StateInfo -> IO ()) -> IO ()
+-- | Get current time and uptime from the bulb
+getInfo :: Bulb                    -- ^ the bulb to operate on
+           -> (StateInfo -> IO ()) -- ^ callback
+           -> IO ()
 getInfo bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetInfo
@@ -339,7 +354,10 @@ instance Binary GetGroup where
   put _ = return ()
   get = return GetGroup
 
-getGroup :: Bulb -> (StateGroup -> IO ()) -> IO ()
+-- | Find out which group this bulb belongs to
+getGroup :: Bulb                     -- ^ the bulb to operate on
+            -> (StateGroup -> IO ()) -- ^ callback
+            -> IO ()
 getGroup bulb @(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetGroup
@@ -416,7 +434,10 @@ instance Binary GetLight where
   put _ = return ()
   get = return GetLight
 
-getLight :: Bulb -> (StateLight -> IO ()) -> IO ()
+-- | Get information about the bulb's current state
+getLight :: Bulb                     -- ^ the bulb to operate on
+            -> (StateLight -> IO ()) -- ^ callback
+            -> IO ()
 getLight bulb @(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetLight
@@ -537,7 +558,12 @@ instance Binary SetPower where
 
   get = SetPower <$> get <*> getWord32le
 
-setPower :: Bulb -> Power -> Word32 -> IO () -> IO ()
+-- | Turn the bulb on or off
+setPower :: Bulb       -- ^ the bulb to operate on
+            -> Power   -- ^ the new power state for the bulb
+            -> Word32  -- ^ fade duration, in milliseconds
+            -> IO ()   -- ^ callback
+            -> IO ()
 setPower bulb@(Bulb st _ _ ) pwr duration cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
   sendMsg bulb (needAck hdr) (SetPower pwr duration)
