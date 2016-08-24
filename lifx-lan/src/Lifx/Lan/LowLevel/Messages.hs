@@ -536,11 +536,6 @@ setWaveform :: Bulb           -- ^ the bulb to operate on
 setWaveform bulb@(Bulb st _ _ ) swf cb = do
   hdr <- atomically $ newHdrAndCallback st (ackCb cb)
   sendMsg bulb (needAck hdr) swf
-data SetPower =
-  SetPower
-  { spLevel :: !Power
-  , spDuration :: !Word32
-  }
 
 ----------------------------------------------------------
 
@@ -572,6 +567,12 @@ instance Binary StateLight where
     return $ StateLight color power label
 
 ----------------------------------------------------------
+
+data SetPower =
+  SetPower
+  { spLevel :: !Power
+  , spDuration :: !Word32
+  }
 
 instance MessageType SetPower where
   msgType _ = 117
