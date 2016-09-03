@@ -109,6 +109,7 @@ instance Binary StateService where
 
 type Callback = Lan -> SockAddr -> Header -> L.ByteString -> IO ()
 
+-- | Type representing all the LIFX bulbs on the local network
 data Lan
   = Lan
     { stSeq :: TVar Word8
@@ -134,6 +135,7 @@ instance Ord Lan where
     (stIfName x1) `compare` (stIfName x2)
     <> (stSource x1) `compare` (stSource x2)
 
+-- | Type representing one LIFX bulb
 data Bulb = Bulb Lan SockAddr DeviceId deriving (Show, Eq, Ord)
 
 deviceId :: Bulb -> DeviceId
@@ -367,14 +369,21 @@ ifaceAddr (Just ifname) = do
   let (NI.IPv4 addr) = NI.ipv4 iface
   return addr
 
+-- | Parameters describing how frequently to retry sending a message,
+-- if no acknowledgment has been received.  The first retry will be after
+-- 'rpMinInterval' seconds.  Then the retry interval will be multiplied by
+-- 'rpMultiplier' after each retry, but it will be capped at 'rpMaxInterval'.
+-- The whole process ends when an acknowledgment has been received, or when
+-- the total elapsed time exceeds 'rpTimeLimit'.
 data RetryParams =
   RetryParams
-  { rpMinInterval :: !Float -- seconds
-  , rpMaxInterval :: !Float -- seconds
+  { rpMinInterval :: !Float -- ^ seconds
+  , rpMaxInterval :: !Float -- ^ seconds
   , rpMultiplier  :: !Float
-  , rpTimeLimit   :: !Float -- seconds
+  , rpTimeLimit   :: !Float -- ^ seconds
   }
 
+-- | Default values for 'RetryParams'.
 defaultRetryParams =
   RetryParams
   { rpMinInterval = 0.1
