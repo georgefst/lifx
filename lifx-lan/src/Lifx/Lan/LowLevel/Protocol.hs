@@ -293,10 +293,10 @@ discoverBulbs st cb = do
   pkt <- atomically $ discovery st cb
   sendManyTo (stSocket st) (L.toChunks pkt) (stBcast st)
 
-openLan :: Maybe T.Text -> IO Lan
+openLan :: Maybe Interface -> IO Lan
 openLan ifname = openLan' ifname Nothing Nothing
 
-openLan' :: Maybe T.Text -> Maybe Word16 -> Maybe (T.Text -> IO()) -> IO Lan
+openLan' :: Maybe Interface -> Maybe Word16 -> Maybe (T.Text -> IO()) -> IO Lan
 openLan' ifname mport mlog = do
   hostAddr <- ifaceAddr $ fmap T.unpack ifname
   sock <- socket AF_INET Datagram defaultProtocol
