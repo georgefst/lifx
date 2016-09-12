@@ -33,8 +33,7 @@ module Lifx.Lan.LowLevel
       defaultRetryParams,
       reliableAction,
       reliableQuery,
-      HSBK16,
-      Header (..)
+      HSBK16
       ) where
 
 import Lifx.Lan.LowLevel.Util
