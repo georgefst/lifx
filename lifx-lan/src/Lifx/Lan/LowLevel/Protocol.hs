@@ -138,6 +138,7 @@ instance Ord Lan where
 -- | Type representing one LIFX bulb
 data Bulb = Bulb Lan SockAddr DeviceId deriving (Show, Eq, Ord)
 
+-- | Determine the Device ID for a particular 'Bulb'.
 deviceId :: Bulb -> DeviceId
 deviceId (Bulb _ _ di) = di
 
@@ -288,15 +289,36 @@ discovery st cb = do
   let hdr' = hdr { hdrTagged = True }
   return $ serializeMsg hdr' GetService
 
-discoverBulbs :: Lan -> (Bulb -> IO ()) -> IO ()
+-- | Call the callback for each 'Bulb' on the 'Lan'.  There is no way to
+-- know when you have all the bulbs, so you have to just decide how long
+-- you are willing to wait.
+discoverBulbs :: Lan                -- ^ 'Lan' to discover bulbs on
+                 -> (Bulb -> IO ()) -- ^ Callback called for each bulb
+                 -> IO ()
 discoverBulbs st cb = do
   pkt <- atomically $ discovery st cb
   sendManyTo (stSocket st) (L.toChunks pkt) (stBcast st)
 
-openLan :: Maybe Interface -> IO Lan
+-- | Return a 'Lan' which can be used to communicate with bulbs on the
+-- local network.
+openLan :: Maybe Interface -- ^ Name of network interface to use (such as
+                           -- wlan0 or en1) or 'Nothing' to let the OS
+                           -- choose an interface
+           -> IO Lan
 openLan ifname = openLan' ifname Nothing Nothing
 
-openLan' :: Maybe Interface -> Maybe Word16 -> Maybe (T.Text -> IO()) -> IO Lan
+-- | Return a 'Lan' which can be used to communicate with bulbs on the
+-- local network.
+openLan' :: Maybe Interface -- ^ Name of network interface to use (such as
+                            -- wlan0 or en1) or 'Nothing' to let the OS
+                            -- choose an interface
+            -> Maybe Word16 -- ^ Port number that bulbs are listening on.
+                            -- The only reason to change this is if you want
+                            -- to use simulated bulbs.  'Nothing' will use
+                            -- the correct port for real hardware.
+            -> Maybe (T.Text -> IO()) -- ^ A function to log warning messages.
+                                      -- 'Nothing' will not log anything.
+            -> IO Lan
 openLan' ifname mport mlog = do
   hostAddr <- ifaceAddr $ fmap T.unpack ifname
   sock <- socket AF_INET Datagram defaultProtocol
@@ -314,6 +336,8 @@ openLan' ifname mport mlog = do
     putTMVar tmv st
     return st
 
+-- | Destroy a 'Lan' when it is no longer needed.  This is required, because
+-- each 'Lan' has a background thread which needs to be terminated.
 closeLan :: Lan -> IO ()
 closeLan lan = endThread (stLogText lan) "dispatch" (stThread lan)
 
@@ -394,20 +418,26 @@ defaultRetryParams =
 
 microsPerSecond = 1000000
 
-reliableAction :: RetryParams
-                  -> (IO () -> IO ())
-                  -> IO ()
-                  -> IO ()
+-- | A helper function which lets you wrap an unreliable action, such as
+-- 'setColor', so that it is reliable, with a specified timeout.
+reliableAction :: RetryParams    -- ^ How frequently and how long to retry.
+                  -> (IO () -> IO ()) -- ^ Action which accepts a callback which
+                                      -- does not take an argument.
+                  -> IO ()       -- ^ Callback to be called if action succeeds.
+                  -> IO ()       -- ^ Callback to be called if action times out.
                   -> IO ()
 reliableAction rp query cbSucc cbFail =
   reliableQuery rp query' cbSucc' cbFail
   where query' cb = query $ cb ()
         cbSucc' _ = cbSucc
 
-reliableQuery :: RetryParams
-                 -> ((a -> IO ()) -> IO ())
-                 -> (a -> IO ())
-                 -> IO ()
+-- | A helper function which lets you wrap an unreliable query, such as
+-- 'getLocation', so that it is reliable, with a specified timeout.
+reliableQuery :: RetryParams      -- ^ How frequently and how long to retry.
+                 -> ((a -> IO ()) -> IO ()) -- ^ Query which accepts a callback
+                                            -- which takes an argument.
+                 -> (a -> IO ())  -- ^ Callback to be called if query succeeds.
+                 -> IO ()         -- ^ Callback to be called if query times out.
                  -> IO ()
 reliableQuery rp query cbSucc cbFail = do
   v <- newTVarIO False
