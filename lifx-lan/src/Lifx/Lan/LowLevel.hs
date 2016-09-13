@@ -1,5 +1,46 @@
 module Lifx.Lan.LowLevel
-    ( SetWaveform(..),
+    ( -- * Lans and Bulbs
+      openLan,
+      openLan',
+      closeLan,
+      discoverBulbs,
+      deviceId,
+      Lan,
+      Bulb,
+      -- * Queries and actions
+      -- | These functions correspond directly to
+      -- <https://lan.developer.lifx.com/ Lan Protocol> messages which
+      -- can be sent to the bulb.  Because the Lan Protocol uses
+      -- <https://en.wikipedia.org/wiki/User_Datagram_Protocol UDP>, these
+      -- functions are unreliable.  Either your callback will get called at
+      -- some point in the future, or it will never be called.  You have to
+      -- decide when to time out and when to retry.  The wrappers
+      -- 'reliableAction' and 'reliableQuery' can help with this.
+
+      -- ** Queries
+      -- | These functions do not change the state of the bulb.
+      -- The callback is given some information returned from the bulb.
+      getHostInfo,
+      getHostFirmware,
+      getWifiFirmware,
+      getVersion,
+      getInfo,
+      getLight,
+      getGroup,
+      getLocation,
+      echoRequest,
+      -- ** Actions
+      -- | These functions change the state of the bulb.  The callback
+      -- is given no data, but indicates that the bulb has acknowledged
+      -- receipt of the action.
+      setPower,
+      setLabel,
+      setColor,
+      setWaveform,
+      -- * Types
+      HSBK16,
+      Waveform(..),
+      SetWaveform(..),
       StateInfo(..),
       StateVersion(..),
       StateWifiFirmware(..),
@@ -8,32 +49,11 @@ module Lifx.Lan.LowLevel
       StateHostInfo(..),
       StateGroup(..),
       StateLocation(..),
-      getHostInfo,
-      getHostFirmware,
-      getWifiFirmware,
-      setPower,
-      getVersion,
-      getInfo,
-      getLight,
-      getGroup,
-      getLocation,
-      echoRequest,
-      setLabel,
-      setColor,
-      setWaveform,
-      Waveform(..),
-      Bulb,
-      Lan,
-      RetryParams(..),
-      openLan,
-      openLan',
-      closeLan,
-      discoverBulbs,
-      deviceId,
-      defaultRetryParams,
+      -- * Reliability wrappers
       reliableAction,
       reliableQuery,
-      HSBK16
+      RetryParams(..),
+      defaultRetryParams
       ) where
 
 import Lifx.Lan.LowLevel.Util
