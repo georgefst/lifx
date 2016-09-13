@@ -302,7 +302,7 @@ discoverBulbs st cb = do
 -- | Return a 'Lan' which can be used to communicate with bulbs on the
 -- local network.
 openLan :: Maybe Interface -- ^ Name of network interface to use (such as
-                           -- wlan0 or en1) or 'Nothing' to let the OS
+                           -- "wlan0" or "en1") or 'Nothing' to let the OS
                            -- choose an interface
            -> IO Lan
 openLan ifname = openLan' ifname Nothing Nothing
@@ -310,7 +310,7 @@ openLan ifname = openLan' ifname Nothing Nothing
 -- | Return a 'Lan' which can be used to communicate with bulbs on the
 -- local network.
 openLan' :: Maybe Interface -- ^ Name of network interface to use (such as
-                            -- wlan0 or en1) or 'Nothing' to let the OS
+                            -- "wlan0" or "en1") or 'Nothing' to let the OS
                             -- choose an interface
             -> Maybe Word16 -- ^ Port number that bulbs are listening on.
                             -- The only reason to change this is if you want

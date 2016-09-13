@@ -25,7 +25,8 @@ import Data.Word ( Word8, Word16, Word32, Word64 )
 import Lifx
 import Lifx.Lan.LowLevel.Util
 
--- | A color where each component is a 16-bit integer.
+-- | A <https://lan.developer.lifx.com/docs/light-messages#section-hsbk color>
+-- where each component is a 16-bit integer.
 type HSBK16 = HSBK Word16
 
 instance Binary HSBK16 where
