@@ -1,3 +1,16 @@
+{-|
+Module      : Lifx.Lan
+Description : Implementation of Connection for LIFX Lan Protocol
+Copyright   : © Patrick Pelletier, 2016
+License     : BSD3
+Maintainer  : code@funwithsoftware.org
+Stability   : experimental
+Portability : GHC
+
+This module implements a 'Connection' for controlling LIFX bulbs
+via the LIFX Lan Protocol.
+-}
+
 {-# LANGUAGE OverloadedStrings #-}
 
 module Lifx.Lan

@@ -1,3 +1,15 @@
+{-|
+Module      : Lifx.Lan.Lowlevel
+Description : Low-level access to the LIFX Lan Protocol
+Copyright   : © Patrick Pelletier, 2016
+License     : BSD3
+Maintainer  : code@funwithsoftware.org
+Stability   : experimental
+Portability : GHC
+
+This module provides a low-level way of using the LIFX Lan Protocol.
+-}
+
 module Lifx.Lan.LowLevel
     ( -- * Lans and Bulbs
       openLan,

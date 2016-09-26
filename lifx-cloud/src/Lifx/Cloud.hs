@@ -1,3 +1,16 @@
+{-|
+Module      : Lifx.Cloud
+Description : Implementation of Connection for LIFX Cloud API
+Copyright   : © Patrick Pelletier, 2016
+License     : BSD3
+Maintainer  : code@funwithsoftware.org
+Stability   : experimental
+Portability : GHC
+
+This module implements a 'Connection' for controlling LIFX bulbs
+via the LIFX Cloud API.
+-}
+
 {-# LANGUAGE OverloadedStrings #-}
 
 module Lifx.Cloud
