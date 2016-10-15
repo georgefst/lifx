@@ -57,7 +57,7 @@ executable lites
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >= 4.5 && < 5
+  build-depends:       base >= 4.7 && < 5
                      , stm >= 2.4.2 && < 2.5
                      , attoparsec >= 0.13.0.1 && < 0.14
                      , binary >= 0.7 && < 0.9
@@ -95,7 +95,7 @@ executable new-lites
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >= 4.5 && < 5
+  build-depends:       base >= 4.7 && < 5
                      , stm >= 2.4.2 && < 2.5
                      , attoparsec >= 0.13.0.1 && < 0.14
                      , binary >= 0.7 && < 0.9
@@ -132,7 +132,7 @@ executable foo
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >= 4.5 && < 5
+  build-depends:       base >= 4.7 && < 5
                      , stm >= 2.4.2 && < 2.5
                      , binary >= 0.7 && < 0.9
                      , bytestring >= 0.10 && < 0.11

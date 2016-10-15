@@ -21,7 +21,7 @@ import Control.Monad ( when, forever )
 import Data.Binary ( Put, Get )
 import Data.Binary.Put ( putWord32le, putWord16le )
 import Data.Binary.Get ( getWord32le, getWord16le )
-import Data.Bits ( Bits((.&.), bit, shiftR, clearBit {- zeroBits -}) )
+import Data.Bits ( Bits((.&.), bit, shiftR, zeroBits) )
 import Data.Int ( Int16, Int64 )
 import Data.Monoid
 import Data.ReinterpretCast ( wordToFloat, floatToWord )
@@ -35,7 +35,7 @@ bounds name n val =
   where limit = bit n
 
 bitBool :: Bits a => Int -> Bool -> a
-bitBool _ False = clearBit (bit 0) 0 -- zeroBits
+bitBool _ False = zeroBits
 bitBool n True = bit n
 
 extract :: (Integral a, Bits a, Integral b) => a -> Int -> Int -> b
