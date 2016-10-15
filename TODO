@@ -7,6 +7,7 @@ should we provide instances like Hashable or Deepseq for IDs, colors, etc.?
 what about Buildable instances?
 change how sequence numbers are allocated
 expose all of the LowLevel messages?
+try to get "identifier" (such as "lifx_original_a21") added to products.json
 
 program:
 
