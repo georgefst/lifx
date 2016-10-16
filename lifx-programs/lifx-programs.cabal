@@ -78,7 +78,7 @@ executable lites
   -- Base language which the package is written in.
   default-language:    Haskell2010
 
-  -- ghc-options: -ddump-minimal-imports
+  ghc-options: -ddump-minimal-imports -fwarn-unused-imports -fwarn-unused-binds
 
 
 executable new-lites
@@ -116,7 +116,7 @@ executable new-lites
   -- Base language which the package is written in.
   default-language:    Haskell2010
 
-  -- ghc-options: -ddump-minimal-imports
+  ghc-options: -ddump-minimal-imports -fwarn-unused-imports -fwarn-unused-binds
 
 
 executable foo
@@ -152,4 +152,4 @@ executable foo
   -- Base language which the package is written in.
   default-language:    Haskell2010
 
-  -- ghc-options: -ddump-minimal-imports
+  ghc-options: -ddump-minimal-imports -fwarn-unused-imports -fwarn-unused-binds
