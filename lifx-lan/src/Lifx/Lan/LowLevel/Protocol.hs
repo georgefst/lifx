@@ -19,11 +19,8 @@ module Lifx.Lan.LowLevel.Protocol
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Concurrent
 import Control.Concurrent.STM
-{-
-    ( STM, TArray, TVar, writeTVar, readTVar, newTVar, atomically )
--}
 import Control.Exception
-import Control.Monad ( when, forever, unless )
+import Control.Monad ( when, unless )
 import Data.Array.MArray ( writeArray, readArray, newListArray )
 import Data.Binary
     ( Binary(..),
@@ -40,9 +37,7 @@ import Data.Int ( Int64 )
 import Data.List
 import Data.Maybe
 import Data.Monoid
-import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Typeable
 import Data.Word ( Word8, Word16, Word32, Word64 )
 import qualified Network.Info as NI
 import Network.Socket
@@ -51,22 +46,16 @@ import Network.Socket
       SockAddr(SockAddrInet),
       Family(AF_INET),
       SocketOption(Broadcast),
-      AddrInfoFlag(AI_NUMERICHOST, AI_NUMERICSERV),
-      AddrInfo(addrAddress, addrFlags),
       socket,
       setSocketOption,
       isSupportedSocketOption,
-      iNADDR_ANY,
-      getAddrInfo,
       defaultProtocol,
-      defaultHints,
       bind,
       socketPort,
       aNY_PORT,
       close )
 import Network.Socket.ByteString ( sendManyTo, recvFrom )
 import System.Mem.Weak
-import Text.Printf ( printf )
 
 import Lifx
 import Lifx.Lan.LowLevel.Util

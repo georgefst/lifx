@@ -2,32 +2,12 @@
 
 module Lifx.Cloud.Json where
 
-import Control.Applicative ( Applicative((<*>)), (<$>) )
-import Control.Arrow (first)
-import Control.Monad
 import Data.Aeson hiding (Result)
-import Data.Aeson.Types (Parser, Pair, modifyFailure)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as B8
-import qualified Data.ByteString.Lazy as L
+import Data.Aeson.Types (Parser, Pair)
 import Data.Hourglass
-import Data.Int
-import Data.List (find)
 import Data.Maybe
-import Data.Monoid (Monoid(..))
-import Data.Text (Text(..))
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import qualified Data.Text.Encoding.Error as TEE
-import Data.Text.Format
-import Data.Text.Format.Params
-import qualified Data.Text.Lazy as LT
 import qualified Data.UUID.Types as U
-import Data.Version
-import Data.Word
-import Debug.Trace
-import Text.ParserCombinators.ReadP (skipSpaces)
-import Text.ParserCombinators.ReadPrec (readPrec_to_S)
 import Text.Read hiding (String)
 
 import Lifx

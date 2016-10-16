@@ -2,10 +2,9 @@
 
 module Lifx.Types where
 
-import Control.Applicative ( Applicative((<*>)), (<$>) )
+import Control.Applicative ( (<$>) )
 import Control.Arrow (first)
 import Control.Exception
-import Control.Monad
 import Data.Aeson hiding (Result)
 import Data.Aeson.Types (Parser)
 import Data.Binary
@@ -15,25 +14,12 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as L
-import Data.Int
-import Data.List (find, partition)
-import Data.Maybe
-import Data.Monoid hiding (Product)
 import Data.Text (Text(..))
 import qualified Data.Text as T
-import Data.Text.Buildable
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
-import Data.Text.Format
-import Data.Text.Format.Params
-import qualified Data.Text.Lazy as LT
 import Data.Typeable
 import qualified Data.UUID.Types as U
-import Data.Word
-import Debug.Trace
-import Text.ParserCombinators.ReadP (skipSpaces)
-import Text.ParserCombinators.ReadPrec (readPrec_to_S)
-import Text.Read hiding (String)
 
 import Lifx.Util
 

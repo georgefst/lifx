@@ -1,28 +1,13 @@
 module Lifx.Util where
 
 import Control.Applicative
-import Control.Arrow (first)
-import Control.Monad
 import Data.Attoparsec.Text
-import Data.Binary
 import qualified Data.ByteString as B
-import Data.Int
-import Data.List (find)
-import Data.Maybe
-import Data.Monoid (Monoid(..))
-import Data.Text (Text(..))
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Data.Text.Format
 import Data.Text.Format.Params
 import qualified Data.Text.Lazy as LT
-import qualified Data.UUID.Types as U
-import Data.Version
-import Data.Word
-import Debug.Trace
-import Text.ParserCombinators.ReadP (skipSpaces)
-import Text.ParserCombinators.ReadPrec (readPrec_to_S)
-import Text.Read hiding (String)
 
 ---- Utilities: move elsewhere?
 

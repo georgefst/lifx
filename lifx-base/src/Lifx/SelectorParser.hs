@@ -4,7 +4,6 @@ module Lifx.SelectorParser (parseSelector, parseSelectors, selParse) where
 
 import Control.Applicative
 import Data.Attoparsec.Text
-import Data.Char
 import qualified Data.Text as T
 
 import Lifx.Types

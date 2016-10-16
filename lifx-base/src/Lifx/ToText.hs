@@ -6,8 +6,6 @@ import Data.Maybe
 import Data.Monoid
 import qualified Data.Text as T
 import Data.Text.Buildable
-import Data.Text.Format
-import Data.Text.Format.Params
 
 import Lifx.Types
 import Lifx.Util

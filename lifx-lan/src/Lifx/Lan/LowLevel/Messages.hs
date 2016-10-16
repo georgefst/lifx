@@ -24,20 +24,15 @@ module Lifx.Lan.LowLevel.Messages
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Concurrent.STM ( atomically )
-import Control.Monad
 import Data.Binary
     ( Binary(..), putWord8, getWord8 )
 import Data.Binary.Put
     ( putWord64le, putWord32le, putWord16le, putByteString )
 import Data.Binary.Get
     ( skip, getWord64le, getWord32le, getWord16le, getByteString )
-import qualified Data.ByteString as B ( ByteString, takeWhile )
-import qualified Data.ByteString.Lazy as L ( ByteString, takeWhile )
+import qualified Data.ByteString as B ( ByteString )
 import Data.Int ( Int16 )
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import qualified Data.Text.Encoding.Error as TEE
-import Data.Word ( Word16, Word32, Word64 )
+import Data.Word ( Word32, Word64 )
 
 import Lifx
 import Lifx.Internal

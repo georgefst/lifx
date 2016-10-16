@@ -40,7 +40,6 @@ import qualified Data.UUID.Types as U
 import Data.Version
 
 import Lifx.Types
-import Lifx.Util
 
 -- | The direction that the 'cycleLights' method will go in.
 data Direction = Forward | Backward

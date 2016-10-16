@@ -32,9 +32,7 @@ import Lifx.Lan.LowLevel.Util (untilKilled, endThread)
 
 import Control.Applicative
 import Control.Concurrent
-import Control.Concurrent.MVar
 import Control.Concurrent.STM
-import Control.Concurrent.STM.TSem
 import Control.Exception
 import Control.Monad
 import Data.Bits

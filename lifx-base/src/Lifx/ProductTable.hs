@@ -2,13 +2,9 @@
 
 module Lifx.ProductTable (productFromId) where
 
-import Control.Applicative
 import Data.Aeson
-import qualified Data.ByteString as B
 import Data.Char
-import Data.Either
 import Data.FileEmbed
-import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Data.Word

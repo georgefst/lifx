@@ -14,13 +14,12 @@ import Data.Binary
       putWord8,
       getWord8,
       encode )
-import Data.Binary.Put ( putWord64be, putWord64le, putWord32le, putWord16le )
+import Data.Binary.Put ( putWord64le, putWord32le, putWord16le )
 import Data.Binary.Get
-    ( getWord64be, getWord64le, getWord32le, getWord16le, skip )
+    ( getWord32le, getWord16le, skip )
 import Data.Bits ( Bits(shiftL, testBit) )
 import qualified Data.ByteString.Lazy as L ( length )
-import qualified Data.Text as T
-import Data.Word ( Word8, Word16, Word32, Word64 )
+import Data.Word ( Word8, Word16, Word32 )
 
 import Lifx
 import Lifx.Lan.LowLevel.Util

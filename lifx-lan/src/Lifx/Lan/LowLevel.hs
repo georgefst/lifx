@@ -68,7 +68,6 @@ module Lifx.Lan.LowLevel
       defaultRetryParams
       ) where
 
-import Lifx.Lan.LowLevel.Util
 import Lifx.Lan.LowLevel.Types
 import Lifx.Lan.LowLevel.Messages
 import Lifx.Lan.LowLevel.Protocol

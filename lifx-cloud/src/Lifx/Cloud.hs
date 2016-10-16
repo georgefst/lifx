@@ -47,7 +47,6 @@ import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
 import qualified Data.Text.IO as TIO
 import Data.Text.Format hiding (print)
-import Data.Text.Format.Params
 import Data.Version
 import Text.Read
 import System.IO

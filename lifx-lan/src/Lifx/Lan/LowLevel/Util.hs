@@ -22,11 +22,10 @@ import Data.Binary ( Put, Get )
 import Data.Binary.Put ( putWord32le, putWord16le )
 import Data.Binary.Get ( getWord32le, getWord16le )
 import Data.Bits ( Bits((.&.), bit, shiftR, zeroBits) )
-import Data.Int ( Int16, Int64 )
+import Data.Int ( Int16 )
 import Data.Monoid
 import Data.ReinterpretCast ( wordToFloat, floatToWord )
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
 import System.Mem.Weak
 
 bounds :: (Integral a, Bits a, Show a) => String -> Int -> a -> Put
