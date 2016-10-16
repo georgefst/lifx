@@ -14,7 +14,7 @@ packages:
 extra-deps:
 - aeson-0.11.0.0
 - attoparsec-0.13.0.2
-- directory-1.2.6.2
+- directory-1.2.7.0
 - fail-4.9.0.0
 - hourglass-0.2.10
 - primitive-0.6.1.0
