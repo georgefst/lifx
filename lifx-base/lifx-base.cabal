@@ -35,9 +35,9 @@ author:              Patrick Pelletier
 maintainer:          code@funwithsoftware.org
 
 -- A copyright notice.
--- copyright:
+copyright:           © Patrick Pelletier, 2016
 
--- category:
+category:            Home Automation
 
 build-type:          Simple
 

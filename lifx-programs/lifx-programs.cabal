@@ -13,7 +13,10 @@ version:             0.1.0.0
 synopsis:            Programs for controlling LIFX light bulbs
 
 -- A longer description of the package.
--- description:
+description:
+    This package contains a @lites@ command-line program for
+    controlling LIFX lights via either the LIFX Lan Protocol
+    or the LIFX cloud.  It also contains a @lifx-tests@ program.
 
 -- The license under which the package is released.
 license:             BSD3
@@ -29,9 +32,9 @@ author:              Patrick Pelletier
 maintainer:          code@funwithsoftware.org
 
 -- A copyright notice.
--- copyright:
+copyright:           © Patrick Pelletier, 2016
 
--- category:
+category:            Home Automation
 
 build-type:          Simple
 

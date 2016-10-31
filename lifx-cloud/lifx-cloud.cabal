@@ -13,7 +13,9 @@ version:             0.1.0.0
 synopsis:            Control LIFX light bulbs via the cloud API
 
 -- A longer description of the package.
--- description:
+description:
+    This package implements a 'Connection' for controlling LIFX bulbs
+    via the LIFX Cloud API.
 
 -- The license under which the package is released.
 license:             BSD3
@@ -29,9 +31,9 @@ author:              Patrick Pelletier
 maintainer:          code@funwithsoftware.org
 
 -- A copyright notice.
--- copyright:
+copyright:           © Patrick Pelletier, 2016
 
--- category:
+category:            Home Automation
 
 build-type:          Simple
 
