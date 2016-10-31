@@ -14,7 +14,6 @@ program:
 configurable columns
 get terminal width
 fix argument parsing
-port program to use typeclass
 reimplement command line using optparse-applicative
 
 testing:
