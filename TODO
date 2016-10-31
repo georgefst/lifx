@@ -8,6 +8,8 @@ what about Buildable instances?
 change how sequence numbers are allocated
 expose all of the LowLevel messages?
 try to get "identifier" (such as "lifx_original_a21") added to products.json
+support infrared
+support multizone
 
 program:
 
@@ -26,3 +28,4 @@ mock cloud API to test error handling
 test NestedSceneIdSelector
 Quickcheck tests for things which are round-trippable: IDs, JSON, messages, colors
 test for bad access token
+make sure tests work with any number of bulbs (including one)
