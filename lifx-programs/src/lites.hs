@@ -123,13 +123,13 @@ data LightRow =
 
 columns :: [Column (LightRow -> [T.Text])]
 columns =
-  [ Column Lft Lft 16 32  40 ["Label"]               lrLabel
+  [ Column Lft Lft 15 32  40 ["Label"]               lrLabel
   , Column Lft Lft  3  3   0 ["Pwr", "Power"]        lrPower
   , Column Lft Lft 17 17   0 ["Color"]               lrColor
   , Column Lft Lft  6  7  30 ["Temp", "Temperature"] lrTemp
   , Column Rgt Lft 11 11  90 ["Uptime"]              lrUptime
   , Column Lft Rgt  6 12 100 ["DevID", "Device ID"]  lrDevId
-  , Column Lft Lft  3  3   0 ["FW", "Firmware"]      lrFirmware
+  , Column Lft Lft  4  4   0 ["FW", "Firmware"]      lrFirmware
   , Column Lft Lft  5  7  50 ["HW", "Hardware"]      lrHardware
   , Column Lft Lft  8 32  36 ["Group"]               lrGroup
   , Column Lft Lft  8 32  34 ["Location"]            lrLocation
