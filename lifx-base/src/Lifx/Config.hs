@@ -33,8 +33,10 @@ configDir = getXdgDirectory XdgConfig "hs-lifx"
 configFile :: IO FilePath
 configFile = (++ "/config.json") <$> configDir
 
+{-
 sceneFile :: IO FilePath
 sceneFile = (++ "/scenes.json") <$> configDir
+-}
 
 -- provide an empty config file if none was found
 handler :: IOException -> IO B.ByteString
