@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module PureTests (pureTests) where
+-- module PureTests (pureTests) where
 
 import Control.Arrow
 import Control.Concurrent
@@ -337,3 +337,5 @@ lifxIdTextErrorTest = do
   -- testLifxIdTextError "Label"       32 (undefined :: Label)
   testLifxIdTextError  "AccessToken" 32 (undefined :: AccessToken)
   testSceneIdTextError "SceneId"     16 (undefined :: SceneId)
+
+main = defaultMain pureTests

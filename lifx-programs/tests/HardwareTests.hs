@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module HardwareTests (hardwareTests) where
+-- module HardwareTests (hardwareTests) where
 
 import Control.Applicative
 import Control.Arrow
@@ -956,3 +956,5 @@ testRateLimit rsrc _ step = do
   case rateLimit of
    Nothing -> assertFailure "getRateLimit returned Nothing"
    Just rl -> step (show rl)
+
+main = defaultMain hardwareTests
