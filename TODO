@@ -1,7 +1,7 @@
 library:
 
 support both Wifi/Mcu Info/Firmware
-config file
+config file for scenes when using Lan
 should we provide instances like Hashable or Deepseq for IDs, colors, etc.?
 what about Buildable instances?
 change how sequence numbers are allocated
