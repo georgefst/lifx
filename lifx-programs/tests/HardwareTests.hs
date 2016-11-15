@@ -2,6 +2,7 @@
 
 -- module HardwareTests (hardwareTests) where
 
+import Control.Applicative
 import Control.Arrow
 import Control.Concurrent
 import Control.Exception
