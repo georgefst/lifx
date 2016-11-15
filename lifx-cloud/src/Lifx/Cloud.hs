@@ -325,6 +325,7 @@ headersToRateLimit hdrs = do
                      , rlRemaining = remainingInt
                      , rlReset = ununix resetInt
                      , rlServerTime = dateTime
+                     , rlClientTime = error "will be set in updateRateLimit"
                      }
 
 updateRateLimit :: TVar (Maybe RateLimit) -> Maybe RateLimit -> IO ()
