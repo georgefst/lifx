@@ -1,36 +1,19 @@
 {-# LANGUAGE NoMonomorphismRestriction, OverloadedStrings #-}
 
 import Control.Concurrent
-import Control.Concurrent.STM
-import Control.Concurrent.STM.TSem
-import Control.Monad ( when, forever, forM_, unless )
-import qualified Control.Exception as E (catch, throw, AsyncException(..))
-import Data.Bits
-import qualified Data.ByteString as B
-import Data.Char
+import Control.Monad ( when, forM_ )
+import qualified Control.Exception as E (catch)
 import Data.Hourglass
 import Data.Int ( Int64 )
 import Data.List hiding (insert)
-import qualified Data.Map.Strict as M
-import Data.Maybe
 import Data.Monoid hiding (Product)
-import Data.Set hiding (map, filter)
 import qualified Data.Set as S
-import Data.String
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import qualified Data.Text.Encoding.Error as TEE
 import Data.Text.Format hiding (print)
-import Data.Text.Format.Params
-import qualified Data.Text.Lazy as LT
 import qualified Data.Text.IO as TIO
 import Data.Version
-import Data.Word ( Word16, Word32, Word64 )
-import GHC.Float
 import qualified Network.Info as NI
-import System.Console.CmdArgs.Explicit
 import System.Exit
-import System.Hourglass
 
 import Lifx
 import Lifx.Connection
