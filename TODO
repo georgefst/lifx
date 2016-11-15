@@ -15,6 +15,7 @@ program:
 configurable columns
 get terminal width
 reimplement command line using optparse-applicative
+allow using cloud as well as LAN
 
 testing:
 
