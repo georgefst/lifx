@@ -547,27 +547,6 @@ offlineLightInfo now groups locations lite =
         maybeLookup Nothing _ = Nothing
         maybeLookup (Just k) m = fmap claLabel $ M.lookup k m
 
-updateLabelCache :: Ord a
-                    => TVar (M.Map a CachedLabel)
-                    -> a
-                    -> Label
-                    -> Word64
-                    -> STM ()
-updateLabelCache tv key lbl upd = do
-  cache <- readTVar tv
-  let doUpdate = case key `M.lookup` cache of
-                  Nothing -> True
-                  (Just (CachedLabel { claUpdatedAt = oldUpd })) -> upd > oldUpd
-      cl = CachedLabel { claLabel = lbl , claUpdatedAt = upd }
-      cache' = M.insert key cl cache
-  when doUpdate $ writeTVar tv cache'
-
-{-
-longAgo = DateTime d t
-  where d = Date 1776 July 4
-        t = TimeOfDay (Hours 0) (Minutes 0) (Seconds 0) (NanoSeconds 0)
--}
-
 dtOfCt :: CachedThing a -> Maybe DateTime
 dtOfCt NotCached = Nothing
 dtOfCt (Cached dt _ ) = Just dt
