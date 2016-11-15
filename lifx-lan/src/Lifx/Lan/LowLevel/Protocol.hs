@@ -330,11 +330,6 @@ openLan' ifname mport mlog = do
 closeLan :: Lan -> IO ()
 closeLan lan = endThread (stLogText lan) "dispatch" (stThread lan)
 
-closeSock :: (T.Text -> IO ()) -> Socket -> a -> IO ()
-closeSock lg sock _ =
-  catchJust notAsync (close sock) $
-  \e -> lg $ "Exception closing LAN protocol socket: " <> T.pack (show e)
-
 ethMtu = 1500
 
 dispatcher :: TMVar Lan -> IO ()
