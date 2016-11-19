@@ -305,12 +305,17 @@ main = do
   args <- C.parseCmdLine
   let ifname = C.aInterface args
       cmd = C.aCmd args
-      settings = defaultLanSettings { lsUnknownSelectorBehavior = IgnoreUnknownSelector }
-  (conn, tries) <- if useCloud
-                   then (openCloudConnection settings, 1)
-                   else (openLanConnection settings, 20)
-    `E.catch` prLifxException
   let func = cmd2func cmd (C.aDuration args)
   hdrIfNeeded cmd
-  findAndRun conn func (C.aTarget args) tries S.empty
-  closeConnection conn
+  if useCloud
+    then do
+    let settings = defaultCloudSettings
+    conn <- openCloudConnection settings `E.catch` prLifxException
+    findAndRun conn func (C.aTarget args) 1 S.empty
+    closeConnection conn
+    else do
+    let settings = defaultLanSettings
+                   { lsUnknownSelectorBehavior = IgnoreUnknownSelector }
+    conn <- openLanConnection settings `E.catch` prLifxException
+    findAndRun conn func (C.aTarget args) 20 S.empty
+    closeConnection conn
