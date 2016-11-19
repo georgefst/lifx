@@ -44,9 +44,10 @@ fmtLabel :: Maybe Label -> T.Text
 fmtLabel Nothing = ""
 fmtLabel (Just lbl) = toText lbl
 
-fmtPower :: Maybe Power -> T.Text
-fmtPower Nothing = ""
-fmtPower (Just pwr) = T.pack $ show pwr
+fmtPower :: Bool -> Maybe Power -> T.Text
+fmtPower False _ = "???"
+fmtPower True Nothing = "???"
+fmtPower True (Just pwr) = T.pack $ show pwr
 
 ii :: Double -> Int
 ii = round
@@ -130,7 +131,7 @@ mkRow :: LightInfo -> LightRow
 mkRow li =
   LightRow [label] [power] [color] temp uptime [devid] [fw] vers [group] [loc]
   where label = fmtLabel $ lLabel li
-        power = fmtPower $ lPower li
+        power = fmtPower (lConnected li) (lPower li)
         color = fmtColor $ lColor li
         temp = fmtTemperature $ lTemperature li
         uptime = fmtUptime $ lUptime li
