@@ -74,7 +74,7 @@ fmtUptime (Just uptime) =
   where fmtDur (days, Duration (Hours hours) (Minutes minutes)
                       (Seconds seconds) _ ) =
           let xs = [(days, 'd'), (hours, 'h'), (minutes, 'm'), (seconds, 's')]
-              xs' = dropWhile (\(n, _ ) -> n == 0) xs
+              xs' = dropWhile (\(n, u) -> n == 0 && u /= 's') xs
               txts = map (\(n, s) -> fmt "{}{}" (n, s)) xs'
               choices = tail $ inits txts
           in map mconcat choices
@@ -104,6 +104,7 @@ data LightRow =
   , lrHardware :: [T.Text]
   , lrGroup    :: [T.Text]
   , lrLocation :: [T.Text]
+  , lrLastSeen :: [T.Text]
   }
 
 type Cols = [Column (LightRow -> [T.Text])]
@@ -120,16 +121,20 @@ columns =
   , Column Lft Lft  5  7  50 ["HW", "Hardware"]      lrHardware
   , Column Lft Lft  8 32  36 ["Group"]               lrGroup
   , Column Lft Lft  8 32  34 ["Location"]            lrLocation
+  , Column Rgt Lft 11 11  90 ["Last Seen"]           lrLastSeen
   ]
 
 lanOnly :: [T.Text]
 lanOnly = [ "Temp", "Uptime", "FW" ]
 
+cloudOnly :: [T.Text]
+cloudOnly = [ "Last Seen" ]
+
 type FixedCols = [FixedColumn (LightRow -> [T.Text])]
 
 mkRow :: LightInfo -> LightRow
 mkRow li =
-  LightRow [label] [power] [color] temp uptime [devid] [fw] vers [group] [loc]
+  LightRow [label] [power] [color] temp uptime [devid] [fw] vers [group] [loc] seen
   where label = fmtLabel $ lLabel li
         power = fmtPower (lConnected li) (lPower li)
         color = fmtColor $ lColor li
@@ -140,6 +145,7 @@ mkRow li =
         vers = fmtProduct (lProduct li) (lHardwareVersion li)
         group = maybe "" toText $ lGroup li
         loc   = maybe "" toText $ lLocation li
+        seen  = fmtUptime $ Just $ lSecondsSinceSeen li
 
 listLite :: FixedCols -> LightInfo -> IO ()
 listLite fc li = tr $ displayRow' fc $ mkRow li
@@ -308,11 +314,11 @@ findAndRun conn func targs n s = do
   more <- func conn sels
   when more $ findAndRun conn func targs (n - 1) s'
 
-stripCloud :: Cols -> Cols
-stripCloud cols = filter f cols
+stripCols :: [T.Text] -> Cols
+stripCols strip = filter f columns
   where f col =
           let name = head (cName col)
-          in not $ name `elem` lanOnly
+          in not $ name `elem` strip
 
 useCloud = True
 
@@ -320,8 +326,8 @@ main = do
   args <- C.parseCmdLine
   let ifname = C.aInterface args
       cmd = C.aCmd args
-      cols = if useCloud then stripCloud columns else columns
-  let func = cmd2func cmd cols (C.aDuration args)
+      cols = stripCols (if useCloud then lanOnly else cloudOnly)
+      func = cmd2func cmd cols (C.aDuration args)
   hdrIfNeeded cmd cols
   if useCloud
     then do
