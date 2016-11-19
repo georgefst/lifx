@@ -105,7 +105,9 @@ data LightRow =
   , lrLocation :: [T.Text]
   }
 
-columns :: [Column (LightRow -> [T.Text])]
+type Cols = [Column (LightRow -> [T.Text])]
+
+columns :: Cols
 columns =
   [ Column Lft Lft 15 32  40 ["Label"]               lrLabel
   , Column Lft Lft  3  3   0 ["Pwr", "Power"]        lrPower
@@ -120,9 +122,6 @@ columns =
   ]
 
 type FixedCols = [FixedColumn (LightRow -> [T.Text])]
-
-fixedCols :: Width -> FixedCols
-fixedCols w = fixColumns w columns
 
 mkRow :: LightInfo -> LightRow
 mkRow li =
@@ -214,23 +213,29 @@ cmdSetLabel _ _ _ = do
   return False
 
 
-cmd2func :: Connection c => C.LiteCmd -> FracSeconds -> c -> [Selector] -> IO Bool
-cmd2func (C.CmdList w) _ = cmdList (fixedCols w)
-cmd2func C.CmdOn dur = cmdPower On dur
-cmd2func C.CmdOff dur = cmdPower Off dur
-cmd2func (C.CmdColor ca) dur = cmdColor ca dur
-cmd2func (C.CmdPulse ca pa) _ = cmdWave Pulse ca pa
-cmd2func (C.CmdBreathe ca pa) _ = cmdWave Breathe ca pa
-cmd2func (C.CmdSetLabel lbl) _ = cmdSetLabel lbl
+cmd2func :: Connection c
+         => C.LiteCmd
+         -> Cols
+         -> FracSeconds
+         -> c
+         -> [Selector]
+         -> IO Bool
+cmd2func (C.CmdList w)     cols _ = cmdList (fixColumns w cols)
+cmd2func C.CmdOn            _ dur = cmdPower On dur
+cmd2func C.CmdOff           _ dur = cmdPower Off dur
+cmd2func (C.CmdColor ca)    _ dur = cmdColor ca dur
+cmd2func (C.CmdPulse ca pa)   _ _ = cmdWave Pulse ca pa
+cmd2func (C.CmdBreathe ca pa) _ _ = cmdWave Breathe ca pa
+cmd2func (C.CmdSetLabel lbl)  _ _ = cmdSetLabel lbl
 
 lsHeader :: [FixedColumn a] -> IO ()
 lsHeader fc = do
   tr $ displayHeader fc
   tr $ displaySep    fc
 
-hdrIfNeeded :: C.LiteCmd -> IO ()
-hdrIfNeeded (C.CmdList w) = lsHeader $ fixedCols w
-hdrIfNeeded _ = lsHeader resultsFixedCols
+hdrIfNeeded :: C.LiteCmd -> Cols -> IO ()
+hdrIfNeeded (C.CmdList w) cols = lsHeader $ fixColumns w cols
+hdrIfNeeded _ _ = lsHeader resultsFixedCols
 
 linfoToLiteIds :: LightInfo -> LiteIds
 linfoToLiteIds li = LiteIds
@@ -305,8 +310,8 @@ main = do
   args <- C.parseCmdLine
   let ifname = C.aInterface args
       cmd = C.aCmd args
-  let func = cmd2func cmd (C.aDuration args)
-  hdrIfNeeded cmd
+  let func = cmd2func cmd columns (C.aDuration args)
+  hdrIfNeeded cmd columns
   if useCloud
     then do
     let settings = defaultCloudSettings
