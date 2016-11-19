@@ -16,6 +16,7 @@ import qualified Network.Info as NI
 import System.Exit
 
 import Lifx
+import Lifx.Cloud
 import Lifx.Connection
 import Lifx.Internal
 import Lifx.Lan
@@ -298,14 +299,18 @@ findAndRun conn func targs n s = do
   more <- func conn sels
   when more $ findAndRun conn func targs (n - 1) s'
 
+useCloud = True
+
 main = do
   args <- C.parseCmdLine
   let ifname = C.aInterface args
       cmd = C.aCmd args
       settings = defaultLanSettings { lsUnknownSelectorBehavior = IgnoreUnknownSelector }
-  conn <- openLanConnection settings `E.catch` prLifxException
-  -- threadDelay 1000000
+  (conn, tries) <- if useCloud
+                   then (openCloudConnection settings, 1)
+                   else (openLanConnection settings, 20)
+    `E.catch` prLifxException
   let func = cmd2func cmd (C.aDuration args)
   hdrIfNeeded cmd
-  findAndRun conn func (C.aTarget args) 20 S.empty
+  findAndRun conn func (C.aTarget args) tries S.empty
   closeConnection conn
