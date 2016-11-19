@@ -121,6 +121,9 @@ columns =
   , Column Lft Lft  8 32  34 ["Location"]            lrLocation
   ]
 
+lanOnly :: [T.Text]
+lanOnly = [ "Temp", "Uptime", "FW" ]
+
 type FixedCols = [FixedColumn (LightRow -> [T.Text])]
 
 mkRow :: LightInfo -> LightRow
@@ -304,14 +307,21 @@ findAndRun conn func targs n s = do
   more <- func conn sels
   when more $ findAndRun conn func targs (n - 1) s'
 
+stripCloud :: Cols -> Cols
+stripCloud cols = filter f cols
+  where f col =
+          let name = head (cName col)
+          in not $ name `elem` lanOnly
+
 useCloud = True
 
 main = do
   args <- C.parseCmdLine
   let ifname = C.aInterface args
       cmd = C.aCmd args
-  let func = cmd2func cmd columns (C.aDuration args)
-  hdrIfNeeded cmd columns
+      cols = if useCloud then stripCloud columns else columns
+  let func = cmd2func cmd cols (C.aDuration args)
+  hdrIfNeeded cmd cols
   if useCloud
     then do
     let settings = defaultCloudSettings
