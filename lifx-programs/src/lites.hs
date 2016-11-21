@@ -7,6 +7,7 @@ import Data.Hourglass
 import Data.Int ( Int64 )
 import Data.List hiding (insert)
 import Data.Monoid hiding (Product)
+import Data.Ord
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.Text.Format hiding (print)
@@ -153,10 +154,19 @@ listLite fc li = tr $ displayRow' fc $ mkRow li
 listLites :: FixedCols -> [LightInfo] -> IO ()
 listLites fc li = mapM_ (listLite fc) li
 
+-- This won't do much good for Lan, since lights are listed as they
+-- are discovered.  But for Cloud, we can nicely arrange them by
+-- location and group.
+orderLites :: LightInfo -> LightInfo -> Ordering
+orderLites x y =
+  comparing lLocation x y <>
+  comparing lGroup x y <>
+  comparing lLabel x y
+
 cmdList :: Connection c => FixedCols -> c -> [Selector] -> IO Bool
 cmdList fc conn sels = do
   li <- listLights conn sels needEverything
-  listLites fc li
+  listLites fc (sortBy orderLites li)
   return True
 
 resultsColumns =
