@@ -311,10 +311,11 @@ findAndRun :: Connection c
               -> Targets
               -> Int
               -> S.Set DeviceId
+              -> Bool
               -> IO ()
-findAndRun _ _ _ 0 _ = return ()
-findAndRun conn func targs n s = do
-  threadDelay 100000
+findAndRun _ _ _ 0 _ _ = return ()
+findAndRun conn func targs n s isCloud = do
+  when (not isCloud) $ threadDelay 100000
   li <- listLights conn [SelAll] [NeedLabel, NeedGroup, NeedLocation]
   let lids = map linfoToLiteIds li
       selected = S.fromList $ map liDevId $ filter (matchesTarget targs) lids
@@ -322,7 +323,7 @@ findAndRun conn func targs n s = do
       s' = selected `S.union` s
       sels = map SelDevId $ S.toList selected'
   more <- func conn sels
-  when more $ findAndRun conn func targs (n - 1) s'
+  when more $ findAndRun conn func targs (n - 1) s' isCloud
 
 stripCols :: [T.Text] -> Cols
 stripCols strip = filter f columns
@@ -343,11 +344,11 @@ main = do
     then do
     let settings = defaultCloudSettings
     conn <- openCloudConnection settings `E.catch` prLifxException
-    findAndRun conn func (C.aTarget args) 1 S.empty
+    findAndRun conn func (C.aTarget args) 1 S.empty True
     closeConnection conn
     else do
     let settings = defaultLanSettings
                    { lsUnknownSelectorBehavior = IgnoreUnknownSelector }
     conn <- openLanConnection settings `E.catch` prLifxException
-    findAndRun conn func (C.aTarget args) 20 S.empty
+    findAndRun conn func (C.aTarget args) 20 S.empty False
     closeConnection conn
