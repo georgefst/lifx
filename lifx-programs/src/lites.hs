@@ -1,7 +1,7 @@
 {-# LANGUAGE NoMonomorphismRestriction, OverloadedStrings #-}
 
 import Control.Concurrent
-import Control.Monad ( when, forM_ )
+import Control.Monad ( when, forM_, void )
 import qualified Control.Exception as E (catch)
 import Data.Hourglass
 import Data.Int ( Int64 )
@@ -314,6 +314,7 @@ findAndRun :: Connection c
               -> Bool
               -> IO ()
 findAndRun _ _ _ 0 _ _ = return ()
+findAndRun conn func TargAll _ _ True = void $ func conn [SelAll]
 findAndRun conn func targs n s isCloud = do
   when (not isCloud) $ threadDelay 100000
   li <- listLights conn [SelAll] [NeedLabel, NeedGroup, NeedLocation]
