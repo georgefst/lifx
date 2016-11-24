@@ -20,7 +20,7 @@ data LiteArgs =
   , aTarget :: Targets
   , aCmd :: LiteCmd
   , aHelp :: Maybe (HelpFormat, TextFormat)
-  , aDuration :: ColorChannel
+  , aDuration :: FracSeconds
   } deriving (Show, Eq, Ord)
 
 data LiteCmd = CmdNone
