@@ -27,6 +27,14 @@ import Lifx.Program.Column
 import Lifx.Program.ProductShortName
 import Lifx.Program.TargetMatch
 
+import Paths_lifx_programs
+
+pkg_name :: T.Text
+pkg_name = "lifx-programs"
+
+pkg_url :: T.Text
+pkg_url = "+https://github.com/ppelleti/hs-lifx"
+
 nsToDuration :: NanoSeconds -> (Int64, Duration)
 nsToDuration (NanoSeconds ns) =
   (days, Duration (Hours hours) (Minutes minutes)
@@ -332,6 +340,10 @@ stripCols strip = filter f columns
           let name = head (cName col)
           in not $ name `elem` strip
 
+prependUserAgent :: CloudSettings -> CloudSettings
+prependUserAgent cs = cs { csUserAgent = uac : csUserAgent cs }
+  where uac = UserAgentComponent pkg_name version (Just pkg_url)
+
 useCloud = True
 
 main = do
@@ -343,7 +355,7 @@ main = do
   hdrIfNeeded cmd cols
   if useCloud
     then do
-    let settings = defaultCloudSettings
+    let settings = prependUserAgent defaultCloudSettings
     conn <- openCloudConnection settings `E.catch` prLifxException
     findAndRun conn func (C.aTarget args) 1 S.empty True
     closeConnection conn

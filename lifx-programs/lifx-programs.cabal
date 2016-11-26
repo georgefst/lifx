@@ -55,6 +55,7 @@ executable lites
                , Lifx.Program.Column
                , Lifx.Program.ProductShortName
                , Lifx.Program.TargetMatch
+               , Paths_lifx_programs
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:

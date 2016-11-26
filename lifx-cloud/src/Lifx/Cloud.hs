@@ -15,6 +15,7 @@ via the LIFX Cloud API.
 
 module Lifx.Cloud
        ( CloudSettings(..)
+       , UserAgentComponent(..)
        , CloudConnection
        , defaultCloudSettings
        , openCloudConnection
@@ -67,7 +68,7 @@ pkg_name :: T.Text
 pkg_name = "lifx-cloud"
 
 pkg_url :: T.Text
-pkg_url = "+https://community.lifx.com/t/what-are-you-building/26/39"
+pkg_url = "+https://github.com/ppelleti/hs-lifx"
 
 -- | Parameters which can be passed to 'openCloudConnection'.
 data CloudSettings =
