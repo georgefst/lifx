@@ -16,7 +16,7 @@ import Lifx.Program.TargetMatch
 
 data LiteArgs =
   LiteArgs
-  { aInterface :: Maybe Text
+  { aInterface :: Maybe Interface
   , aTarget :: Targets
   , aCmd :: LiteCmd
   , aHelp :: Maybe (HelpFormat, TextFormat)
