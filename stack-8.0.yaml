@@ -6,10 +6,8 @@ resolver: nightly-2016-05-26
 
 # Local packages, usually specified by relative directory name
 packages:
-- lifx-base/
-- lifx-cloud/
-- lifx-lan/
-- lifx-programs/
+- lifx-highlevel/
+- lifx-lowlevel/
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps:
 - reinterpret-cast-0.1.0
