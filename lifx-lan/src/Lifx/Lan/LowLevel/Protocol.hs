@@ -349,7 +349,7 @@ mkSource :: Word32 -> Word16 -> Word32
 mkSource ip port = nonzero $ murmur64 $ (ip' `shiftL` 16) .|. port'
   where ip' = fromIntegral ip :: Word64
         port' = fromIntegral port :: Word64
-        -- use Mumur3's 64-bit finalizer as an integer hash function
+        -- use Murmur3's 64-bit finalizer as an integer hash function
         murmur64 n =
           let h1 = n `xor` (n `shiftR` 33)
               h2 = h1 * 0xff51afd7ed558ccd
