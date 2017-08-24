@@ -45,6 +45,10 @@ data LifxException =
     --
     -- error message / exception which can be cast to @HttpException@
   | HttpError T.Text SomeException
+    -- | An error occurred making an HTTP request to the cloud.
+    --
+    -- http status code / error message
+  | HttpStatusError Int T.Text
     -- | The given character is not allowed in a label.
   | IllegalCharacter Char
     -- | The given selector was not found.

@@ -235,16 +235,9 @@ isJsonMimeType resp =
 extractMessage :: Response L.ByteString -> LifxException
 extractMessage resp = orElseStatus jsonMessage
   where orElseStatus Nothing =
-          HttpError
-          ( fmt "{} {}"
-            ( statusCode $ responseStatus resp
-              , decodeUtf8Lenient $ statusMessage $ responseStatus resp )
-          )
-          $ toException $ StatusCodeException
-          (responseStatus resp)
-          (responseHeaders resp)
-          (responseCookieJar resp)
+          HttpStatusError (statusCode st) (decodeUtf8Lenient $ statusMessage st)
         orElseStatus (Just txt) = mkExcep txt
+        st = responseStatus resp
         jsonMessage = do
           unless (isJsonMimeType resp) Nothing
           msg <- decode' $ responseBody resp
@@ -444,8 +437,6 @@ endpoint cc ep = do
   req <- parseUrl url
   return $ addHeaders (ccUserAgent cc) (TE.encodeUtf8 $ toText $ ccToken cc) req
 
-cstat _ _ _ = Nothing
-
 {-
 encPretty = encodePretty' (defConfig { confCompare = cmp })
   where cmp = keyOrder ko <> compare
@@ -473,9 +464,8 @@ appJson = "application/json"
 
 addHeaders :: B.ByteString -> B.ByteString -> Request -> Request
 addHeaders userAgent lifxToken req =
-  applyBasicAuth lifxToken "" $ req
-    { checkStatus = cstat
-    , requestHeaders = (hUserAgent, userAgent) : accept : requestHeaders req
+  applyBasicAuth lifxToken "" $ (setCheckStatus req)
+    { requestHeaders = (hUserAgent, userAgent) : accept : requestHeaders req
     }
   where accept = (hAccept, appJson)
 
