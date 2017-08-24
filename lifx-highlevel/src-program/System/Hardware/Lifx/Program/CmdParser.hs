@@ -1,7 +1,7 @@
 module System.Hardware.Lifx.Program.CmdParser where
 
 import Data.Char
-import Data.List
+-- import Data.List
 import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T

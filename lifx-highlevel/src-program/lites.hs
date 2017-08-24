@@ -342,7 +342,7 @@ useCloud = True
 
 main = do
   args <- C.parseCmdLine
-  let ifname = C.aInterface args
+  let ifname = C.aInterface args -- TODO: use ifname
       cmd = C.aCmd args
       cols = stripCols (if useCloud then lanOnly else cloudOnly)
       func = cmd2func cmd cols (C.aDuration args)

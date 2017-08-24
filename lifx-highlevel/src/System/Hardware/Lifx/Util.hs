@@ -2,9 +2,9 @@ module System.Hardware.Lifx.Util where
 
 import Control.Applicative
 import Data.Attoparsec.Text
-import qualified Data.ByteString as B
+-- import qualified Data.ByteString as B
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+-- import qualified Data.Text.Encoding as TE
 import Data.Text.Format
 import Data.Text.Format.Params
 import qualified Data.Text.Lazy as LT

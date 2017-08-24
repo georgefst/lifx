@@ -11,19 +11,19 @@ import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as B8
-import qualified Data.ByteString.Base16 as B16
+-- import qualified Data.ByteString.Char8 as B8
+-- import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as L
 import Data.Text (Text(..))
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import qualified Data.Text.Encoding.Error as TEE
+-- import qualified Data.Text.Encoding as TE
+-- import qualified Data.Text.Encoding.Error as TEE
 import Data.Typeable
 import qualified Data.UUID.Types as U
 
 import System.Hardware.Lifx.Lan.LowLevel
 import System.Hardware.Lifx.Lan.LowLevel.Internal
-import System.Hardware.Lifx.Util
+-- import System.Hardware.Lifx.Util
 
 -- | Exception raised by LIFX functions.
 data LifxException =

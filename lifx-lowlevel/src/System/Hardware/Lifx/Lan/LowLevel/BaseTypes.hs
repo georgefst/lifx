@@ -1,5 +1,6 @@
 module System.Hardware.Lifx.Lan.LowLevel.BaseTypes where
 
+import Control.Applicative
 import Control.Arrow
 import Data.Binary
 import Data.Binary.Get

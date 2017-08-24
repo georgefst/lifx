@@ -19,7 +19,7 @@ module System.Hardware.Lifx.Lan.LowLevel.Protocol
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Exception
+-- import Control.Exception
 import Control.Monad ( when, unless )
 import Data.Array.MArray ( writeArray, readArray, newListArray )
 import Data.Binary
@@ -370,7 +370,7 @@ ifaceAddr Nothing = return 0
 ifaceAddr (Just ifname) = do
   ifaces <- NI.getNetworkInterfaces
   let miface = find (\x -> ifname == NI.name x) ifaces
-      ifnames = map NI.name ifaces
+      ifnames = map NI.name ifaces -- FIXME: ifnames is unused
   iface <- case miface of
     Just x -> return x
     Nothing -> undefined -- FIXME throw $ NoSuchInterface (T.pack ifname) (map T.pack ifnames)

@@ -9,7 +9,7 @@ import Data.Char
 import Data.Monoid
 import qualified Data.Text as T
 
-import System.Hardware.Lifx
+-- import System.Hardware.Lifx
 
 productShortName :: T.Text -> T.Text
 productShortName t = f (parseOnly pname t)
