@@ -3,6 +3,7 @@
 module System.Hardware.Lifx.Cloud.Preprocessor
   ( libraryVersions
   , setCheckStatus
+  , createRequest
   ) where
 
 import qualified Data.Text as T
@@ -21,4 +22,11 @@ setCheckStatus = id
 #else
 setCheckStatus req = req { checkStatus = cstat }
   where cstat _ _ _ = Nothing
+#endif
+
+createRequest :: String -> IO Request
+#if MIN_VERSION_http_client(0,4,30)
+createRequest = parseRequest
+#else
+createRequest = parseUrl
 #endif

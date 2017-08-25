@@ -434,7 +434,7 @@ instance Connection CloudConnection where
 endpoint :: CloudConnection -> T.Text -> IO Request
 endpoint cc ep = do
   let url = T.unpack $ ccRoot cc <> ep
-  req <- parseUrl url
+  req <- createRequest url
   return $ addHeaders (ccUserAgent cc) (TE.encodeUtf8 $ toText $ ccToken cc) req
 
 {-
