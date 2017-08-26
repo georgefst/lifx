@@ -10,7 +10,7 @@ import qualified Data.Text as T
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Lifx
+import System.Hardware.Lifx
 
 import Util
 
