@@ -11,12 +11,13 @@ instance TimeFormat MyISO8601_DateAndTime where
     toFormat _ = TimeFormatString
         [Format_Year,dash,Format_Month2,dash,Format_Day2 -- date
         ,Format_Text 'T'
-        ,Format_Hour,colon,Format_Minute,colon,Format_Second,dot,Format_MilliSecond -- time
-        ,Format_TzHM_Colon -- timezone offset with colon +HH:MM
+        ,Format_Hour,colon,Format_Minute,colon,Format_Second -- ,dot,Format_MilliSecond -- time
+        ,Format_Text 'Z'
+        -- ,Format_TzHM_Colon -- timezone offset with colon +HH:MM
         ]
       where dash = Format_Text '-'
             colon = Format_Text ':'
-            dot = Format_Text '.'
+            -- dot = Format_Text '.'
 
 -- drop 3 "Sun, 06 Nov 1994 08:49:37 GMT"
 -- this expects ", 06 Nov 1994 08:49:37 GMT"

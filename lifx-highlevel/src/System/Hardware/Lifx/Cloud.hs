@@ -278,7 +278,8 @@ performRequest' :: FromJSON a => CloudConnection -> Request -> IO a
 performRequest' cc req = do
   getRateLimit cc >>= waitForRateLimit (ccWarn cc)
   resp <- httpLbs req (ccManager cc)
-  updateRateLimit (ccRateLimit cc) (headersToRateLimit $ responseHeaders resp)
+  let lim = headersToRateLimit $ responseHeaders resp
+  updateRateLimit (ccRateLimit cc) lim
   let stat = responseStatus resp
       code = statusCode stat
   when (code < 200 || code > 299) $ throwIO $ extractMessage resp
@@ -327,6 +328,7 @@ updateRateLimit _ Nothing = return () -- don't update if couldn't parse headers
 updateRateLimit tv (Just rl) = do
   now <- dateCurrent
   let rl' = rl { rlClientTime = now }
+  -- print rl'
   atomically $ writeTVar tv $ Just rl'
 
 waitForRateLimit :: (T.Text -> IO ()) -> Maybe RateLimit -> IO ()
