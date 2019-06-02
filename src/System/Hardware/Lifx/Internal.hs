@@ -18,7 +18,6 @@ and it should not be used by external packages.
 module System.Hardware.Lifx.Internal
        ( padByteString
        , fmt
-       , selParse
        , parseAllMaybe
        , Config (..)
        , configFile
@@ -28,6 +27,5 @@ module System.Hardware.Lifx.Internal
 
 import System.Hardware.Lifx.Lan.LowLevel.Internal
 import System.Hardware.Lifx.Util
-import System.Hardware.Lifx.SelectorParser
 import System.Hardware.Lifx.Config
 import System.Hardware.Lifx.Types

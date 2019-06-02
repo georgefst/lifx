@@ -34,8 +34,6 @@ module System.Hardware.Lifx
        , SceneId (..)
          -- * Selectors
        , Selector (..)
-       , parseSelector
-       , parseSelectors
          -- * Products
        , Product (..)
        , Capabilities (..)
@@ -43,6 +41,5 @@ module System.Hardware.Lifx
        ) where
 
 import System.Hardware.Lifx.Lan.LowLevel
-import System.Hardware.Lifx.SelectorParser
 import System.Hardware.Lifx.Types
 import System.Hardware.Lifx.ProductTable

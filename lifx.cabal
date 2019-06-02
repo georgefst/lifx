@@ -59,7 +59,6 @@ library
 -- Paths_lifx_highlevel
   other-modules: System.Hardware.Lifx.Config
                , System.Hardware.Lifx.ProductTable
-               , System.Hardware.Lifx.SelectorParser
                , System.Hardware.Lifx.Types
                , System.Hardware.Lifx.Util
                , System.Hardware.Lifx.Lan.LowLevel.BaseTypes
