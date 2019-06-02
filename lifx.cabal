@@ -50,7 +50,6 @@ cabal-version:       >=1.10
 
 library
   exposed-modules: System.Hardware.Lifx
-                 , System.Hardware.Lifx.Cloud
                  , System.Hardware.Lifx.Connection
                  , System.Hardware.Lifx.Internal
                  , System.Hardware.Lifx.Lan
@@ -58,11 +57,7 @@ library
                  , System.Hardware.Lifx.Lan.LowLevel.Internal
 
 -- Paths_lifx_highlevel
-  other-modules: System.Hardware.Lifx.Cloud.ErrorParser
-               , System.Hardware.Lifx.Cloud.Json
-               , System.Hardware.Lifx.Cloud.Preprocessor
-               , System.Hardware.Lifx.Cloud.Util
-               , System.Hardware.Lifx.ColorParser
+  other-modules: System.Hardware.Lifx.ColorParser
                , System.Hardware.Lifx.Config
                , System.Hardware.Lifx.ProductTable
                , System.Hardware.Lifx.SelectorParser
@@ -94,7 +89,7 @@ library
                      , http-client
                      , http-client-tls
                      , http-types
-                     , lifx
+                    -- , lifx
                      , network
                      , network-info
                      , reinterpret-cast
