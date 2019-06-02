@@ -5,6 +5,7 @@ module System.Hardware.Lifx.Lan.LowLevel.Types
       Header(..),
       dfltHdr,
       dfltHdrSize,
+      hsbkGG,
       Waveform(..),
       HSBK16 ) where
 
@@ -27,6 +28,9 @@ import System.Hardware.Lifx.Lan.LowLevel.Util
 -- | A <https://lan.developer.lifx.com/docs/light-messages#section-hsbk color>
 -- where each component is a 16-bit integer.
 type HSBK16 = HSBK Word16
+
+hsbkGG :: Int -> Int -> Int -> Int -> HSBK16
+hsbkGG h s b k = HSBK (f h) (f s) (f b) (f k) where f n = fromIntegral $ n * 65535 `div` 10
 
 instance Binary HSBK16 where
   put x = do

@@ -1,11 +1,13 @@
 {-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 
 module System.Hardware.Lifx.Lan.LowLevel.Protocol
-    ( Lan,
+    ( Lan(..),
       Bulb(..),
+      BulbGG(..),
       RetryParams(..),
       newHdrAndCallback,
       sendMsg,
+      sendMsgGG,
       openLan,
       openLan',
       closeLan,
@@ -13,7 +15,9 @@ module System.Hardware.Lifx.Lan.LowLevel.Protocol
       deviceId,
       defaultRetryParams,
       reliableAction,
-      reliableQuery
+      reliableQuery,
+      bulbLan,
+      openSocketGG
       ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
@@ -31,8 +35,8 @@ import Data.Binary
 import Data.Binary.Put ( putWord32le )
 import Data.Binary.Get ( getWord32le )
 import Data.Bits
+import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
-  ( ByteString, toChunks, append, length, fromStrict )
 import Data.Int ( Int64 )
 import Data.List
 import Data.Maybe
@@ -52,9 +56,9 @@ import Network.Socket
       defaultProtocol,
       bind,
       socketPort,
-      aNY_PORT,
+      defaultPort,
       close )
-import Network.Socket.ByteString ( sendManyTo, recvFrom )
+import Network.Socket.ByteString ( sendManyTo, sendAllTo, recvFrom )
 import System.Mem.Weak
 
 import System.Hardware.Lifx.Lan.LowLevel.BaseTypes
@@ -113,8 +117,12 @@ data Lan
     }
 
 instance Show Lan where
-  show (Lan { stIfName = ifname }) =
-    maybe "*" T.unpack ifname
+  show = const "**"
+
+--instance Show Lan where
+--  show (Lan { stIfName = ifname }) =
+--    maybe "*" T.unpack ifname
+
 
 instance Eq Lan where
   x1 == x2 = x1 `compare` x2 == EQ
@@ -126,6 +134,9 @@ instance Ord Lan where
 
 -- | Type representing one LIFX bulb
 data Bulb = Bulb Lan SockAddr DeviceId deriving (Show, Eq, Ord)
+bulbLan (Bulb l _ _) = l
+-- | Type representing one LIFX bulb
+data BulbGG = BulbGG SockAddr DeviceId deriving (Show, Eq, Ord)
 
 -- | Determine the Device ID for a particular 'Bulb'.
 deviceId :: Bulb -> DeviceId
@@ -139,6 +150,13 @@ serializeMsg hdr payload = hdrBs `L.append` payloadBS
         hsize = dfltHdrSize + L.length payloadBS
         hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
         hdrBs = encode hdr'
+
+--serializeMsgGG :: (MessageType a, Binary a) => Header -> a -> S.ByteString
+--serializeMsgGG hdr payload = hdrBs `S.append` payloadBS
+--  where payloadBS = encode payload
+--        hsize = dfltHdrSize + S.length payloadBS
+--        hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
+--        hdrBs = encode hdr'
 
 newState :: Maybe T.Text -> Word32 -> Socket -> SockAddr -> Weak ThreadId
             -> Maybe (T.Text -> IO ()) -> STM Lan
@@ -271,6 +289,13 @@ sendMsg (Bulb st sa targ) hdr payload =
   sendManyTo (stSocket st) (L.toChunks pkt) sa
   where hdr' = hdr { hdrTarget = targ }
         pkt = serializeMsg hdr' payload
+sendMsgGG :: (MessageType a, Binary a)
+           => BulbGG -> Header -> a
+           -> IO ()
+sendMsgGG (BulbGG sa targ) hdr payload = do
+  sock <- openSocketGG --TODO hmm every time?
+  sendAllTo sock (L.toStrict pkt) sa
+  where pkt = serializeMsg (hdr { hdrTarget = targ }) payload
 
 discovery :: Lan -> (Bulb -> IO ()) -> STM L.ByteString
 discovery st cb = do
@@ -311,7 +336,7 @@ openLan' :: Maybe Interface -- ^ Name of network interface to use (such as
 openLan' ifname mport mlog = do
   hostAddr <- ifaceAddr $ fmap T.unpack ifname
   sock <- socket AF_INET Datagram defaultProtocol
-  bind sock $ SockAddrInet aNY_PORT hostAddr
+  bind sock $ SockAddrInet defaultPort hostAddr
   when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
   hostPort <- socketPort sock
   let port = 56700 `fromMaybe` mport
@@ -324,6 +349,18 @@ openLan' ifname mport mlog = do
     st <- newState ifname source sock bcast wthr mlog
     putTMVar tmv st
     return st
+
+-- | Return a 'Lan' which can be used to communicate with bulbs on the
+-- local network.
+openSocketGG :: IO Socket
+openSocketGG = do
+  hostAddr <- ifaceAddr Nothing
+  sock <- socket AF_INET Datagram defaultProtocol
+  bind sock $ SockAddrInet defaultPort hostAddr
+  when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
+  tmv <- newEmptyTMVarIO
+  forkFinally (dispatcher tmv) (\_ -> close sock)
+  return sock
 
 -- | Destroy a 'Lan' when it is no longer needed.  This is required, because
 -- each 'Lan' has a background thread which needs to be terminated.
@@ -450,4 +487,3 @@ reliableQuery rp query cbSucc cbFail = do
              let newInterval =
                    min (rpMaxInterval rp) (interval * rpMultiplier rp)
              rq v newInterval (totalµs + delayµs) limitµs
-

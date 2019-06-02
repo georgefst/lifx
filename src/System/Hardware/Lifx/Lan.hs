@@ -19,7 +19,10 @@ module System.Hardware.Lifx.Lan
     , UnknownSelectorBehavior(..)
     , defaultLanSettings
     , openLanConnection
+    , newConnectionGG
     , getLan
+    , clBulb
+    , lcLights
     ) where
 
 import System.Hardware.Lifx
@@ -897,3 +900,9 @@ instance Connection LanConnection where
 
   closeConnection lc =
     endThread (lsLog $ lcSettings lc) "discovery" (lcThread lc)
+
+newConnectionGG :: IO LanConnection
+newConnectionGG = do
+    con <- openLanConnection defaultLanSettings
+    threadDelay 1000000
+    return con

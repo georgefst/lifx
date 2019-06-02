@@ -94,6 +94,7 @@ library
                      , http-client
                      , http-client-tls
                      , http-types
+                     , lifx
                      , network
                      , network-info
                      , reinterpret-cast
