@@ -32,8 +32,6 @@ module System.Hardware.Lifx
        , LifxId (..)
        , DeviceId, GroupId, LocationId, Label, AccessToken
        , SceneId (..)
-         -- * Selectors
-       , Selector (..)
          -- * Products
        , Capabilities (..)
        ) where

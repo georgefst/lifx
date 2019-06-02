@@ -16,7 +16,6 @@ via the LIFX Lan Protocol.
 module System.Hardware.Lifx.Lan
     ( LanSettings(..)
     , LanConnection
-    , UnknownSelectorBehavior(..)
     , defaultLanSettings
     , openLanConnection
     , newConnectionGG
@@ -66,10 +65,6 @@ data LanSettings =
     -- information which might be helpful for troubleshooting.
     -- Default is 'TIO.hPutStrLn' 'stderr'.
   , lsLog         :: T.Text -> IO ()
-    -- | Specifies whether an unknown selector should result in an
-    -- exception (which matches the cloud behavior), or should just be
-    -- ignored.  Default is 'ThrowOnUnknownSelector'.
-  , lsUnknownSelectorBehavior :: UnknownSelectorBehavior
     -- | Unlike the Cloud API, the LAN Protocol does not have a notion of
     -- scenes built-in.  Therefore, you can provide this function to
     -- implement scenes for the LAN Protocol.  It should simply return a
@@ -101,24 +96,7 @@ defaultLanSettings =
   , lsRetryParams = defaultRetryParams
   , lsDiscoveryPollInterval = 1.5
   , lsOfflineInterval = 5
-  , lsUnknownSelectorBehavior = ThrowOnUnknownSelector
   }
-
--- | The two possible ways to handle a 'Selector' which does not match a
--- device ID, group, etc. which is currently on the LAN.
-data UnknownSelectorBehavior =
-    -- Removes any unknown selectors from the list of selectors, and then
-    -- proceeds as if only the known selectors (if any) had been specified.
-    IgnoreUnknownSelector
-    -- Throws 'SelectorNotFound'.  This matches the Cloud API behavior.
-    -- However, the Cloud API knowns about all devices associated with an
-    -- account, whether they are on or not.  A 'LanConnection' only knows
-    -- about devices which it has seen since the connection was established.
-    -- For this reason, throwing an exception for unknown selectors may
-    -- not be as desirable on a 'LanConnection' as it is on a
-    -- @CloudConnection@.
-  | ThrowOnUnknownSelector
-    deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 data CachedThing a = NotCached | Cached DateTime a deriving (Show, Eq, Ord)
 
@@ -310,60 +288,6 @@ timeDiffFracSeconds t1 t2 =
       [s', ns'] = map fromIntegral [s, ns]
   in s' + ns' / 1e9
 
-behave4US :: UnknownSelectorBehavior -> Selector -> IO [a]
-behave4US IgnoreUnknownSelector  _   = return []
-behave4US ThrowOnUnknownSelector sel = throwIO $ SelectorNotFound sel
-
-behave4USLC :: LanConnection -> Selector -> IO [a]
-behave4USLC lc = behave4US (lsUnknownSelectorBehavior $ lcSettings lc)
-
-applySelectors :: LanConnection -> [Selector] -> IO [CachedLight]
-applySelectors lc sels = do
-  sels' <- case find isScene sels of
-            Nothing -> return sels
-            Just _ -> do
-              scenes <- lsListScenes $ lcSettings lc
-              expanded <- mapM (expandScene scenes) sels
-              return $ concat expanded
-  applySelectors' lc sels'
-
-  where isScene (SelSceneId _ ) = True
-        isScene _ = False
-
-        expandScene scenes sel@(SelSceneId sid) = do
-          case find (\s -> sid == scId s) scenes of
-           Nothing -> behave4USLC lc sel
-           (Just scene) -> mapM (avoidNested sid . ssSel) (scStates scene)
-        expandScene _ sel = return [sel]
-
-        avoidNested parentSid (SelSceneId sid) =
-          throwIO $ NestedSceneIdSelector parentSid sid
-        avoidNested _ sel = return sel
-
-applySelectors' :: LanConnection -> [Selector] -> IO [CachedLight]
-applySelectors' lc sels = do
-  lists <- atomically $ mapM (selectLights lc) sels
-  let pairs = zip sels lists
-      behave (sel, [])   = behave4USLC lc sel
-      behave (_ , lites) = return lites
-  lists' <- mapM behave pairs
-  let sets = map S.fromList lists'
-      uniq = S.unions sets
-  return $ S.toList uniq
-
-selectLights :: LanConnection -> Selector -> STM [CachedLight]
-selectLights lc (SelGroup lbl) = do
-  mby <- findLabel (lcGroups lc) lbl
-  case mby of
-   Nothing -> return []
-   (Just gid) -> selectLights lc (SelGroupId gid)
-selectLights lc (SelLocation lbl) = do
-  mby <- findLabel (lcLocations lc) lbl
-  case mby of
-   Nothing -> return []
-   (Just lid) -> selectLights lc (SelLocationId lid)
-selectLights lc sel = filterLights (lcLights lc) (selectFilter sel)
-
 data FilterResult = Accept | Reject | Unknown
 
 isAccept :: FilterResult -> Bool
@@ -388,20 +312,6 @@ findLabel tv lbl = do
 b2fr :: Bool -> FilterResult
 b2fr True = Accept
 b2fr False = Reject
-
-selectFilter :: Selector -> CachedLight -> FilterResult
-selectFilter SelAll _ = Accept
-selectFilter (SelLabel lbl) (CachedLight {clLabel = NotCached}) = Unknown
-selectFilter (SelLabel lbl) (CachedLight {clLabel = (Cached _ lbl')}) =
-  b2fr (lbl == lbl')
-selectFilter (SelDevId did) cl = b2fr $ did == (deviceId $ clBulb cl)
-selectFilter (SelGroupId gid) (CachedLight {clGroup = NotCached}) = Unknown
-selectFilter (SelGroupId gid) (CachedLight {clGroup = (Cached _ gid')}) =
-  b2fr (gid == gid')
-selectFilter (SelLocationId lid) (CachedLight {clLocation = NotCached}) = Unknown
-selectFilter (SelLocationId lid) (CachedLight {clLocation = (Cached _ lid')}) =
-  b2fr (lid == lid')
-selectFilter sel _ = error $ "unimplemented selector " ++ show sel
 
 
 checkAlive :: DateTime

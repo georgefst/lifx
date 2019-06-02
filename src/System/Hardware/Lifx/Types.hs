@@ -52,7 +52,6 @@ data LifxException =
     -- | The given character is not allowed in a label.
   | IllegalCharacter Char
     -- | The given selector was not found.
-  | SelectorNotFound Selector
     -- | A scene ID was used as a selector, and that scene contained a
     -- selector which was also a scene ID.
     --
@@ -74,7 +73,6 @@ instance Eq LifxException where
   (JsonError x y) == (JsonError x' y') = x == x' && y == y'
   (HttpError x _ ) == (HttpError x' _ ) = x == x'
   (IllegalCharacter x) == (IllegalCharacter x') = x == x'
-  (SelectorNotFound x) == (SelectorNotFound x') = x == x'
   (NestedSceneIdSelector x y) == (NestedSceneIdSelector x' y') = x == x' && y == y'
   (BadParam x) == (BadParam x') = x == x'
   (Unsupported x) == (Unsupported x') = x == x'
@@ -225,18 +223,6 @@ instance LifxId SceneId where
 instance FromJSON SceneId where
   parseJSON = implParseJson
 
-
--- | Represents a <http://api.developer.lifx.com/docs/selectors selector>
--- for addressing a set of lights.
-data Selector = SelAll
-              | SelLabel Label
-              | SelDevId DeviceId
-              | SelGroup Label
-              | SelGroupId GroupId
-              | SelLocation Label
-              | SelLocationId LocationId
-              | SelSceneId SceneId
-                deriving (Show, Read, Eq, Ord)
 
 
 -- | A 'PartialColor' where all components are 'Nothing'.
