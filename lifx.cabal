@@ -57,8 +57,7 @@ library
                  , System.Hardware.Lifx.Lan.LowLevel.Internal
 
 -- Paths_lifx_highlevel
-  other-modules: System.Hardware.Lifx.ColorParser
-               , System.Hardware.Lifx.Config
+  other-modules: System.Hardware.Lifx.Config
                , System.Hardware.Lifx.ProductTable
                , System.Hardware.Lifx.SelectorParser
                , System.Hardware.Lifx.ToText

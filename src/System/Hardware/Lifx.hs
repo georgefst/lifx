@@ -24,7 +24,6 @@ module System.Hardware.Lifx
        , Color , PartialColor
        , combineColors, emptyColor , isEmptyColor, isCompleteColor
        , colorToText
-       , parseColor
          -- ** Named colors
          -- | The same <https://community.lifx.com/t/comprehensive-list-of-recognized-color-names/1067/2 nine named colors>
          -- recognized by the LIFX Cloud API.  They only specify the hue
@@ -47,7 +46,6 @@ module System.Hardware.Lifx
        ) where
 
 import System.Hardware.Lifx.Lan.LowLevel
-import System.Hardware.Lifx.ColorParser
 import System.Hardware.Lifx.SelectorParser
 import System.Hardware.Lifx.Types
 import System.Hardware.Lifx.ProductTable
