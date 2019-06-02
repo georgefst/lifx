@@ -35,11 +35,8 @@ module System.Hardware.Lifx
          -- * Selectors
        , Selector (..)
          -- * Products
-       , Product (..)
        , Capabilities (..)
-       , productFromId
        ) where
 
 import System.Hardware.Lifx.Lan.LowLevel
 import System.Hardware.Lifx.Types
-import System.Hardware.Lifx.ProductTable
