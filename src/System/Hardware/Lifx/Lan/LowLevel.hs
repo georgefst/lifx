@@ -45,9 +45,9 @@ module System.Hardware.Lifx.Lan.LowLevel
       -- | These functions change the state of the bulb.  The callback
       -- is given no data, but indicates that the bulb has acknowledged
       -- receipt of the action.
-      setPower,
+      setPowerGG,
       setLabel,
-      setColor,
+      setColorGG,
       setWaveform,
       -- * Types
       Power(..),

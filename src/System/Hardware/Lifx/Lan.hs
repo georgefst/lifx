@@ -304,29 +304,6 @@ lastSeen cl = fromMaybe (clFirstSeen cl) $
                       , dtOfCt (clLabel    cl)
                       ]
 
-listOneLight :: LanConnection
-                -> [MessageNeeded]
-                -> CachedLight
-                -> IO (MVar (Either SomeException LightInfo))
-listOneLight lc messagesNeeded cl = do
-  mv <- newEmptyMVar
-  let fin li = do
-        now <- dateCurrent
-        putMVar mv $ Right $ adjustSeen now li
-  gatherInfo (lc, bulb, fin) messagesNeeded eli
-  return mv
-
-  where bulb = clBulb cl
-        eli = emptyLightInfo (deviceId bulb) (lastSeen cl)
-
-        gatherInfo (_ , _ , fin) [] li = fin $ li { lConnected = True }
-        gatherInfo stuff (mneed:mneeds) li =
-          cbForMessage stuff mneed (gatherInfo stuff mneeds) li
-
-        adjustSeen now li =
-          let secs = timeDiffFracSeconds now (lLastSeen li)
-          in li { lSecondsSinceSeen = secs }
-
 timeDiffFracSeconds :: (Timeable t1, Timeable t2) => t1 -> t2 -> FracSeconds
 timeDiffFracSeconds t1 t2 =
   let (Seconds s, NanoSeconds ns) = timeDiffP t1 t2
@@ -514,20 +491,6 @@ offlineResult lite = Result
   , rStatus = Offline
   }
 
-
-doListLights :: LanConnection
-                -> [Selector]
-                -> [InfoNeeded]
-                -> IO [MVar (Either SomeException LightInfo)]
-doListLights lc sels needed = do
-  let messagesNeeded = whatsNeeded needed
-      oi = lsOfflineInterval $ lcSettings lc
-  (groups, locations) <-
-    atomically ((,) <$> readTVar (lcGroups lc) <*> readTVar (lcLocations lc))
-  lites <- applySelectors lc sels
-  now <- dateCurrent
-  forM lites $ checkAlive now oi (listOneLight lc messagesNeeded) (offlineLightInfo now groups locations)
-
 offlineLightInfo :: DateTime
                  -> M.Map GroupId CachedLabel
                  -> M.Map LocationId CachedLabel
@@ -654,43 +617,6 @@ updateLabel :: LanConnection -> DeviceId -> DateTime -> StateLight
 updateLabel lc dev now sl =
   updateCachedLight lc dev $ \cl -> cl { clLabel = Cached now (slLabel sl) }
 
-doSetStates :: LanConnection
-               -> [([Selector], StateTransition)]
-               -> IO [MVar (Either SomeException StateTransitionResult)]
-doSetStates lc pairs = forM pairs $ setOneState lc
-
-setOneState :: LanConnection
-               -> ([Selector], StateTransition)
-               -> IO (MVar (Either SomeException StateTransitionResult))
-setOneState lc pair@(sels, st) = do
-  mv <- newEmptyMVar
-  now <- dateCurrent
-  let oi = lsOfflineInterval $ lcSettings lc
-  forkFinallyMVar mv $ do
-    lites <- applySelectors lc sels
-    results <- forM lites $ checkAlive now oi (setOneLightState lc st) offlineResult
-    results' <- listOfMVarToList results
-    return (StateTransitionResult pair results')
-  return mv
-
-setOneLightState :: LanConnection
-                    -> StateTransition
-                    -> CachedLight
-                    -> IO (MVar (Either SomeException Result))
-setOneLightState lc st cl = do
-  mv <- newEmptyMVar
-  let did = deviceId (clBulb cl)
-      lbl = maybeFromCached (clLabel cl)
-      putResult stat = putMVar mv (Right $ Result did lbl stat)
-      timeout = putResult TimedOut
-      newColor = desaturateKelvin (sColor st)
-      skipGet = isEmptyColor newColor || isCompleteColor newColor
-  getOneLight lc skipGet cl timeout $
-    \( _ , oldColor ) -> setOneLightColor lc oldColor newColor (sDuration st) cl timeout $
-      setOneLightPower lc (sPower st) (sDuration st) cl timeout $
-        putResult Ok
-  return mv
-
 -- If Kelvin is set, set saturation to 0 (white), unless saturation is also
 -- explicitly set.
 desaturateKelvin :: PartialColor -> PartialColor
@@ -701,153 +627,11 @@ maybeFromCached :: CachedThing a -> Maybe a
 maybeFromCached NotCached = Nothing
 maybeFromCached (Cached _ x) = Just x
 
-getOneLight :: LanConnection
-               -> Bool
-               -> CachedLight
-               -> IO ()
-               -> ((Power, PartialColor) -> IO ())
-               -> IO ()
-getOneLight _ True _ _ cbSucc = cbSucc (Off, emptyColor)
-getOneLight lc False cl cbFail cbSucc =
-  reliableQuery rp (getLight bulb) succ cbFail
-  where rp = lsRetryParams $ lcSettings lc
-        bulb = clBulb cl
-        succ sl = do
-          now <- dateCurrent
-          atomically $ updateLabel lc (deviceId bulb) now sl
-          cbSucc (slPower sl, color16ToMaybeFrac $ slColor sl)
-
-setOneLightColor :: LanConnection
-                    -> PartialColor
-                    -> PartialColor
-                    -> FracSeconds
-                    -> CachedLight
-                    -> IO ()
-                    -> IO ()
-                    -> IO ()
-setOneLightColor lc oldColor newColor dur cl cbFail cbSucc
-  | isEmptyColor newColor = cbSucc
-  | otherwise =
-      reliableAction rp (setColor bulb c $ f2ms dur) cbSucc cbFail
-  where rp = lsRetryParams $ lcSettings lc
-        bulb = clBulb cl
-        combinedColor = combineColors newColor oldColor
-        c = colorFracTo16 $ definitelyColor combinedColor
-
-setOneLightPower :: LanConnection
-                    -> Maybe Power
-                    -> FracSeconds
-                    -> CachedLight
-                    -> IO ()
-                    -> IO ()
-                    -> IO ()
-setOneLightPower _ Nothing _ _ _ cbSucc = cbSucc
-setOneLightPower lc (Just pwr) dur cl cbFail cbSucc =
-  reliableAction rp (setPower bulb pwr $ f2ms dur) cbSucc cbFail
-  where rp = lsRetryParams $ lcSettings lc
-        bulb = clBulb cl
-
-
-doEffect :: LanConnection
-            -> [Selector]
-            -> Effect
-            -> IO [MVar (Either SomeException Result)]
-doEffect lc sels eff = do
-  lites <- applySelectors lc sels
-  now <- dateCurrent
-  let oi = lsOfflineInterval $ lcSettings lc
-  forM lites $ checkAlive now oi (effectOneLight lc eff) offlineResult
-
-effectOneLight :: LanConnection
-                  -> Effect
-                  -> CachedLight
-                  -> IO (MVar (Either SomeException Result))
-effectOneLight lc eff cl = do
-  mv <- newEmptyMVar
-  let did = deviceId (clBulb cl)
-      lbl = maybeFromCached (clLabel cl)
-      putResult stat = putMVar mv (Right $ Result did lbl stat)
-      timeout = putResult TimedOut
-      fromColor = eFromColor eff
-      color = eColor eff
-      nd2setColor = not $ isEmptyColor fromColor
-      nd2combineColor = (not ((isEmptyColor fromColor) ||
-                              (isCompleteColor fromColor))) ||
-                        (not $ isCompleteColor color)
-      nd2restoreColor = nd2setColor && not (ePersist eff)
-      nd2getPwr = ePowerOn eff
-      skipGet = not nd2restoreColor && not nd2getPwr && not nd2combineColor
-  getOneLight lc skipGet cl timeout $
-    \(origPwr, origColor) ->
-      setOneLightColor lc origColor fromColor 0 cl timeout $
-        let nd2ChangePwr = ePowerOn eff && (origPwr == Off)
-            (newPwr, restorePwr) = if nd2ChangePwr
-                                   then (Just On, Just Off)
-                                   else (Nothing, Nothing)
-        in setOneLightPower lc newPwr 0 cl timeout $
-           setOneLightWaveform lc origColor color eff cl timeout $
-           if nd2ChangePwr || nd2restoreColor
-           then do
-             forkIO $ do
-               let dur = ePeriod eff * eCycles eff
-               threadDelay $ f2µs dur
-               setOneLightPower lc restorePwr 0 cl timeout $
-                 setOneLightColor lc origColor origColor 0 cl timeout $
-                 putResult Ok
-             return ()
-           else putResult Ok
-  return mv
-
-setOneLightWaveform :: LanConnection
-                       -> PartialColor
-                       -> PartialColor
-                       -> Effect
-                       -> CachedLight
-                       -> IO ()
-                       -> IO ()
-                       -> IO ()
-setOneLightWaveform lc origColor color eff cl cbFail cbSucc =
-  reliableAction rp (setWaveform bulb swf) cbSucc cbFail
-  where rp = lsRetryParams $ lcSettings lc
-        bulb = clBulb cl
-        combinedColor = combineColors color origColor
-        swf = SetWaveform
-              { swTransient = not (ePersist eff)
-              , swColor = colorFracTo16 $ definitelyColor $ combinedColor
-              , swPeriod = f2ms (ePeriod eff)
-              , swCycles = double2Float (eCycles eff)
-              , swDutyCycle = floor $ 65535 * (ePeak eff - 0.5)
-              , swWaveform = effectTypeToWaveform (eType eff)
-              }
 
 effectTypeToWaveform :: EffectType -> Waveform
 effectTypeToWaveform E.Pulse = W.Pulse
 effectTypeToWaveform Breathe = Sine
 
-
-setOneLightLabel :: LanConnection
-                    -> Label
-                    -> CachedLight
-                    -> IO ()
-                    -> IO ()
-                    -> IO ()
-setOneLightLabel lc lbl cl cbFail cbSucc =
-  reliableAction rp (W.setLabel bulb lbl) cbSucc cbFail
-  where rp = lsRetryParams $ lcSettings lc
-        bulb = clBulb cl
-
-labelOneLight :: LanConnection
-                 -> Label
-                 -> CachedLight
-                 -> IO (MVar (Either SomeException Result))
-labelOneLight lc lbl cl = do
-  mv <- newEmptyMVar
-  let did = deviceId (clBulb cl)
-      oldLbl = maybeFromCached (clLabel cl)
-      putTimeout = putMVar mv (Right $ Result did oldLbl TimedOut)
-      putOk = putMVar mv (Right $ Result did (Just lbl) Ok)
-  setOneLightLabel lc lbl cl putTimeout putOk
-  return mv
 
 
 checkEffect :: Effect -> IO ()
@@ -870,36 +654,6 @@ checkColor c = do
 checkComponent :: ColorChannel -> ColorChannel -> T.Text -> Maybe ColorChannel -> IO ()
 checkComponent _ _ _ Nothing = return ()
 checkComponent mn mx name (Just x) = checkParam mn mx name x
-
-instance Connection LanConnection where
-  listLights lc sel needed = do
-    result <- doListLights lc sel needed
-    listOfMVarToList result
-
-  setStates lc pairs = do
-    mapM_ (checkTransition . snd) pairs
-    result <- doSetStates lc pairs
-    listOfMVarToList result
-
-  effect lc sel eff = do
-    checkEffect eff
-    result <- doEffect lc sel eff
-    listOfMVarToList result
-
-  listScenes lc = lsListScenes $ lcSettings lc
-
-  setLabel lc dev lbl = do
-    lites <- atomically $ readTVar $ lcLights lc
-    case dev `M.lookup` lites of
-     Nothing -> throwIO $ SelectorNotFound $ SelDevId dev
-     (Just lite) -> do
-       now <- dateCurrent
-       let oi = lsOfflineInterval $ lcSettings lc
-       mv <- checkAlive now oi (labelOneLight lc lbl) offlineResult lite
-       takeMVarThrow mv
-
-  closeConnection lc =
-    endThread (lsLog $ lcSettings lc) "discovery" (lcThread lc)
 
 newConnectionGG :: IO LanConnection
 newConnectionGG = do

@@ -11,7 +11,6 @@ module System.Hardware.Lifx.Lan.LowLevel.Messages
       getHostInfo,
       getHostFirmware,
       getWifiFirmware,
-      setPower,
       setPowerGG,
       setColorGG,
       getVersion,
@@ -21,7 +20,6 @@ module System.Hardware.Lifx.Lan.LowLevel.Messages
       getLocation,
       echoRequest,
       setLabel,
-      setColor,
       setWaveform ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
@@ -593,17 +591,6 @@ instance Binary SetPower where
     putWord32le $ spDuration x
 
   get = SetPower <$> get <*> getWord32le
-
--- | Turn the bulb on or off
--- (<https://lan.developer.lifx.com/docs/light-messages#section-setpower-117 SetPower>)
-setPower :: Bulb       -- ^ the bulb to operate on
-            -> Power   -- ^ the new power state for the bulb
-            -> Word32  -- ^ fade duration, in milliseconds
-            -> IO ()   -- ^ callback
-            -> IO ()
-setPower bulb@(Bulb st _ _ ) pwr duration cb = do
-  hdr <- atomically $ newHdrAndCallback st (ackCb cb)
-  sendMsg bulb (needAck hdr) (SetPower pwr duration)
 
 -- TODO
 -- acknowledgement of send/receive
