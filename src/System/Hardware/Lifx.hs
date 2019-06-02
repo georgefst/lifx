@@ -23,7 +23,6 @@ module System.Hardware.Lifx
        , HSBK (..)
        , Color , PartialColor
        , combineColors, emptyColor , isEmptyColor, isCompleteColor
-       , colorToText
          -- ** Named colors
          -- | The same <https://community.lifx.com/t/comprehensive-list-of-recognized-color-names/1067/2 nine named colors>
          -- recognized by the LIFX Cloud API.  They only specify the hue
@@ -35,8 +34,6 @@ module System.Hardware.Lifx
        , SceneId (..)
          -- * Selectors
        , Selector (..)
-       , selectorToText
-       , selectorsToText
        , parseSelector
        , parseSelectors
          -- * Products
@@ -49,4 +46,3 @@ import System.Hardware.Lifx.Lan.LowLevel
 import System.Hardware.Lifx.SelectorParser
 import System.Hardware.Lifx.Types
 import System.Hardware.Lifx.ProductTable
-import System.Hardware.Lifx.ToText
