@@ -94,7 +94,7 @@ data LanSettings =
 defaultLanSettings :: LanSettings
 defaultLanSettings =
   LanSettings
-  { lsIfName      = cfgInterface <$> getConfig
+  { lsIfName      = return Nothing
   , lsLog         = TIO.hPutStrLn stderr
   , lsPort        = 56700
   , lsListScenes  = return []

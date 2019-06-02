@@ -57,8 +57,7 @@ library
                  , System.Hardware.Lifx.Lan.LowLevel.Internal
 
 -- Paths_lifx_highlevel
-  other-modules: System.Hardware.Lifx.Config
-               , System.Hardware.Lifx.ProductTable
+  other-modules: System.Hardware.Lifx.ProductTable
                , System.Hardware.Lifx.Types
                , System.Hardware.Lifx.Util
                , System.Hardware.Lifx.Lan.LowLevel.BaseTypes

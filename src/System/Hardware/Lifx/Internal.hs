@@ -19,13 +19,9 @@ module System.Hardware.Lifx.Internal
        ( padByteString
        , fmt
        , parseAllMaybe
-       , Config (..)
-       , configFile
-       , getConfig
        , minKelvin, maxKelvin
        ) where
 
 import System.Hardware.Lifx.Lan.LowLevel.Internal
 import System.Hardware.Lifx.Util
-import System.Hardware.Lifx.Config
 import System.Hardware.Lifx.Types
