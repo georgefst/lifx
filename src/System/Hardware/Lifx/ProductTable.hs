@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module System.Hardware.Lifx.ProductTable (productFromId) where
 
@@ -42,8 +42,9 @@ instance FromJSON ProductForVendor where
     color    <- features .: "color"
     return $ ProductForVendor pid name $ if color then colorYes else colorNo
 
+-- George: Template Haskell...
 vendors :: [Vendor]
-vendors = fromRight $ eitherDecodeStrict' $(embedFile "products/products.json")
+vendors = [] --fromRight $ eitherDecodeStrict' $(embedFile "products/products.json")
 
 products :: M.Map VidPid Product
 products = M.fromList $ concatMap productsForVendor vendors

@@ -62,8 +62,6 @@ import System.Hardware.Lifx.Cloud.Json
 import System.Hardware.Lifx.Cloud.Preprocessor
 import System.Hardware.Lifx.Cloud.Util
 
-import Paths_lifx_highlevel
-
 pkg_name :: T.Text
 pkg_name = "lifx-highlevel"
 
@@ -456,11 +454,12 @@ encPretty = encodePretty' (defConfig { confCompare = cmp })
              ]
 -}
 
-defaultUserAgent =
-  UserAgentComponent pkg_name version (Just pkg_url)
-  : map mkUac libraryVersions
-  where mkUac (pkg, vers) = UserAgentComponent pkg (pv vers) Nothing
-        pv txt = Version (map (read . T.unpack) $ T.splitOn "." txt) []
+-- George: not sure what was going on here originally
+defaultUserAgent = []
+  -- UserAgentComponent pkg_name version (Just pkg_url)
+  -- : map mkUac libraryVersions
+  -- where mkUac (pkg, vers) = UserAgentComponent pkg (pv vers) Nothing
+  --       pv txt = Version (map (read . T.unpack) $ T.splitOn "." txt) []
 
 appJson = "application/json"
 

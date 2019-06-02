@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, MultiWayIf #-}
 
-module System.Hardware.Lifx.ColorParser (parseColor) where
+module System.Hardware.Lifx.ColorParser (parseColor,rgbToHsbk) where
 
 import Control.Applicative
 import Data.Attoparsec.Text

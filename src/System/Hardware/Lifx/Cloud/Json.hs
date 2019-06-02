@@ -170,7 +170,7 @@ instance FromJSON StateTransition where
                               Just c -> return c
 
     let myColor2 = emptyColor { brightness = myBrightness }
-        myColor = myColor1 `combineColors` myColor2
+        myColor = combineColors myColor2 myColor1
 
     return $ StateTransition myPower myColor myDuration
 
@@ -256,4 +256,3 @@ instance FromJSON SceneState where
     myColor <- parseColorBrightness v
     return $ SceneState mySel myPower myColor
   parseJSON _ = fail "expected a JSON object for device in scene"
-

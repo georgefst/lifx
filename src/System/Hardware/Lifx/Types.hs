@@ -2,7 +2,7 @@
 
 module System.Hardware.Lifx.Types where
 
-import Control.Applicative ( (<$>) )
+import Control.Applicative ((<$>),(<|>))
 import Control.Arrow (first)
 import Control.Exception
 import Data.Aeson hiding (Result)
@@ -147,15 +147,11 @@ pink   = HSBK (Just 325) (Just 1) Nothing Nothing
 -- over the first for that component.
 combineColors :: PartialColor -> PartialColor -> PartialColor
 combineColors x y = HSBK
-  { hue = hue x `combineMaybe` hue y
-  , saturation = saturation x `combineMaybe` saturation y
-  , brightness = brightness x `combineMaybe` brightness y
-  , kelvin = kelvin x `combineMaybe` kelvin y
+  { hue = hue x <|> hue y
+  , saturation = saturation x <|> saturation y
+  , brightness = brightness x <|> brightness y
+  , kelvin = kelvin x <|> kelvin y
   }
-
-combineMaybe :: Maybe a -> Maybe a -> Maybe a
-combineMaybe x Nothing = x
-combineMaybe _ x@(Just _ ) = x
 
 
 -- | The 32-byte

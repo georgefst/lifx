@@ -321,7 +321,7 @@ instance Binary GetLocation where
 getLocation :: Bulb                        -- ^ the bulb to operate on
                -> (StateLocation -> IO ()) -- ^ callback
                -> IO ()
-getLocation bulb @(Bulb st _ _ ) cb = do
+getLocation bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetLocation
 
@@ -366,7 +366,7 @@ instance Binary GetGroup where
 getGroup :: Bulb                     -- ^ the bulb to operate on
             -> (StateGroup -> IO ()) -- ^ callback
             -> IO ()
-getGroup bulb @(Bulb st _ _ ) cb = do
+getGroup bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetGroup
 
@@ -419,7 +419,7 @@ echoRequest :: Bulb                       -- ^ the bulb to operate on
                                           -- or truncated to 64 bytes
                -> (B.ByteString -> IO ()) -- ^ callback
                -> IO ()
-echoRequest bulb @(Bulb st _ _ ) bs cb = do
+echoRequest bulb@(Bulb st _ _ ) bs cb = do
   hdr <- atomically $ newHdrAndCallback st wrapCb
   sendMsg bulb hdr $ EchoRequest bs
   where wrapCb _ (EchoResponse bs') = cb bs'
@@ -454,7 +454,7 @@ instance Binary GetLight where
 getLight :: Bulb                     -- ^ the bulb to operate on
             -> (StateLight -> IO ()) -- ^ callback
             -> IO ()
-getLight bulb @(Bulb st _ _ ) cb = do
+getLight bulb@(Bulb st _ _ ) cb = do
   hdr <- atomically $ newHdrAndCallback st (const cb)
   sendMsg bulb hdr GetLight
 
@@ -547,7 +547,7 @@ setWaveform bulb@(Bulb st _ _ ) swf cb = do
 
 ----------------------------------------------------------
 
--- | The LIFX documentation refers to this simply as @State@.
+-- | The LIFX documentation refers to this simply as@State@.
 data StateLight =
   StateLight
   { slColor :: HSBK16    -- ^ Current color of light

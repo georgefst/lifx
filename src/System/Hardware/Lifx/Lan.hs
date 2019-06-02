@@ -728,7 +728,7 @@ setOneLightColor lc oldColor newColor dur cl cbFail cbSucc
       reliableAction rp (setColor bulb c $ f2ms dur) cbSucc cbFail
   where rp = lsRetryParams $ lcSettings lc
         bulb = clBulb cl
-        combinedColor = oldColor `combineColors` newColor
+        combinedColor = combineColors newColor oldColor
         c = colorFracTo16 $ definitelyColor combinedColor
 
 setOneLightPower :: LanConnection
@@ -807,7 +807,7 @@ setOneLightWaveform lc origColor color eff cl cbFail cbSucc =
   reliableAction rp (setWaveform bulb swf) cbSucc cbFail
   where rp = lsRetryParams $ lcSettings lc
         bulb = clBulb cl
-        combinedColor = origColor `combineColors` color
+        combinedColor = combineColors color origColor
         swf = SetWaveform
               { swTransient = not (ePersist eff)
               , swColor = colorFracTo16 $ definitelyColor $ combinedColor
