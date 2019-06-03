@@ -17,11 +17,8 @@ and it should not be used by external packages.
 
 module System.Hardware.Lifx.Internal
        ( padByteString
-       , fmt
-       , parseAllMaybe
        , minKelvin, maxKelvin
        ) where
 
 import System.Hardware.Lifx.Lan.LowLevel.Internal
-import System.Hardware.Lifx.Util
 import System.Hardware.Lifx.Types

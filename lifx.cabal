@@ -58,7 +58,6 @@ library
 
 -- Paths_lifx_highlevel
   other-modules: System.Hardware.Lifx.Types
-               , System.Hardware.Lifx.Util
                , System.Hardware.Lifx.Lan.LowLevel.BaseTypes
                , System.Hardware.Lifx.Lan.LowLevel.Types
                , System.Hardware.Lifx.Lan.LowLevel.Messages
