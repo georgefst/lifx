@@ -50,6 +50,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules: System.Hardware.Lifx
+                 , System.Hardware.Lifx.LanGG
                  , System.Hardware.Lifx.Connection
                  , System.Hardware.Lifx.Internal
                  , System.Hardware.Lifx.Lan
@@ -69,7 +70,7 @@ library
 
   -- Other library packages from which modules are imported.
   build-depends:       base >= 4.7 && < 5
-                     , aeson
+                     --, aeson
                      , array
                      , attoparsec
                      , base16-bytestring
@@ -80,17 +81,18 @@ library
                      , directory
                      , file-embed
                      , hourglass
-                     , http-client
-                     , http-client-tls
-                     , http-types
+                     --, http-client
+                     --, http-client-tls
+                     --, http-types
                     -- , lifx
                      , network
                      , network-info
                      , reinterpret-cast
                      , stm
                      , text
-                     , text-format
+                     --, text-format
                      , unordered-containers
+                     , utility-ht
                      , uuid-types
 --  build-depends:       base >= 4.7 && < 5
 --                     , aeson >= 0.11
@@ -122,3 +124,4 @@ library
   default-language:    Haskell2010
 
   -- ghc-options: -ddump-minimal-imports -fwarn-unused-imports -fwarn-unused-binds
+  ghc-options: -Wall

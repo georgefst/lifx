@@ -5,8 +5,8 @@ module System.Hardware.Lifx.Types where
 import Control.Applicative ((<$>),(<|>))
 import Control.Arrow (first)
 import Control.Exception
-import Data.Aeson hiding (Result)
-import Data.Aeson.Types (Parser)
+--import Data.Aeson hiding (Result)
+--import Data.Aeson.Types (Parser)
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
@@ -14,7 +14,7 @@ import qualified Data.ByteString as B
 -- import qualified Data.ByteString.Char8 as B8
 -- import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as L
-import Data.Text (Text(..))
+import Data.Text (Text)
 import qualified Data.Text as T
 -- import qualified Data.Text.Encoding as TE
 -- import qualified Data.Text.Encoding.Error as TEE
@@ -103,15 +103,6 @@ data ParamError =
 -- | An amount of time, specified as a floating-point number of seconds.
 type FracSeconds = Double
 
-
-instance Functor HSBK where
-  fmap f x = HSBK { hue = f $ hue x
-                  , saturation = f $ saturation x
-                  , brightness = f $ brightness x
-                  , kelvin = f $ kelvin x
-                  }
-
-
 -- | One channel of a color.
 type ColorChannel = Double
 
@@ -157,29 +148,15 @@ combineColors x y = HSBK
 -- used by the HTTP API.
 newtype AccessToken  = AccessToken B.ByteString  deriving (Eq, Ord)
 
-implParseJson :: LifxId a => Value -> Parser a
-implParseJson (String txt) = chkSuccess (fromText txt)
-  where chkSuccess (Right x) = return x
-        chkSuccess (Left x) = fail x
-implParseJson _ = fail "expected a JSON string"
+--implParseJson :: LifxId a => Value -> Parser a
+--implParseJson (String txt) = chkSuccess (fromText txt)
+--  where chkSuccess (Right x) = return x
+--        chkSuccess (Left x) = fail x
+--implParseJson _ = fail "expected a JSON string"
 
 
-instance FromJSON DeviceId where
-  parseJSON = implParseJson
 
-
-instance FromJSON GroupId where
-  parseJSON = implParseJson
-
-
-instance FromJSON LocationId where
-  parseJSON = implParseJson
-
-
-instance FromJSON Label where
-  parseJSON = implParseJson
-
-
+authTokenLen :: Int
 authTokenLen = 32
 
 instance LifxId AccessToken where
@@ -197,9 +174,6 @@ instance Read AccessToken where
 instance Binary AccessToken where
   put (AccessToken bs) = putByteString bs
   get = AccessToken <$> getByteString authTokenLen
-
-instance FromJSON AccessToken where
-  parseJSON = implParseJson
 
 
 -- | Scenes are uniquely identified by a 'U.UUID'.
@@ -220,20 +194,18 @@ instance LifxId SceneId where
   toText (SceneId uu) = U.toText uu
   fromText bs = sceneFromUuid $ U.fromText bs
 
-instance FromJSON SceneId where
-  parseJSON = implParseJson
-
-
 
 -- | A 'PartialColor' where all components are 'Nothing'.
 emptyColor :: PartialColor
 emptyColor = HSBK Nothing Nothing Nothing Nothing
 
 -- | Are all components of this 'PartialColor' 'Nothing'?
+isEmptyColor :: HSBK (Maybe a) -> Bool
 isEmptyColor (HSBK Nothing Nothing Nothing Nothing) = True
 isEmptyColor _ = False
 
 -- | Are all components of this 'PartialColor' 'Just'?
+isCompleteColor :: HSBK (Maybe a) -> Bool
 isCompleteColor (HSBK (Just _ ) (Just _ ) (Just _ ) (Just _ )) = True
 isCompleteColor _ = False
 

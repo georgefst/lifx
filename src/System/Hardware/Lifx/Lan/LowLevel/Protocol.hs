@@ -3,27 +3,29 @@
 module System.Hardware.Lifx.Lan.LowLevel.Protocol
     ( Lan(..),
       Bulb(..),
-      BulbGG(..),
       RetryParams(..),
+      newHdr,
       newHdrAndCallback,
+      noCallback,
       sendMsg,
-      sendMsgGG,
       openLan,
       openLan',
       closeLan,
       discoverBulbs,
       deviceId,
+      dispatcher,
+      ifaceAddr,
+      serializeMsg,
       defaultRetryParams,
       reliableAction,
       reliableQuery,
       bulbLan,
-      openSocketGG
       ) where
 
 import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Concurrent
 import Control.Concurrent.STM
--- import Control.Exception
+import Control.Exception
 import Control.Monad ( when, unless )
 import Data.Array.MArray ( writeArray, readArray, newListArray )
 import Data.Binary
@@ -35,14 +37,13 @@ import Data.Binary
 import Data.Binary.Put ( putWord32le )
 import Data.Binary.Get ( getWord32le )
 import Data.Bits
-import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import Data.Int ( Int64 )
 import Data.List
 import Data.Maybe
-import Data.Monoid
 import qualified Data.Text as T
 import Data.Word ( Word8, Word16, Word32, Word64 )
+import GHC.IO.Exception
 import qualified Network.Info as NI
 import Network.Socket
     ( Socket,
@@ -51,6 +52,7 @@ import Network.Socket
       Family(AF_INET),
       SocketOption(Broadcast),
       socket,
+      --openSocket,
       setSocketOption,
       isSupportedSocketOption,
       defaultProtocol,
@@ -58,7 +60,8 @@ import Network.Socket
       socketPort,
       defaultPort,
       close )
-import Network.Socket.ByteString ( sendManyTo, sendAllTo, recvFrom )
+import Network.Socket.ByteString ( sendManyTo, recvFrom )
+import System.IO.Error
 import System.Mem.Weak
 
 import System.Hardware.Lifx.Lan.LowLevel.BaseTypes
@@ -134,14 +137,14 @@ instance Ord Lan where
 
 -- | Type representing one LIFX bulb
 data Bulb = Bulb Lan SockAddr DeviceId deriving (Show, Eq, Ord)
+bulbLan :: Bulb -> Lan
 bulbLan (Bulb l _ _) = l
--- | Type representing one LIFX bulb
-data BulbGG = BulbGG SockAddr DeviceId deriving (Show, Eq, Ord)
 
 -- | Determine the Device ID for a particular 'Bulb'.
 deviceId :: Bulb -> DeviceId
 deviceId (Bulb _ _ di) = di
 
+serviceUDP :: Word8
 serviceUDP = 1
 
 serializeMsg :: (MessageType a, Binary a) => Header -> a -> L.ByteString
@@ -151,20 +154,13 @@ serializeMsg hdr payload = hdrBs `L.append` payloadBS
         hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
         hdrBs = encode hdr'
 
---serializeMsgGG :: (MessageType a, Binary a) => Header -> a -> S.ByteString
---serializeMsgGG hdr payload = hdrBs `S.append` payloadBS
---  where payloadBS = encode payload
---        hsize = dfltHdrSize + S.length payloadBS
---        hdr' = hdr { hdrType = msgType payload , hdrSize = fromIntegral hsize }
---        hdrBs = encode hdr'
-
 newState :: Maybe T.Text -> Word32 -> Socket -> SockAddr -> Weak ThreadId
             -> Maybe (T.Text -> IO ()) -> STM Lan
 newState ifname src sock bcast wthr logFunc = do
-  seq <- newTVar 0
-  cbacks <- newListArray (0, 255) (map noSeq [0..255])
+  seq' <- newTVar 0
+  cbacks <- newListArray (0, 255) (map noSeq ([0..255] :: [Int]))
   let (lg, lgt) = mkLogState logFunc
-  return Lan { stSeq = seq
+  return Lan { stSeq = seq'
              , stSource = src
              , stCallbacks = cbacks
              , stLog = lg
@@ -181,9 +177,9 @@ newState ifname src sock bcast wthr logFunc = do
 
 newHdr :: Lan -> STM Header
 newHdr st = do
-  let seq = stSeq st
-  n <- readTVar seq
-  writeTVar seq (n + 1)
+  let seq' = stSeq st
+  n <- readTVar seq'
+  writeTVar seq' (n + 1)
   return $ dfltHdr { hdrSource = stSource st , hdrSequence = n }
 
 registerCallback :: Lan -> Header -> Callback -> STM ()
@@ -268,7 +264,7 @@ runCallback st sa bs =
          len = L.length bs
          hsrc = hdrSource hdr
          ssrc = stSource st
-         seq = hdrSequence hdr
+         seq' = hdrSequence hdr :: Word8
          cbacks = stCallbacks st
          frm = strFrom sa
      in if hsz /= len
@@ -277,9 +273,9 @@ runCallback st sa bs =
         else if hsrc /= ssrc
              then stLog st $ "source mismatch: " ++ show hsrc
                   ++ " ≠ " ++ show ssrc ++ frm
-             else runIt seq cbacks hdr bs'
-  where runIt seq cbacks hdr bs' = do
-          cb <- atomically $ readArray cbacks seq
+             else runIt seq' cbacks hdr bs'
+  where runIt seq' cbacks hdr bs' = do
+          cb <- atomically $ readArray cbacks seq'
           cb st sa hdr bs'
 
 sendMsg :: (MessageType a, Binary a)
@@ -289,14 +285,6 @@ sendMsg (Bulb st sa targ) hdr payload =
   sendManyTo (stSocket st) (L.toChunks pkt) sa
   where hdr' = hdr { hdrTarget = targ }
         pkt = serializeMsg hdr' payload
-sendMsgGG :: (MessageType a, Binary a)
-           => BulbGG -> Header -> a
-           -> IO ()
-sendMsgGG (BulbGG sa targ) hdr payload = do
-  sock <- openSocketGG --TODO hmm every time?
-  sendAllTo sock (L.toStrict pkt) sa
-  where pkt = serializeMsg (hdr { hdrTarget = targ }) payload
-
 discovery :: Lan -> (Bulb -> IO ()) -> STM L.ByteString
 discovery st cb = do
   hdr <- newHdrAndCbDiscovery st cb
@@ -350,23 +338,12 @@ openLan' ifname mport mlog = do
     putTMVar tmv st
     return st
 
--- | Return a 'Lan' which can be used to communicate with bulbs on the
--- local network.
-openSocketGG :: IO Socket
-openSocketGG = do
-  hostAddr <- ifaceAddr Nothing
-  sock <- socket AF_INET Datagram defaultProtocol
-  bind sock $ SockAddrInet defaultPort hostAddr
-  when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
-  tmv <- newEmptyTMVarIO
-  forkFinally (dispatcher tmv) (\_ -> close sock)
-  return sock
-
 -- | Destroy a 'Lan' when it is no longer needed.  This is required, because
 -- each 'Lan' has a background thread which needs to be terminated.
 closeLan :: Lan -> IO ()
 closeLan lan = endThread (stLogText lan) "dispatch" (stThread lan)
 
+ethMtu :: Int
 ethMtu = 1500
 
 dispatcher :: TMVar Lan -> IO ()
@@ -374,6 +351,7 @@ dispatcher tmv = do
   st <- atomically $ takeTMVar tmv
   untilKilled (stLogText st) "discovery" $ do
     (bs, sa) <- recvFrom (stSocket st) ethMtu
+    --print sa
     runCallback st sa $ L.fromStrict bs
 
 {-
@@ -407,7 +385,6 @@ ifaceAddr Nothing = return 0
 ifaceAddr (Just ifname) = do
   ifaces <- NI.getNetworkInterfaces
   let miface = find (\x -> ifname == NI.name x) ifaces
-      ifnames = map NI.name ifaces -- FIXME: ifnames is unused
   iface <- case miface of
     Just x -> return x
     Nothing -> undefined -- FIXME throw $ NoSuchInterface (T.pack ifname) (map T.pack ifnames)
@@ -429,6 +406,7 @@ data RetryParams =
   }
 
 -- | Default values for 'RetryParams'.
+defaultRetryParams :: RetryParams
 defaultRetryParams =
   RetryParams
   { rpMinInterval = 0.1
@@ -437,6 +415,7 @@ defaultRetryParams =
   , rpTimeLimit = 5
   }
 
+microsPerSecond :: Float
 microsPerSecond = 1000000
 
 -- | A helper function which lets you wrap an unreliable action, such as
@@ -487,3 +466,17 @@ reliableQuery rp query cbSucc cbFail = do
              let newInterval =
                    min (rpMaxInterval rp) (interval * rpMultiplier rp)
              rq v newInterval (totalµs + delayµs) limitµs
+
+-- TODO check MVar is the appropriate concurrency primitive
+-- also put empty value or somehting on failure
+-- somehow check we get the right message
+noCallback :: (MessageType a, Binary a) => MVar (Either IOException a) -> Socket -> IO ()
+noCallback res sock = do
+  resp <- tryIOError $ recvFrom sock ethMtu
+  case resp of
+    Right (bs, _) -> case decodeOrFail (L.fromStrict bs) of
+      Right (bs', _, hdr) -> case checkHeaderFields hdr bs' of
+        Right payload -> putMVar res $ Right payload
+        Left _ -> putMVar res $ Left $ IOError Nothing HardwareFault "" "GEEEGRGORGE" Nothing Nothing
+      Left _ -> putMVar res $ Left $ IOError Nothing HardwareFault "" "GEEEGRGORGE" Nothing Nothing
+    Left e -> putStrLn "GEGGEGGG" >> putMVar res (Left e)

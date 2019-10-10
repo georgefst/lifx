@@ -1,6 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
 module System.Hardware.Lifx.Lan.LowLevel.BaseTypes where
 
-import Control.Applicative
 import Control.Arrow
 import Data.Binary
 import Data.Binary.Get
@@ -14,6 +14,13 @@ import qualified Data.Text.Encoding.Error as TEE
 
 -- | The power state of a bulb.
 data Power = Off | On deriving (Show, Read, Eq, Ord, Bounded, Enum)
+instance Binary Power where
+  put On  = putWord16le 0xffff
+  put Off = putWord16le 0
+
+  get = do
+    x <- getWord16le
+    return $ if x == 0 then Off else On
 
 -- | The name of a network interface, such as @en1@ or @eth0@.
 type Interface = T.Text
@@ -28,6 +35,21 @@ data HSBK a =
   , brightness :: a
   , kelvin :: a
   } deriving (Show, Read, Eq, Ord)
+instance Functor HSBK where
+  fmap f x = HSBK { hue = f $ hue x
+                  , saturation = f $ saturation x
+                  , brightness = f $ brightness x
+                  , kelvin = f $ kelvin x
+                  }
+
+type HSBK16 = HSBK Word16
+instance Binary HSBK16 where
+  put x = do
+    putWord16le $ hue x
+    putWord16le $ saturation x
+    putWord16le $ brightness x
+    putWord16le $ kelvin x
+  get = HSBK <$> getWord16le <*> getWord16le <*> getWord16le <*> getWord16le
 
 -- | The 6-byte ID of a single light, which is also its
 -- <https://en.wikipedia.org/wiki/MAC_address MAC address>.
@@ -98,6 +120,7 @@ implRead c len s =
      then [(c bs, drop digs s)]
      else []
 
+deviceIdLen :: Int
 deviceIdLen = 6
 
 instance LifxId DeviceId where
@@ -116,6 +139,7 @@ instance Binary DeviceId where
   put (DeviceId bs) = putByteString bs
   get = DeviceId <$> getByteString deviceIdLen
 
+groupIdLen :: Int
 groupIdLen = 16
 
 instance LifxId GroupId where
@@ -134,6 +158,7 @@ instance Binary GroupId where
   put (GroupId bs) = putByteString bs
   get = GroupId <$> getByteString groupIdLen
 
+locationIdLen :: Int
 locationIdLen = 16
 
 instance LifxId LocationId where
@@ -152,8 +177,10 @@ instance Binary LocationId where
   put (LocationId bs) = putByteString bs
   get = LocationId <$> getByteString locationIdLen
 
+labelLen :: Int
 labelLen = 32
 
+labelFromText :: T.Text -> Label
 labelFromText txt = Label $ textToPaddedByteString labelLen txt
 
 instance LifxId Label where

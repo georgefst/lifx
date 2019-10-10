@@ -18,36 +18,25 @@ module System.Hardware.Lifx.Lan
     , LanConnection
     , defaultLanSettings
     , openLanConnection
-    , newConnectionGG
     , getLan
     , clBulb
+    , lcLan
     , lcLights
     ) where
 
 import System.Hardware.Lifx
 import System.Hardware.Lifx.Connection
-import qualified System.Hardware.Lifx.Connection as E( EffectType( Pulse ) )
-import System.Hardware.Lifx.Internal
 import System.Hardware.Lifx.Lan.LowLevel hiding (setLabel)
-import qualified System.Hardware.Lifx.Lan.LowLevel as W( Waveform( Pulse ) , setLabel )
-import System.Hardware.Lifx.Lan.LowLevel.Internal (untilKilled, endThread)
+import System.Hardware.Lifx.Lan.LowLevel.Internal (untilKilled)
 
-import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Exception
 import Control.Monad
-import Data.Bits
 import Data.Hourglass
-import Data.List
-import Data.Maybe
 import qualified Data.Map.Strict as M
-import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Data.Version
 import Data.Word
-import GHC.Float
 import System.IO
 import System.Mem.Weak
 import Time.System
@@ -125,7 +114,7 @@ data LanConnection =
   , lcLights    :: TVar (M.Map DeviceId   CachedLight)
   , lcGroups    :: TVar (M.Map GroupId    CachedLabel)
   , lcLocations :: TVar (M.Map LocationId CachedLabel)
-  , lcThread    :: Weak ThreadId
+  , _lcThread    :: Weak ThreadId
   }
 
 instance Show LanConnection where
@@ -164,213 +153,26 @@ getLan :: LanConnection -> Lan
 getLan = lcLan
 
 
-listOfMVarToList :: [MVar (Either SomeException a)] -> IO [a]
-listOfMVarToList = mapM takeMVarThrow
-
-takeMVarThrow :: MVar (Either SomeException a) -> IO a
-takeMVarThrow mv = do
-  v <- takeMVar mv
-  case v of
-   Left exc -> throwIO exc
-   Right r -> return r
-
-forkFinallyMVar :: (MVar (Either SomeException a)) -> IO a -> IO ThreadId
-forkFinallyMVar mv f = forkFinally f (putMVar mv)
-
-emptyLightInfo :: DeviceId -> DateTime -> LightInfo
-emptyLightInfo devId now = LightInfo
-  { lId = devId
-  , lUuid = Nothing
-  , lLabel = Nothing
-  , lConnected = False
-  , lPower = Nothing
-  , lColor = emptyColor
-  , lGroupId = Nothing
-  , lGroup = Nothing
-  , lLocationId = Nothing
-  , lLocation = Nothing
-  , lLastSeen = now
-  , lSecondsSinceSeen = 0
-  , lProduct = Nothing
-  , lTemperature = Nothing
-  , lUptime = Nothing
-  , lFirmwareVersion = Nothing
-  , lHardwareVersion = Nothing
-  }
-
-
 data MessageNeeded = NeedGetLight   | NeedGetGroup    | NeedGetLocation
                    | NeedGetVersion | NeedGetHostInfo | NeedGetInfo
                    | NeedGetHostFirmware
                    deriving (Show, Read, Eq, Ord, Bounded, Enum)
 
-needMessage :: InfoNeeded -> MessageNeeded
-needMessage NeedLabel           = NeedGetLight
-needMessage NeedPower           = NeedGetLight
-needMessage NeedColor           = NeedGetLight
-needMessage NeedGroup           = NeedGetGroup
-needMessage NeedLocation        = NeedGetLocation
-needMessage NeedProduct         = NeedGetVersion
-needMessage NeedTemperature     = NeedGetHostInfo
-needMessage NeedUptime          = NeedGetInfo
-needMessage NeedFirmwareVersion = NeedGetHostFirmware
-needMessage NeedHardwareVersion = NeedGetVersion
-
-
-whatsNeeded :: [InfoNeeded] -> [MessageNeeded]
-whatsNeeded needed = sort $ nub $ map needMessage needed
-
-
-type FinCont = LightInfo -> IO ()
-type NxtCont = LightInfo -> IO ()
-
-color16toFrac :: HSBK16 -> Color
-color16toFrac c = HSBK
-  { hue = fromIntegral (hue c) / 65535 * 360
-  , saturation = fromIntegral (saturation c) / 65535
-  , brightness = fromIntegral (brightness c) / 65535
-  , kelvin = fromIntegral (kelvin c)
-  }
-
-colorFracTo16 :: Color -> HSBK16
-colorFracTo16 c = HSBK
-  { hue = round $ hue c * 65535 / 360
-  , saturation = round $ saturation c * 65535
-  , brightness = round $ brightness c * 65535
-  , kelvin = round $ kelvin c
-  }
-
-justColor :: Color -> PartialColor
-justColor = fmap Just
-
-definitelyColor :: PartialColor -> Color
-definitelyColor = fmap fromJust
-
-color16ToMaybeFrac :: HSBK16 -> PartialColor
-color16ToMaybeFrac hsbk = justColor $ color16toFrac hsbk
-
-maxDuration :: FracSeconds
-maxDuration =
-  let maxms = maxBound :: Word32
-  in (fromIntegral maxms) / 1000
-
-f2ms :: FracSeconds -> Word32
-f2ms x = round $ 1000 * x
-
-f2µs :: FracSeconds -> Int
-f2µs x = round $ 1e6 * x
-
-nanosPerSecond :: FracSeconds
-nanosPerSecond = 1e9
-
-checkDuration :: T.Text -> FracSeconds -> IO ()
-checkDuration = checkParam 0 maxDuration
-
-checkParam :: FracSeconds -> FracSeconds -> T.Text -> FracSeconds -> IO ()
-checkParam mn mx name param =
-  when (param < mn || param > mx) $ throwIO $ BadParam $ InvalidRange name mn mx
-
-unpackFirmwareVersion :: Word32 -> Version
-unpackFirmwareVersion v = Version (map fromIntegral [major, minor]) []
-  where major = v `shiftR` 16
-        minor = v .&. 0xffff
-
-lastSeen :: CachedLight -> DateTime
-lastSeen cl = fromMaybe (clFirstSeen cl) $
-              maximum [ dtOfCt (clLocation cl)
-                      , dtOfCt (clGroup    cl)
-                      , dtOfCt (clLabel    cl)
-                      ]
-
-timeDiffFracSeconds :: (Timeable t1, Timeable t2) => t1 -> t2 -> FracSeconds
-timeDiffFracSeconds t1 t2 =
-  let (Seconds s, NanoSeconds ns) = timeDiffP t1 t2
-      [s', ns'] = map fromIntegral [s, ns]
-  in s' + ns' / 1e9
-
-data FilterResult = Accept | Reject | Unknown
-
-isAccept :: FilterResult -> Bool
-isAccept Accept = True
-isAccept _ = False
-
-filterLights :: TVar (M.Map DeviceId CachedLight)
-                -> (CachedLight -> FilterResult)
-                -> STM [CachedLight]
-filterLights tv f = do
-  m <- readTVar tv
-  let lites = M.elems m
-  return $ filter (isAccept . f) lites
-
-findLabel :: TVar (M.Map a CachedLabel) -> Label -> STM (Maybe a)
-findLabel tv lbl = do
-  m <- readTVar tv
-  let lst = map f $ M.toList m
-      f (x, y) = (claLabel y, x)
-  return $ lookup lbl lst
-
-b2fr :: Bool -> FilterResult
-b2fr True = Accept
-b2fr False = Reject
-
-
-checkAlive :: DateTime
-              -> FracSeconds
-              -> (CachedLight -> IO (MVar (Either SomeException a)))
-              -> (CachedLight -> a)
-              -> CachedLight
-              -> IO (MVar (Either SomeException a))
-checkAlive now offlineInterval ifAlive ifDead lite =
-  if (now `timeDiffFracSeconds` lastSeen lite <= offlineInterval)
-  then ifAlive lite
-  else do
-    mv <- newEmptyMVar
-    putMVar mv $ Right $ ifDead lite
-    return mv
-
-
-offlineResult :: CachedLight -> Result
-offlineResult lite = Result
-  { rId = deviceId $ clBulb lite
-  , rLabel = maybeFromCached $ clLabel lite
-  , rStatus = Offline
-  }
-
-offlineLightInfo :: DateTime
-                 -> M.Map GroupId CachedLabel
-                 -> M.Map LocationId CachedLabel
-                 -> CachedLight
-                 -> LightInfo
-offlineLightInfo now groups locations lite =
-  (emptyLightInfo (deviceId $ clBulb lite) last)
-    { lLabel = maybeFromCached $ clLabel lite
-    , lConnected = False
-    , lGroupId = grp
-    , lGroup = maybeLookup grp groups
-    , lLocationId = loc
-    , lLocation = maybeLookup loc locations
-    , lSecondsSinceSeen = since
-    }
-  where last = lastSeen lite
-        since = now `timeDiffFracSeconds` last
-        grp = maybeFromCached $ clGroup lite
-        loc = maybeFromCached $ clLocation lite
-        maybeLookup Nothing _ = Nothing
-        maybeLookup (Just k) m = fmap claLabel $ M.lookup k m
-
 dtOfCt :: CachedThing a -> Maybe DateTime
 dtOfCt NotCached = Nothing
 dtOfCt (Cached dt _ ) = Just dt
 
+microsPerSecond :: FracSeconds
 microsPerSecond = 1e6
 -- discoveryTime = 1.5
+fastDiscoveryTime :: FracSeconds
 fastDiscoveryTime = 0.25
 
 discoveryThread :: TMVar LanConnection -> IO ()
 discoveryThread tmv = do
   lc <- atomically $ takeTMVar tmv
   let discoveryTime = lsDiscoveryPollInterval $ lcSettings lc
-  forM_ [1..3] $ \_ -> do
+  forM_ ([1..3] :: [Int]) $ \_ -> do
     db lc
     td $ min discoveryTime fastDiscoveryTime
   untilKilled (lsLog $ lcSettings lc) "discovery" $ do
@@ -461,47 +263,3 @@ updateLabel :: LanConnection -> DeviceId -> DateTime -> StateLight
                -> STM ()
 updateLabel lc dev now sl =
   updateCachedLight lc dev $ \cl -> cl { clLabel = Cached now (slLabel sl) }
-
--- If Kelvin is set, set saturation to 0 (white), unless saturation is also
--- explicitly set.
-desaturateKelvin :: PartialColor -> PartialColor
-desaturateKelvin (HSBK h Nothing b k@(Just _ )) = HSBK h (Just 0) b k
-desaturateKelvin x = x
-
-maybeFromCached :: CachedThing a -> Maybe a
-maybeFromCached NotCached = Nothing
-maybeFromCached (Cached _ x) = Just x
-
-
-effectTypeToWaveform :: EffectType -> Waveform
-effectTypeToWaveform E.Pulse = W.Pulse
-effectTypeToWaveform Breathe = Sine
-
-
-
-checkEffect :: Effect -> IO ()
-checkEffect eff = do
-  checkDuration "period" $ ePeriod eff
-  checkParam 0 1 "peak" $ ePeak eff
-
-checkTransition :: StateTransition -> IO ()
-checkTransition st = do
-  checkDuration "duration" $ sDuration st
-  checkColor $ sColor st
-
-checkColor :: PartialColor -> IO ()
-checkColor c = do
-  checkComponent 0 360 "hue" $ hue c
-  checkComponent 0 1 "saturation" $ saturation c
-  checkComponent 0 1 "brightness" $ brightness c
-  checkComponent minKelvin maxKelvin "kelvin" $ kelvin c
-
-checkComponent :: ColorChannel -> ColorChannel -> T.Text -> Maybe ColorChannel -> IO ()
-checkComponent _ _ _ Nothing = return ()
-checkComponent mn mx name (Just x) = checkParam mn mx name x
-
-newConnectionGG :: IO LanConnection
-newConnectionGG = do
-    con <- openLanConnection defaultLanSettings
-    threadDelay 1000000
-    return con
