@@ -1,1 +1,1 @@
-This is a work in progress, not ready to be released yet.
+I inherited this work from someone else. A major rewrite is on the way.
