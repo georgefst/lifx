@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, LambdaCase, OverloadedStrings, ScopedTypeVariables #-}
 
 module System.Hardware.Lifx.LanGG where
 
@@ -35,8 +35,8 @@ import qualified Data.ByteString.Lazy as L
 import Data.Binary
 import Data.Either
 import Data.Ord.HT (limit)
-import Network.Socket
-import Network.Socket.ByteString
+import Network.Socket hiding (openSocket)
+import Network.Socket.ByteString hiding (sendMsg)
 
 -- TODO
 -- acknowledgement of send/receive
@@ -44,7 +44,7 @@ import Network.Socket.ByteString
 -- shouldnt really be necessary to give both IP and MAC
 
 georgeBulb :: Bulb
-georgeBulb = Bulb (SockAddrInet 56700 (tupleToHostAddress (192,168,1,187))) (fromRight undefined $ fromText "d073d52d7080")
+georgeBulb = Bulb (SockAddrInet 56700 (tupleToHostAddress (192,168,1,188))) (fromRight (error "illegal bulb id") $ fromText "d073d52d7080")
 
 -- | Turn the bulb on or off
 -- (<https://lan.developer.lifx.com/docs/light-messages#section-setpower-117 SetPower>)
@@ -89,11 +89,12 @@ sendMsg :: (MessageType a, Binary a) => Bulb -> Header -> a -> IO ()
 sendMsg (Bulb sa targ) hdr payload = do
     sock <- openSocket --TODO hmm every time?
     sendAllTo sock (L.toStrict pkt) sa
+    print sa
     where pkt = serializeMsg (hdr { hdrTarget = targ }) payload
 
 --TODO tmp (has socket passed in)
 sendMsg' :: (MessageType a, Binary a) => Socket -> Bulb -> Header -> a -> IO ()
-sendMsg' sock (Bulb sa targ) hdr payload = do
+sendMsg' sock (Bulb sa targ) hdr payload =
     sendAllTo sock (L.toStrict pkt) sa
     where pkt = serializeMsg (hdr { hdrTarget = targ }) payload
 
@@ -104,7 +105,7 @@ openSocket = do
     bind sock $ SockAddrInet defaultPort hostAddr
     when (isSupportedSocketOption Broadcast) (setSocketOption sock Broadcast 1)
     tmv <- newEmptyTMVarIO
-    forkFinally (dispatcher tmv) (const $ close sock)
+    _ <- forkFinally (dispatcher tmv) (const $ close sock)
     return sock
 
 
@@ -126,9 +127,15 @@ getLightGG :: Bulb -> IO (Maybe StateLight)
 getLightGG bulb = do
     res <- newEmptyMVar
     sock <- openSocket
-    forkIO $ noCallback res sock
+    _ <- forkIO $ noCallback res sock
     sendMsg' sock bulb dfltHdr GetLight
-    either ((>> return Nothing) . print) (return . Just) =<< takeMVar res
+    takeMVar res >>= \case
+        Left e -> do
+            putStrLn "FAILED."
+            print e
+            return Nothing
+        Right r ->
+            return $ Just r
 
 
 -- | Type representing one LIFX bulb

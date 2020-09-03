@@ -130,10 +130,10 @@ instance LifxId DeviceId where
   fromText txt = DeviceId <$> textToId "DeviceId" deviceIdLen txt
 
 instance Show DeviceId where
-  showsPrec _ (DeviceId bs) post = implShow bs post
+  showsPrec _ (DeviceId bs) = implShow bs
 
 instance Read DeviceId where
-  readsPrec _ s = implRead DeviceId deviceIdLen s
+  readsPrec _ = implRead DeviceId deviceIdLen
 
 instance Binary DeviceId where
   put (DeviceId bs) = putByteString bs
@@ -149,10 +149,10 @@ instance LifxId GroupId where
   fromText txt = GroupId <$> textToId "GroupId" groupIdLen txt
 
 instance Show GroupId where
-  showsPrec _ (GroupId bs) pre = implShow bs pre
+  showsPrec _ (GroupId bs) = implShow bs
 
 instance Read GroupId where
-  readsPrec _ s = implRead GroupId groupIdLen s
+  readsPrec _ = implRead GroupId groupIdLen
 
 instance Binary GroupId where
   put (GroupId bs) = putByteString bs
@@ -168,10 +168,10 @@ instance LifxId LocationId where
   fromText txt = LocationId <$> textToId "LocationId" locationIdLen txt
 
 instance Show LocationId where
-  showsPrec _ (LocationId bs) pre = implShow bs pre
+  showsPrec _ (LocationId bs) = implShow bs
 
 instance Read LocationId where
-  readsPrec _ s = implRead LocationId locationIdLen s
+  readsPrec _ = implRead LocationId locationIdLen
 
 instance Binary LocationId where
   put (LocationId bs) = putByteString bs
@@ -191,7 +191,7 @@ instance LifxId Label where
   fromText txt = Right $ labelFromText txt
 
 instance Show Label where
-  showsPrec p lbl pre = showsPrec p (toText lbl) pre
+  showsPrec p = showsPrec p . toText
 
 instance Read Label where
   readsPrec p s = map (first labelFromText) $ readsPrec p s

@@ -41,6 +41,8 @@ import System.IO
 import System.Mem.Weak
 import Time.System
 
+import Data.Function
+
 -- | Parameters which can be passed to 'openLanConnection'.
 data LanSettings =
   LanSettings
@@ -118,14 +120,13 @@ data LanConnection =
   }
 
 instance Show LanConnection where
-  show (LanConnection { lcLan = lan }) = show lan
+  show LanConnection { lcLan = lan } = show lan
 
 instance Eq LanConnection where
-  x1 == x2 = x1 `compare` x2 == EQ
+  x1 == x2 = x1 == x2
 
 instance Ord LanConnection where
-  (LanConnection { lcLan = lan1 }) `compare` (LanConnection { lcLan = lan2 }) =
-    lan1 `compare` lan2
+  compare = compare `on` lcLan
 
 tvEmptyMap :: IO (TVar (M.Map a b))
 tvEmptyMap = newTVarIO M.empty
@@ -241,7 +242,7 @@ updateCachedLabel tv k lbl updatedAt = do
   let needUpd =
         case k `M.lookup` cache of
          Nothing -> True
-         (Just (CachedLabel { claUpdatedAt = upat })) -> upat < updatedAt
+         (Just CachedLabel { claUpdatedAt = upat }) -> upat < updatedAt
       cl = CachedLabel { claLabel = lbl , claUpdatedAt = updatedAt }
   when needUpd $ writeTVar tv $ M.insert k cl cache
 

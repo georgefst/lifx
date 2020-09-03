@@ -23,7 +23,6 @@ module System.Hardware.Lifx.Lan.LowLevel.Messages
       setLabel,
       setWaveform ) where
 
-import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Concurrent.STM ( atomically )
 import Data.Binary
     ( Binary(..), putWord8, getWord8 )
@@ -134,8 +133,7 @@ instance Binary StateHostFirmware where
   get = do
     build <- getWord64le
     skip 8 -- Reserved64
-    version <- getWord32le
-    return $ StateHostFirmware build version
+    StateHostFirmware build <$> getWord32le
 
 ----------------------------------------------------------
 
@@ -178,8 +176,7 @@ instance Binary StateWifiFirmware where
   get = do
     build <- getWord64le
     skip 8 -- Reserved64
-    version <- getWord32le
-    return $ StateWifiFirmware build version
+    StateWifiFirmware build <$> getWord32le
 
 ----------------------------------------------------------
 
@@ -340,8 +337,7 @@ instance Binary StateLocation where
   get = do
     loc <- get
     label <- get
-    upd <- getWord64le
-    return $ StateLocation loc label upd
+    StateLocation loc label <$> getWord64le
 
 ----------------------------------------------------------
 
@@ -385,8 +381,7 @@ instance Binary StateGroup where
   get = do
     loc <- get
     label <- get
-    upd <- getWord64le
-    return $ StateGroup loc label upd
+    StateGroup loc label <$> getWord64le
 
 ----------------------------------------------------------
 
@@ -509,8 +504,7 @@ instance Binary SetWaveform where
     let trans = t /= 0
     x <- SetWaveform trans <$> get <*> getWord32le
          <*> getFloat32le <*> getInt16le
-    w <- getWord8
-    return (x $ toEnum $ fromIntegral w)
+    x . toEnum . fromIntegral <$> getWord8
 
 -- | Cause the bulb to blink between the current color and
 -- a specified color, for a specified duration.

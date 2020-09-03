@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts, LambdaCase #-}
 
 module System.Hardware.Lifx.Lan.LowLevel.Protocol
     ( Lan(..),
@@ -22,7 +22,6 @@ module System.Hardware.Lifx.Lan.LowLevel.Protocol
       bulbLan,
       ) where
 
-import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Exception
@@ -128,7 +127,10 @@ instance Show Lan where
 
 
 instance Eq Lan where
-  x1 == x2 = x1 `compare` x2 == EQ
+  x1 == x2 =
+    (stIfName x1 == stIfName x2)
+      &&
+    (stSource x1 == stSource x2)
 
 instance Ord Lan where
   x1 `compare` x2 =
@@ -183,8 +185,8 @@ newHdr st = do
   return $ dfltHdr { hdrSource = stSource st , hdrSequence = n }
 
 registerCallback :: Lan -> Header -> Callback -> STM ()
-registerCallback st hdr cb =
-  writeArray (stCallbacks st) (hdrSequence hdr) cb
+registerCallback st hdr =
+  writeArray (stCallbacks st) (hdrSequence hdr)
 
 -- resorted to this weird thing to fix type errors
 contortedDecode :: Binary a => L.ByteString -> (a, Either String Int64)
@@ -426,8 +428,8 @@ reliableAction :: RetryParams    -- ^ How frequently and how long to retry.
                   -> IO ()       -- ^ Callback to be called if action succeeds.
                   -> IO ()       -- ^ Callback to be called if action times out.
                   -> IO ()
-reliableAction rp query cbSucc cbFail =
-  reliableQuery rp query' cbSucc' cbFail
+reliableAction rp query cbSucc =
+  reliableQuery rp query' cbSucc'
   where query' cb = query $ cb ()
         cbSucc' _ = cbSucc
 
@@ -441,7 +443,7 @@ reliableQuery :: RetryParams      -- ^ How frequently and how long to retry.
                  -> IO ()
 reliableQuery rp query cbSucc cbFail = do
   v <- newTVarIO False
-  forkIO $ rq v (rpMinInterval rp) 0 $ round $ rpTimeLimit rp * microsPerSecond
+  _ <- forkIO $ rq v (rpMinInterval rp) 0 $ round $ rpTimeLimit rp * microsPerSecond
   return ()
   where rq v interval totalµs limitµs = do
           let exceeded = totalµs >= limitµs
@@ -471,9 +473,8 @@ reliableQuery rp query cbSucc cbFail = do
 -- also put empty value or somehting on failure
 -- somehow check we get the right message
 noCallback :: (MessageType a, Binary a) => MVar (Either IOException a) -> Socket -> IO ()
-noCallback res sock = do
-  resp <- tryIOError $ recvFrom sock ethMtu
-  case resp of
+noCallback res sock =
+  tryIOError (recvFrom sock ethMtu) >>= \case
     Right (bs, _) -> case decodeOrFail (L.fromStrict bs) of
       Right (bs', _, hdr) -> case checkHeaderFields hdr bs' of
         Right payload -> putMVar res $ Right payload

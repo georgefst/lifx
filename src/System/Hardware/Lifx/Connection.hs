@@ -13,7 +13,6 @@ the 'Connection' class, you'll need another package, such as
 @lifx-lan@ or @lifx-cloud@.
 -}
 
-{-# LANGUAGE OverloadedStrings #-}
 
 module System.Hardware.Lifx.Connection (
                          InfoNeeded (..)

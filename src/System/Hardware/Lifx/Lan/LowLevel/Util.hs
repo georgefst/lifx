@@ -14,7 +14,6 @@ module System.Hardware.Lifx.Lan.LowLevel.Util
       untilKilled,
       notAsync ) where
 
-import Control.Applicative ( (<$>) )
 import Control.Concurrent
 import Control.Exception
 import Control.Monad ( when, forever )

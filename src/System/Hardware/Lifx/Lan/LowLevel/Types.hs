@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module System.Hardware.Lifx.Lan.LowLevel.Types
     ( MessageType(..),
@@ -8,7 +8,6 @@ module System.Hardware.Lifx.Lan.LowLevel.Types
       Waveform(..),
       HSBK16 ) where
 
-import Control.Applicative ( Applicative((<*>)), (<$>) )
 import Data.Binary
     ( Binary(..),
       putWord8,

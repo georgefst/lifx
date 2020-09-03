@@ -2,7 +2,7 @@
 
 module System.Hardware.Lifx.Types where
 
-import Control.Applicative ((<$>),(<|>))
+import Control.Applicative ((<|>))
 import Control.Arrow (first)
 import Control.Exception
 --import Data.Aeson hiding (Result)
@@ -166,10 +166,10 @@ instance LifxId AccessToken where
   fromText txt = AccessToken <$> textToId "AccessToken" authTokenLen txt
 
 instance Show AccessToken where
-  showsPrec _ (AccessToken bs) pre = implShow bs pre
+  showsPrec _ (AccessToken bs) = implShow bs
 
 instance Read AccessToken where
-  readsPrec _ s = implRead AccessToken authTokenLen s
+  readsPrec _ = implRead AccessToken authTokenLen
 
 instance Binary AccessToken where
   put (AccessToken bs) = putByteString bs
@@ -186,7 +186,7 @@ instance Read SceneId where
   readsPrec prec str = map (first SceneId) (readsPrec prec str)
 
 sceneFromUuid :: Maybe U.UUID -> Either String SceneId
-sceneFromUuid u = maybe (Left "Can't parse UUID") (Right . SceneId) u
+sceneFromUuid = maybe (Left "Can't parse UUID") (Right . SceneId)
 
 instance LifxId SceneId where
   toByteString (SceneId uu) = L.toStrict $ U.toByteString uu
